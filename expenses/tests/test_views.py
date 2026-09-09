@@ -31,12 +31,19 @@ ALL_URLS = [
 class AuthenticationRequiredTests(TestCase):
     def test_every_view_redirects_anonymous_users(self):
         # subTest reports which URL failed instead of stopping at the first.
+        login_url = reverse("accounts:login")
+
         for name, args in ALL_URLS:
             with self.subTest(url=name):
-                response = self.client.get(reverse(name, args=args))
+                target = reverse(name, args=args)
+
+                response = self.client.get(target)
 
                 self.assertEqual(response.status_code, 302)
-                self.assertIn("/admin/login/", response.url)
+                # Asserting the whole URL also pins that ?next= round-trips,
+                # which is what returns the user to the page they wanted
+                # instead of dumping them on the dashboard after login.
+                self.assertEqual(response.url, f"{login_url}?next={target}")
 
 
 class CategoryViewTests(TestCase):

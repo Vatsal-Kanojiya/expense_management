@@ -20,6 +20,7 @@ from django.urls import include, path
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("accounts/", include("accounts.urls")),
     # include() keeps app URLs owned by the app. The root URLConf decides
     # the mount point; the app decides its own internal paths.
     path("", include("expenses.urls")),
