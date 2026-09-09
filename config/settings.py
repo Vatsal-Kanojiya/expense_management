@@ -78,6 +78,10 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@expense-tracker
 # which is generous for a credential-bearing URL that may sit in an inbox.
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24  # 24 hours
 
+# Swaps in a fast password hasher for the test run only. See the module
+# docstring: 20.5s -> 0.5s on the current suite.
+TEST_RUNNER = "config.test_runner.FastTestRunner"
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
