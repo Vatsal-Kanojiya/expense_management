@@ -82,6 +82,7 @@ PASSWORD_RESET_TIMEOUT = 60 * 60 * 24  # 24 hours
 # docstring: 20.5s -> 0.5s on the current suite.
 TEST_RUNNER = "config.test_runner.FastTestRunner"
 
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -168,3 +169,49 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+# Celery
+# https://docs.celeryq.dev/en/stable/django/first-steps-with-django.html
+
+# Separate Redis databases: a flushed result backend must not take the
+# pending task queue with it.
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="redis://localhost:6379/1")
+
+# JSON only. Celery's old pickle serializer executes arbitrary code on
+# deserialisation, so anyone who can write to the broker gets remote code
+# execution on every worker.
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+
+CELERY_TIMEZONE = TIME_ZONE
+
+# Acknowledge a task only after it finishes, not when it is received. If a
+# worker is killed mid-task the broker redelivers it instead of losing it.
+# The cost is that tasks must be idempotent, because redelivery means a task
+# can run twice.
+CELERY_TASK_ACKS_LATE = True
+
+# With acks_late, a worker that has prefetched ten tasks and dies redelivers
+# all ten. Fetching one at a time keeps that blast radius small; it matters
+# for slow I/O-bound tasks and costs throughput only for very fast ones.
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+
+# A hung task holds a worker process forever without these. The soft limit
+# raises an exception the task can catch and clean up after; the hard limit
+# kills the process.
+CELERY_TASK_SOFT_TIME_LIMIT = 60 * 5
+CELERY_TASK_TIME_LIMIT = 60 * 10
+
+# Run tasks inline instead of dispatching them. Set by the test settings so
+# the suite needs no broker; never enable it in production, where it would
+# silently make every "background" job block the request.
+CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
+CELERY_TASK_EAGER_PROPAGATES = True
+
+
+# Media files (generated exports)
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
