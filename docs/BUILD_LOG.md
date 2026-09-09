@@ -35,6 +35,8 @@
 erDiagram
     USER ||--o{ CATEGORY : "owns"
     USER ||--o{ EXPENSE  : "owns"
+    USER ||--o{ EXPORTJOB : "requests"
+    USER ||--o{ MONTHLYDIGEST : "receives"
     CATEGORY ||--o{ EXPENSE : "classifies"
 
     USER {
@@ -56,6 +58,24 @@ erDiagram
         date spent_on "indexed with user"
         string note
         datetime created_at
+    }
+    EXPORTJOB {
+        int id PK
+        int user_id FK "CASCADE"
+        string status "pending/running/complete/failed"
+        date start
+        date end
+        string file "uuid4 path, not guessable"
+        int row_count
+        datetime requested_at
+    }
+    MONTHLYDIGEST {
+        int id PK
+        int user_id FK "CASCADE"
+        date month "first of month; UNIQUE with user"
+        decimal total
+        int expense_count
+        datetime sent_at
     }
 ```
 
