@@ -1,0 +1,55 @@
+# Single home for tool configuration. Modern Python projects put linter,
+# formatter and coverage settings here rather than scattering .flake8,
+# setup.cfg, .isort.cfg and .coveragerc across the repo root.
+
+[tool.ruff]
+# Ruff replaces black + flake8 + isort in one tool, written in Rust and
+# fast enough to run on every save and every commit.
+line-length = 100
+target-version = "py310"
+extend-exclude = [".venv", "migrations"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes: unused imports, undefined names
+    "I",    # isort: import ordering
+    "UP",   # pyupgrade: modernise syntax for the target version
+    "B",    # bugbear: likely bugs, e.g. mutable default arguments
+    "DJ",   # flake8-django: Django-specific rules
+    "C4",   # comprehension simplifications
+]
+ignore = [
+    # Django models legitimately omit __str__ on some abstract helpers, and
+    # null=True on a CharField is sometimes correct. Left on for now; revisit
+    # only with a concrete reason.
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Settings modules use star-imports and long lines by convention.
+"config/settings.py" = ["E501"]
+# Migrations are generated; do not lint generated code.
+"*/migrations/*" = ["E501", "I001"]
+
+[tool.coverage.run]
+source = ["accounts", "config", "expenses"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "manage.py",
+    "config/asgi.py",
+    "config/wsgi.py",
+]
+
+[tool.coverage.report]
+# Fail the build below this. Raise the number as coverage improves rather
+# than lowering it when something slips.
+fail_under = 90
+show_missing = true
+skip_covered = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
