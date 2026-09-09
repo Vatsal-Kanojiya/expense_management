@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Delete category · Expense Tracker{% endblock %}
+
+{% block content %}
+  <h1>Delete category</h1>
+
+  <div class="card">
+    <p>
+      Delete <strong>{{ object.name }}</strong>?
+      {% with count=object.expenses.count %}
+        {% if count %}
+          It still has {{ count }} expense{{ count|pluralize }}, so deletion will be
+          refused — <code>Expense.category</code> uses <code>on_delete=PROTECT</code>
+          to stop spending history being destroyed silently.
+        {% endif %}
+      {% endwith %}
+    </p>
+
+    {# Deletion must be a POST: a GET link could be triggered by a prefetch or an <img> tag. #}
+    <form method="post">
+      {% csrf_token %}
+      <button class="btn btn-danger" type="submit">Delete</button>
+      <a class="btn" href="{% url 'expenses:category_list' %}">Cancel</a>
+    </form>
+  </div>
+{% endblock %}

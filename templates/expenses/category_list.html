@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Categories · Expense Tracker{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Categories</h1>
+    <span class="spacer"></span>
+    <a class="btn btn-primary" href="{% url 'expenses:category_create' %}">New category</a>
+  </div>
+
+  {% if categories %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th class="num">Expenses</th>
+          <th>Created</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for category in categories %}
+          <tr>
+            <td>{{ category.name }}</td>
+            <td class="num">{{ category.expense_count }}</td>
+            <td>{{ category.created_at|date:"j M Y" }}</td>
+            <td>
+              <a class="btn" href="{% url 'expenses:category_update' category.pk %}">Edit</a>
+              <a class="btn" href="{% url 'expenses:category_delete' category.pk %}">Delete</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="card empty">
+      No categories yet. <a href="{% url 'expenses:category_create' %}">Create your first one</a>
+      before adding expenses.
+    </div>
+  {% endif %}
+{% endblock %}
