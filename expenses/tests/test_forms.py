@@ -21,8 +21,10 @@ User = get_user_model()
 class CategoryFormTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.alice = User.objects.create_user("alice", password="pw12345!")
-        cls.bob = User.objects.create_user("bob", password="pw12345!")
+        cls.alice = User.objects.create_user(
+            "alice", email="alice@example.com", password="pw12345!"
+        )
+        cls.bob = User.objects.create_user("bob", email="bob@example.com", password="pw12345!")
         cls.alice_food = Category.objects.create(user=cls.alice, name="Food")
 
     def test_user_is_not_a_form_field(self):
@@ -69,8 +71,10 @@ class CategoryFormTests(TestCase):
 class ExpenseFormTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.alice = User.objects.create_user("alice", password="pw12345!")
-        cls.bob = User.objects.create_user("bob", password="pw12345!")
+        cls.alice = User.objects.create_user(
+            "alice", email="alice@example.com", password="pw12345!"
+        )
+        cls.bob = User.objects.create_user("bob", email="bob@example.com", password="pw12345!")
         cls.alice_food = Category.objects.create(user=cls.alice, name="Food")
         cls.bob_rent = Category.objects.create(user=cls.bob, name="Rent")
 

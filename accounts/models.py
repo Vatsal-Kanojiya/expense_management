@@ -1,13 +1,27 @@
 from django.contrib.auth.models import AbstractUser
+from django.db import models
 
 
 class User(AbstractUser):
     """Project user.
 
-    Deliberately empty for now. The point is the seam: swapping
-    AUTH_USER_MODEL after migrations exist is one of Django's genuinely
-    painful migrations, so the custom model is introduced up front and
-    extended later without a schema swap.
+    Extends AbstractUser rather than AbstractBaseUser: the username,
+    password, permissions and staff flags are all wanted as-is, so there is
+    no reason to rebuild them.
+
+    The only override is email. AbstractUser declares it blank and
+    non-unique, which breaks password reset — the reset form looks users up
+    by email, so a blank or duplicated address means either no match or an
+    ambiguous one. Making it required and unique is what turns
+    "reset my password" into a reliable flow rather than a best-effort one.
     """
 
-    pass
+    email = models.EmailField(
+        "email address",
+        unique=True,
+        help_text="Used to sign in to support and to reset your password.",
+    )
+
+    # AbstractUser already sets REQUIRED_FIELDS = ["email"], so createsuperuser
+    # prompts for it. Restated here only because the guarantee now matters.
+    REQUIRED_FIELDS = ["email"]

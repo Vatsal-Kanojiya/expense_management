@@ -23,8 +23,10 @@ class CategoryConstraintTests(TestCase):
     def setUpTestData(cls):
         # setUpTestData runs once per class and its data is rolled back
         # between tests, unlike setUp which re-creates rows every method.
-        cls.alice = User.objects.create_user("alice", password="pw12345!")
-        cls.bob = User.objects.create_user("bob", password="pw12345!")
+        cls.alice = User.objects.create_user(
+            "alice", email="alice@example.com", password="pw12345!"
+        )
+        cls.bob = User.objects.create_user("bob", email="bob@example.com", password="pw12345!")
 
     def test_same_name_allowed_for_different_users(self):
         Category.objects.create(user=self.alice, name="Food")
@@ -81,7 +83,9 @@ class CategoryConstraintTests(TestCase):
 class ExpenseConstraintTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.alice = User.objects.create_user("alice", password="pw12345!")
+        cls.alice = User.objects.create_user(
+            "alice", email="alice@example.com", password="pw12345!"
+        )
         cls.category = Category.objects.create(user=cls.alice, name="Food")
 
     def _expense(self, **overrides):

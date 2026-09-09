@@ -42,7 +42,9 @@ class AuthenticationRequiredTests(TestCase):
 class CategoryViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.alice = User.objects.create_user("alice", password="pw12345!")
+        cls.alice = User.objects.create_user(
+            "alice", email="alice@example.com", password="pw12345!"
+        )
 
     def setUp(self):
         self.client.force_login(self.alice)
@@ -132,7 +134,9 @@ class CategoryViewTests(TestCase):
 class ExpenseViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.alice = User.objects.create_user("alice", password="pw12345!")
+        cls.alice = User.objects.create_user(
+            "alice", email="alice@example.com", password="pw12345!"
+        )
         cls.category = Category.objects.create(user=cls.alice, name="Food")
 
     def setUp(self):
