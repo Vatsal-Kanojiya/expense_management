@@ -38,3 +38,6 @@ htmlcov/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Generated exports (dev). Regenerated on demand; never committed.
+/media/

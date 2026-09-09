@@ -1,16 +1,27 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
 from django.db.models import Count
 from django.db.models.deletion import ProtectedError
+from django.http import FileResponse, Http404
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
-from django.views.generic import CreateView, DeleteView, ListView, TemplateView, UpdateView
+from django.views import View
+from django.views.generic import (
+    CreateView,
+    DeleteView,
+    DetailView,
+    ListView,
+    TemplateView,
+    UpdateView,
+)
 
 from .filters import DateRangeForm, ExpenseFilterForm
 from .forms import CategoryForm, ExpenseForm
 from .mixins import OwnerFormMixin, OwnerScopedMixin
-from .models import Category, Expense
+from .models import Category, Expense, ExportJob
 from .summaries import previous_period, summarise
+from .tasks import build_expense_export
 
 
 class DashboardView(LoginRequiredMixin, TemplateView):
@@ -152,3 +163,66 @@ class ExpenseDeleteView(OwnerScopedMixin, DeleteView):
     def form_valid(self, form):
         messages.success(self.request, "Expense deleted.")
         return super().form_valid(form)
+
+
+class ExportCreateView(LoginRequiredMixin, View):
+    """Queue a CSV export and return immediately.
+
+    This is the case that genuinely needs a task queue. Building the file
+    inline would hold the request open for as long as the export takes,
+    which is unbounded — it grows with the user's history. The view writes
+    one row, dispatches, and redirects; the worker does the slow part.
+    """
+
+    def post(self, request, *args, **kwargs):
+        form = DateRangeForm(request.POST or None)
+        start, end = form.range_or_default()
+
+        job = ExportJob.objects.create(user=request.user, start=start, end=end)
+
+        # transaction.on_commit, not .delay() directly. Dispatching inside
+        # an open transaction is a real race: the worker is fast enough to
+        # pick the job up and query for a row the web process has not
+        # committed yet, and the task fails with DoesNotExist.
+        transaction.on_commit(
+            lambda: build_expense_export.delay(
+                job.pk, site_url=request.build_absolute_uri("/").rstrip("/")
+            )
+        )
+
+        messages.success(
+            request,
+            "Export queued. You'll get an email with a download link when it's ready.",
+        )
+        return redirect("expenses:export_list")
+
+
+class ExportListView(OwnerScopedMixin, ListView):
+    model = ExportJob
+    context_object_name = "jobs"
+    paginate_by = 20
+    template_name = "expenses/export_list.html"
+
+
+class ExportDownloadView(OwnerScopedMixin, DetailView):
+    """Serve a finished export.
+
+    Scoped like every other detail view, so another user's job id is a 404.
+    FileResponse is fine in development; in production this should hand off
+    to the web server (X-Accel-Redirect) or a signed object-storage URL so
+    Python is not streaming bytes.
+    """
+
+    model = ExportJob
+
+    def get(self, request, *args, **kwargs):
+        job = self.get_object()
+
+        if job.status != ExportJob.Status.COMPLETE or not job.file:
+            raise Http404("This export is not ready yet.")
+
+        return FileResponse(
+            job.file.open("rb"),
+            as_attachment=True,
+            filename=f"expenses-{job.start:%Y%m%d}-{job.end:%Y%m%d}.csv",
+        )

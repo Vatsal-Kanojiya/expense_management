@@ -1,4 +1,6 @@
 # Create your models here.
+from uuid import uuid4
+
 from django.conf import settings
 from django.db import models
 
@@ -62,3 +64,80 @@ class Expense(models.Model):
 
     def __str__(self):
         return f"{self.amount} on {self.spent_on}"
+
+
+def export_upload_path(instance, filename):
+    """Unguessable path for a generated export.
+
+    The download view checks ownership, so this is defence in depth: if the
+    file is ever served directly by nginx or copied to a bucket, the path
+    itself must not be enumerable.
+    """
+    return f"exports/{instance.user_id}/{uuid4().hex}.csv"
+
+
+class ExportJob(models.Model):
+    """A user's request for a CSV of their expenses.
+
+    The row exists so the user can be shown progress and given a stable
+    link. The task updates it; nothing else writes status.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        RUNNING = "running", "Running"
+        COMPLETE = "complete", "Complete"
+        FAILED = "failed", "Failed"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="export_jobs",
+    )
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    start = models.DateField()
+    end = models.DateField()
+    file = models.FileField(upload_to=export_upload_path, blank=True)
+    row_count = models.PositiveIntegerField(default=0)
+    error = models.TextField(blank=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-requested_at"]
+        indexes = [models.Index(fields=["user", "-requested_at"])]
+
+    def __str__(self):
+        return f"Export {self.pk} ({self.status})"
+
+
+class MonthlyDigest(models.Model):
+    """Record that a digest was sent, and the guard against sending twice.
+
+    The unique constraint on (user, month) is the whole point. Beat or cron
+    can fire twice after a restart, and a retried task runs again by design.
+    Claiming this row before sending is what makes a second run a no-op.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="monthly_digests",
+    )
+    # Always the first day of the month it covers, so equality works.
+    month = models.DateField()
+    total = models.DecimalField(max_digits=12, decimal_places=2)
+    expense_count = models.PositiveIntegerField()
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-month"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "month"],
+                name="uniq_digest_per_user_month",
+            )
+        ]
+
+    def __str__(self):
+        return f"Digest for {self.user} — {self.month:%B %Y}"

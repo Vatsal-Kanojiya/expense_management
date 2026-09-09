@@ -1,0 +1,12 @@
+Hi {{ job.user.get_username }},
+
+Your expense export is ready.
+
+  Period : {{ job.start|date:"j M Y" }} to {{ job.end|date:"j M Y" }}
+  Rows   : {{ job.row_count }}
+
+Download it here:
+
+{{ download_url }}
+
+You'll need to be signed in — the link only works for your own account.
