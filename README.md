@@ -46,7 +46,7 @@ pre-commit install
 | Command | Purpose |
 |---|---|
 | `python manage.py runserver` | Development server |
-| `python manage.py test` | Run the test suite (61 tests) |
+| `python manage.py test` | Run the test suite (135 tests) |
 | `coverage run manage.py test && coverage report` | Tests with coverage, fails under 95% |
 | `ruff check . && ruff format .` | Lint and format |
 | `python manage.py makemigrations --check --dry-run` | Fail if a model changed without a migration |
@@ -74,6 +74,9 @@ config/            Project settings, root URLConf, WSGI/ASGI
 accounts/          Custom user model (accounts.User)
 expenses/          Domain app
   models.py          Category, Expense
+  managers.py        ExpenseQuerySet - chainable query building blocks
+  summaries.py       Period aggregation, shared with the digest email
+  filters.py         Forms that validate query-string parameters
   forms.py           ModelForms with user-scoped validation
   views.py           Class-based CRUD views
   mixins.py          Owner-scoping mixins  <- the security model lives here
@@ -112,7 +115,7 @@ never destroyed by tidying up a category; the user foreign keys use `CASCADE`.
 
 ## Testing
 
-61 tests, 100% statement coverage, organised by what breaks when they fail:
+135 tests, 100% statement coverage, organised by what breaks when they fail:
 
 | File | Question it answers |
 |---|---|
@@ -120,6 +123,10 @@ never destroyed by tidying up a category; the user foreign keys use `CASCADE`.
 | `tests/test_forms.py` | What does the application explain instead of returning a 500? |
 | `tests/test_views.py` | Does the request/response cycle work for the happy paths? |
 | `tests/test_permissions.py` | Can one user reach another user's data? |
+| `tests/test_summaries.py` | Does the aggregation compute the right numbers, with no request? |
+| `tests/test_dashboard.py` | Do the dashboard and filters behave at the view layer? |
+| `tests/test_templates.py` | Does anything template-shaped reach the browser? |
+| `accounts/tests/` | Login, logout, signup, password change and reset |
 
 `test_permissions.py` is the file that must never be allowed to go red.
 

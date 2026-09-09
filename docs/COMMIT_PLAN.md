@@ -143,7 +143,12 @@ expense form is usable.
 
 ---
 
-### Phase 5 — Read layer ⬜
+### Phase 5 — Read layer ✅ *(tag `phase-5-dashboard`)*
+
+> **As built:** two commits, `34c5a4b` and `5005cba`. The aggregation was extracted to
+> `managers.py` + `summaries.py` up front rather than lifted out of the view later, because phase 6
+> needs it from a Celery task. Dashboard took a **date range** defaulting to the current month
+> rather than a month picker, so one query shape serves both the UI and the digest.
 
 | # | Commit | Files | Architecture note |
 |---|---|---|---|

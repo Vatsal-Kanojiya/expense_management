@@ -18,10 +18,10 @@
 
 ## 1. Current state at a glance
 
-**Session:** 5 — Phase 2 (auth) complete. All phases through 4.5 done; phase 5 (dashboard) next
-**Last commit:** `149aa25` — *test(accounts): cover authentication flows*
-**Phase tags:** `phase-1-foundation`, `phase-2-auth`, `phase-3-crud`, `phase-4-tests`, `phase-4.5-tooling`
-**Suite:** 89 tests, 100% statement coverage, 0.8s, green in CI
+**Session:** 6 — Phase 5 (read layer) complete. Phase 6 (async/Celery) next
+**Last commit:** `5005cba` — *feat(expenses): add dashboard and expense filtering*
+**Phase tags:** `phase-1-foundation`, `phase-2-auth`, `phase-3-crud`, `phase-4-tests`, `phase-4.5-tooling`, `phase-5-dashboard`
+**Suite:** 135 tests, 100% statement coverage, 1.2s, green in CI
 
 > **Phases ran out of order on purpose, and the bet paid off.** Auth was deferred past CRUD so it
 > could be studied properly. That was safe because phase 3's views were written fully user-scoped
@@ -92,8 +92,12 @@ erDiagram
 | Auth | Password change + reset | `accounts/urls.py` | ✅ done | 5 |
 | Auth | Unique, required email | `accounts/models.py` | ✅ done | 5 |
 | Test | Auth flows | `accounts/tests/` | ✅ 28 tests | 5 |
+| Query | Reusable aggregation | `expenses/managers.py`, `summaries.py` | ✅ done | 6 |
+| View | Dashboard (date range) | `expenses/views.py` | ✅ done | 6 |
+| Form | Date range + filter forms | `expenses/filters.py` | ✅ done | 6 |
+| Test | Aggregation, dashboard, filters | `expenses/tests/` | ✅ 46 tests | 6 |
+| Test | Template render guards | `expenses/tests/test_templates.py` | ✅ done | 6 |
 | Tooling | Fast password hasher in tests | `config/test_runner.py` | ✅ 40× faster | 5 |
-| View | Dashboard aggregation query | `expenses/views.py` | ⬜ not started | phase 5 |
 | Infra | CSV export via Celery *(request-triggered)* | — | 🅿️ parked | phase 6 |
 | Infra | Monthly digest via cron + mgmt command | — | 🅿️ parked | phase 6 |
 
@@ -206,6 +210,55 @@ conventions (`<model>_list/_form/_confirm_delete.html`) · `ModelChoiceField.que
 **Verified:** anonymous → 302 · cross-user GET/POST → 404 on both models · foreign category id
 rejected as a field error · negative amount rejected · duplicate name rejected case-insensitively ·
 `PROTECT` surfaces a message not a 500 · empty category deletes · 11-row list = **4 queries**.
+
+---
+
+### Session 6 — Phase 5: read layer → tag `phase-5-dashboard`
+
+| Commit | Message |
+|---|---|
+| `34c5a4b` | `feat(expenses): add reusable aggregation layer` |
+| `5005cba` | `feat(expenses): add dashboard and expense filtering` |
+
+**The architectural decision of this phase:** the aggregation lives on a custom `QuerySet` plus a
+plain `summaries.py` module — **not in the view**. Phase 6's digest runs inside a Celery task where
+there is no request and no view to call into. Had it lived in `get_context_data`, phase 6 would
+have copy-pasted it. This is "fat models, thin views" with a concrete reason attached.
+
+**Design decisions worth defending:**
+
+| Decision | Why |
+|---|---|
+| `TemplateView`, not `ListView`, for the dashboard | The page is aggregates, not objects. `ListView` would mean a queryset that exists only to be ignored |
+| A `Form` for GET parameters | `?start=banana` becomes a field error, not a 500, and the view receives real `date` objects |
+| Filters via GET, not POST | Bookmarkable, shareable, back-button safe; POST would need a redirect to dodge the resubmit prompt |
+| `{% querystring %}` (Django 5.1+) for pagination | Hand-rolling this is exactly where filters silently vanish on page 2 |
+| Total sums the *filtered set*, not the page | Answers "how much did I spend on this", not "what is on screen" |
+| `change_from()` returns `None`, not `0` | "Nothing to compare" is a different state from "no change"; "up 100% from zero" is meaningless |
+| Whole months compare to whole previous months | September has 30 days, August 31. A naive equal-length rule would compare against 2–31 Aug and silently drop a day |
+| Category share computed in `summarise()` | The digest email gets identical numbers without reimplementing the arithmetic |
+| CSS bar, no charting library | A JS dependency and a CSP exception, for one rectangle |
+
+**Three queries per period, by design** — aggregates, grouping, biggest. Not one clever query:
+these are different shapes, and three indexed reads beat the joins needed to force them together.
+Pinned with `assertNumQueries`, and asserted *flat* as row counts grow rather than as a magic number.
+
+**🐛 A bug that shipped in phase 3 and survived four phases.** Eleven multi-line `{# ... #}`
+template comments were **rendering as visible text in the page**. Django's `{# #}` only strips
+comments that fit on a single line; anything longer is not a comment at all. Every test passed
+throughout — views returned 200, contexts were correct — because nothing had ever *read the HTML*.
+
+Found by rendering a page and looking at it. Fixed by converting to `{% comment %}`, and
+`expenses/tests/test_templates.py` now fetches every page and asserts no `{#`, `{%` or `{{` reaches
+the browser. **The lesson: 100% coverage measured that those lines ran, not that their output was
+correct.**
+
+**Django concepts exercised:** custom `QuerySet` + `as_manager()` · `values()` before `annotate()`
+as the GROUP BY switch · `Sum`/`Count` aggregation and `Sum` returning `None` when empty ·
+`aggregate()` vs `annotate()` · `TemplateView` · forms over GET parameters · `ModelChoiceField`
+scoping (again) · `icontains` and why it cannot use a btree index · `{% querystring %}` ·
+`{% comment %}` vs `{# #}` · `assertNumQueries` as a flatness property · `unittest.mock.patch` for
+deterministic dates · frozen dataclasses as view-model.
 
 ---
 
@@ -349,6 +402,8 @@ this is the file set that silently drifts and is worth being able to reconstruct
 | 5 | `DEFAULT_FROM_EMAIL` | — | `env(...)` | Sender for reset mail |
 | 5 | `PASSWORD_RESET_TIMEOUT` | *(3 days)* | `60*60*24` | A credential-bearing URL should not sit valid in an inbox for three days |
 | 5 | `TEST_RUNNER` | *(default)* | `config.test_runner.FastTestRunner` | Fast hasher in tests only: 20.5s → 0.5s |
+| 6 | `LOGIN_REDIRECT_URL` | `expenses:expense_list` | `expenses:dashboard` | Dashboard is now the site root |
+| 6 | `LOGOUT_REDIRECT_URL` | `expenses:expense_list` | `expenses:dashboard` | Same |
 
 > The old `SECRET_KEY` is in git history (commit `60fb810`) and is permanently compromised. A fresh
 > key was generated rather than reused. Lesson: once a secret is committed, rotating is the only
@@ -403,6 +458,9 @@ interview-gap list.
 | Enumeration-safe error messages | Frappe's login messages are framework-provided | S5 templates |
 | `UserCreationForm.Meta.model` must be overridden | No analogue; Frappe's User doctype is fixed | S5 `forms.py` |
 | Password hashers are pluggable and deliberately slow | Frappe hashes in the User controller | S5 `test_runner.py` |
+| Aggregation written by hand | Frappe's report builder and `get_all` with `group_by` do this declaratively | S6 `managers.py` |
+| `values()` before `annotate()` changes the SQL | No analogue — Frappe's query builder is not lazy in this way | S6 `managers.py` |
+| Template comment syntax has two forms with different rules | Frappe uses Jinja, where `{# #}` spans lines fine | S6 — caused a real bug |
 
 ---
 
@@ -437,6 +495,8 @@ interview-gap list.
 | 7 | Settings not split base/dev/prod | Single file with env injection is fine at this size | Revisit in phase 7 if prod config grows |
 | 15 | No rate limiting on login or password reset | Both endpoints accept unlimited attempts, so credential stuffing and reset-mail flooding are unthrottled. The single biggest remaining auth gap | `django-axes` or `django-ratelimit`. Deliberately not added yet — worth understanding the attack before installing the fix |
 | 16 | No email verification on signup | An account can be registered against an address the user does not control | Send a confirmation link before activating. `django-allauth` bundles this |
+| 17 | `note__icontains` search will not scale | A leading-wildcard `LIKE` cannot use a btree index, so search is a full scan | Fine at this size. At volume, Postgres full-text search (`SearchVector` + a GIN index) |
+| 18 | No test reads rendered HTML beyond template-syntax markers | `test_templates.py` catches leaks, but nothing checks the page *says the right thing* | Consider a few `assertContains` on key numbers, or a snapshot test |
 | 10 | **Account deletion is broken** | `user.delete()` raises `ProtectedError` for any user with expenses. A "delete my account" feature would 500 today | Decide between: (a) an ordered delete — expenses, then categories, then user — in a `User.delete()` override or a service function; (b) `SET_NULL` on `Expense.category` with `null=True`; (c) keep `PROTECT` and expose only the ordered path. **(a) is the usual production answer** — it keeps `PROTECT` protecting against accidental category deletion while making account closure explicit |
 | 11 | Case-sensitivity mismatch on category names | `UniqueConstraint` is exact-match, `clean_name` is `__iexact`. The admin can create `Food` and `food` for one user; the app cannot | Make the DB agree with the form: `UniqueConstraint(Lower("name"), "user", name=...)`. Needs a migration |
 | 13 | `check --deploy` reports 5 warnings | HSTS, SSL redirect, secure session and CSRF cookies, weak dev `SECRET_KEY`. The CI job is `continue-on-error` until these are fixed | Phase 7 — then remove the flag so it becomes a real gate |
