@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}
+  {% if form.instance.pk %}Edit expense{% else %}Add expense{% endif %} · Expense Tracker
+{% endblock %}
+
+{% block content %}
+  <h1>{% if form.instance.pk %}Edit expense{% else %}Add expense{% endif %}</h1>
+
+  <div class="card">
+    {% if not form.fields.category.queryset.exists %}
+      <p class="helptext">
+        You have no categories yet, and an expense needs one.
+        <a href="{% url 'expenses:category_create' %}">Create a category</a> first.
+      </p>
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button class="btn btn-primary" type="submit">Save</button>
+      <a class="btn" href="{% url 'expenses:expense_list' %}">Cancel</a>
+    </form>
+  </div>
+{% endblock %}
