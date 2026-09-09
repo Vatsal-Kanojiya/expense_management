@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Category
+from .models import Category, Expense
 
 
 class CategoryForm(forms.ModelForm):
@@ -34,3 +34,38 @@ class CategoryForm(forms.ModelForm):
             raise forms.ValidationError("You already have a category with this name.")
 
         return name
+
+
+class ExpenseForm(forms.ModelForm):
+    """Form for a user's own expenses."""
+
+    class Meta:
+        model = Expense
+        fields = ["category", "amount", "spent_on", "note"]
+        widgets = {
+            "spent_on": forms.DateInput(attrs={"type": "date"}),
+            "note": forms.TextInput(attrs={"placeholder": "Optional"}),
+        }
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+        # The subtle one. A ModelChoiceField defaults to *every* Category in
+        # the table, so without this the dropdown leaks other users' category
+        # names, and a crafted POST could file an expense against one of them.
+        # Scoping the queryset fixes both the display and the validation,
+        # because ModelChoiceField re-queries it when cleaning the field.
+        self.fields["category"].queryset = Category.objects.filter(user=user)
+        self.fields["category"].empty_label = "Select a category"
+
+    def clean_amount(self):
+        amount = self.cleaned_data["amount"]
+
+        # Mirrors CheckConstraint(amount > 0) on the model. Same two-layer
+        # split as clean_name above: the DB refuses bad data, the form
+        # explains it in language a person can act on.
+        if amount <= 0:
+            raise forms.ValidationError("Amount must be greater than zero.")
+
+        return amount

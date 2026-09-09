@@ -62,6 +62,7 @@
 <body>
   <header>
     <nav>
+      <a href="{% url 'expenses:expense_list' %}">Expenses</a>
       <a href="{% url 'expenses:category_list' %}">Categories</a>
       <span class="spacer"></span>
       {% if user.is_authenticated %}

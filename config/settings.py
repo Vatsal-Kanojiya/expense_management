@@ -62,8 +62,8 @@ AUTH_USER_MODEL = "accounts.User"
 # either way, so the views need no changes when phase 2 replaces this with
 # LOGIN_URL = "accounts:login".
 LOGIN_URL = "/admin/login/"
-LOGIN_REDIRECT_URL = "expenses:category_list"
-LOGOUT_REDIRECT_URL = "expenses:category_list"
+LOGIN_REDIRECT_URL = "expenses:expense_list"
+LOGOUT_REDIRECT_URL = "expenses:expense_list"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

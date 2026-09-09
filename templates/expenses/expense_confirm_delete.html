@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Delete expense · Expense Tracker{% endblock %}
+
+{% block content %}
+  <h1>Delete expense</h1>
+
+  <div class="card">
+    <p>
+      Delete the {{ object.amount }} expense in
+      <strong>{{ object.category.name }}</strong>
+      from {{ object.spent_on|date:"j M Y" }}?
+    </p>
+
+    {# POST, not a GET link: a prefetch or an <img> tag could trigger a GET. #}
+    <form method="post">
+      {% csrf_token %}
+      <button class="btn btn-danger" type="submit">Delete</button>
+      <a class="btn" href="{% url 'expenses:expense_list' %}">Cancel</a>
+    </form>
+  </div>
+{% endblock %}
