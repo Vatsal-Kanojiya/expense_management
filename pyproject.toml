@@ -39,6 +39,7 @@ omit = [
     "*/tests/*",
     "manage.py",
     "config/asgi.py",
+    "config/test_runner.py",
     "config/wsgi.py",
 ]
 
