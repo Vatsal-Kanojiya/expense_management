@@ -170,7 +170,7 @@ class ExpenseViewTests(TestCase):
     def test_empty_state_is_shown(self):
         response = self.client.get(reverse("expenses:expense_list"))
 
-        self.assertContains(response, "No expenses yet")
+        self.assertContains(response, "No expenses in this date range")
 
     def test_create_assigns_the_logged_in_user(self):
         response = self.client.post(
@@ -222,9 +222,27 @@ class ExpenseViewTests(TestCase):
         for _ in range(10):
             self._create()
 
-        # select_related means the count stays flat as rows grow. Without it
-        # this would be roughly 4 + one per row. The exact number covers
-        # session, user, pagination count and the rows themselves; it is
-        # asserted so a future N+1 regression fails loudly.
-        with self.assertNumQueries(4):
+        # Six queries: session, user, pagination count, the rows themselves,
+        # the filtered total, and the category dropdown's options. The number
+        # grew from four when filtering was added, and every addition is
+        # accounted for above.
+        #
+        # What matters is that it is FLAT: select_related means it does not
+        # grow with the number of rows. test_query_count_is_flat_as_rows_grow
+        # asserts that property directly.
+        with self.assertNumQueries(6):
+            self.client.get(reverse("expenses:expense_list"))
+
+    def test_query_count_is_flat_as_rows_grow(self):
+        for _ in range(3):
+            self._create()
+        with self.assertNumQueries(6):
+            self.client.get(reverse("expenses:expense_list"))
+
+        for _ in range(20):
+            self._create()
+
+        # Same count with 23 rows as with 3. This is the N+1 guarantee
+        # stated as a property rather than a magic number.
+        with self.assertNumQueries(6):
             self.client.get(reverse("expenses:expense_list"))

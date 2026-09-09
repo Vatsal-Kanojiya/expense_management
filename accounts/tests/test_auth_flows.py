@@ -34,7 +34,7 @@ class LoginTests(TestCase):
             {"username": "alice", "password": "correct-horse-42"},
         )
 
-        self.assertRedirects(response, reverse("expenses:expense_list"))
+        self.assertRedirects(response, reverse("expenses:dashboard"))
 
     def test_wrong_password_is_rejected(self):
         response = self.client.post(
@@ -78,7 +78,7 @@ class LoginTests(TestCase):
             {"username": "alice", "password": "correct-horse-42"},
         )
 
-        self.assertRedirects(response, reverse("expenses:expense_list"))
+        self.assertRedirects(response, reverse("expenses:dashboard"))
 
     def test_authenticated_user_is_redirected_away(self):
         self.client.force_login(self.user)

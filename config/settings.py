@@ -61,8 +61,8 @@ AUTH_USER_MODEL = "accounts.User"
 # land afterwards. Accepts a URL name, so the path can change without
 # touching settings.
 LOGIN_URL = "accounts:login"
-LOGIN_REDIRECT_URL = "expenses:expense_list"
-LOGOUT_REDIRECT_URL = "expenses:expense_list"
+LOGIN_REDIRECT_URL = "expenses:dashboard"
+LOGOUT_REDIRECT_URL = "expenses:dashboard"
 
 # Email. The console backend prints messages to stdout instead of sending
 # them, which is what makes the password reset flow testable in development

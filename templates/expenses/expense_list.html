@@ -8,6 +8,28 @@
     <a class="btn btn-primary" href="{% url 'expenses:expense_create' %}">Add expense</a>
   </div>
 
+  {# GET keeps filters bookmarkable and back-button safe. #}
+  <form method="get" class="card filters">
+    {{ form.non_field_errors }}
+    <div class="filter-row">
+      <label for="{{ form.start.id_for_label }}">{{ form.start.label }}</label>
+      {{ form.start }}
+      <label for="{{ form.end.id_for_label }}">{{ form.end.label }}</label>
+      {{ form.end }}
+      {{ form.category }}
+      {{ form.search }}
+      <button class="btn btn-primary" type="submit">Filter</button>
+      {% if is_filtered %}
+        <a class="btn" href="{% url 'expenses:expense_list' %}">Clear</a>
+      {% endif %}
+    </div>
+    {{ form.start.errors }}{{ form.end.errors }}{{ form.category.errors }}
+    <p class="filter-summary">
+      {{ page_obj.paginator.count|default:0 }} expense{{ page_obj.paginator.count|pluralize }}
+      totalling <strong>{{ filtered_total|floatformat:2 }}</strong>
+    </p>
+  </form>
+
   {% if expenses %}
     <table>
       <thead>
@@ -39,18 +61,26 @@
     {% if is_paginated %}
       <div class="toolbar" style="margin-top:1rem">
         {% if page_obj.has_previous %}
-          <a class="btn" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+          {% comment %} Django 5.1+ built-in: re-emits the current query string with
+             `page` overridden, so filters survive pagination. Hand-rolling
+             this is where filters silently vanish on page 2. {% endcomment %}
+          <a class="btn" href="{% querystring page=page_obj.previous_page_number %}">Previous</a>
         {% endif %}
         <span class="helptext">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
         {% if page_obj.has_next %}
-          <a class="btn" href="?page={{ page_obj.next_page_number }}">Next</a>
+          <a class="btn" href="{% querystring page=page_obj.next_page_number %}">Next</a>
         {% endif %}
       </div>
     {% endif %}
   {% else %}
     <div class="card empty">
-      No expenses yet.
-      <a href="{% url 'expenses:expense_create' %}">Add your first one</a>.
+      {% if is_filtered %}
+        No expenses match these filters.
+        <a href="{% url 'expenses:expense_list' %}">Clear them</a> to see everything.
+      {% else %}
+        No expenses in this date range.
+        <a href="{% url 'expenses:expense_create' %}">Add one</a>.
+      {% endif %}
     </div>
   {% endif %}
 {% endblock %}

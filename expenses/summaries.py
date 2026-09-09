@@ -95,11 +95,20 @@ def summarise(user, start: date, end: date) -> PeriodSummary:
 
     aggregates = expenses.aggregate(total=Sum("amount"), count=Count("id"))
 
+    total = aggregates["total"] or Decimal("0")
+    by_category = list(expenses.by_category())
+
+    # Each row carries its own share of the period. Computed here rather
+    # than in the template so the digest email gets the same numbers without
+    # reimplementing the arithmetic, and so no template filter is needed.
+    for row in by_category:
+        row["share"] = (row["total"] / total * 100) if total else Decimal("0")
+
     return PeriodSummary(
         start=start,
         end=end,
-        total=aggregates["total"] or Decimal("0"),
+        total=total,
         count=aggregates["count"],
         biggest=expenses.biggest(),
-        by_category=list(expenses.by_category()),
+        by_category=by_category,
     )
