@@ -45,7 +45,7 @@ omit = [
 [tool.coverage.report]
 # Fail the build below this. Raise the number as coverage improves rather
 # than lowering it when something slips.
-fail_under = 90
+fail_under = 95
 show_missing = true
 skip_covered = true
 exclude_lines = [
