@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Log in · Expense Tracker{% endblock %}
+
+{% block content %}
+  <h1>Log in</h1>
+
+  <div class="card" style="max-width:26rem">
+    {% if form.errors %}
+      {# Deliberately vague: naming which field was wrong tells an attacker
+         whether a username exists. Django's own message does the same. #}
+      <ul class="errorlist">
+        <li>Your username and password didn't match. Please try again.</li>
+      </ul>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+
+      {# Preserves where the user was headed before LoginRequiredMixin
+         intercepted them. Django's LoginView validates this against the
+         allowed hosts, so it cannot be used as an open redirect. #}
+      <input type="hidden" name="next" value="{{ next }}">
+
+      <button class="btn btn-primary" type="submit">Log in</button>
+    </form>
+  </div>
+{% endblock %}

@@ -57,11 +57,10 @@ INSTALLED_APPS = [
 # swapping it afterwards is a painful data migration.
 AUTH_USER_MODEL = "accounts.User"
 
-# TEMPORARY (phase 3): the app's own login pages do not exist yet, so
-# LoginRequiredMixin redirects to the admin login. Session auth is the same
-# either way, so the views need no changes when phase 2 replaces this with
-# LOGIN_URL = "accounts:login".
-LOGIN_URL = "/admin/login/"
+# Where LoginRequiredMixin sends anonymous users, and where login/logout
+# land afterwards. Accepts a URL name, so the path can change without
+# touching settings.
+LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "expenses:expense_list"
 LOGOUT_REDIRECT_URL = "expenses:expense_list"
 

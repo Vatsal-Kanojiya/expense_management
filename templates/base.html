@@ -67,8 +67,14 @@
       <span class="spacer"></span>
       {% if user.is_authenticated %}
         <span class="who">{{ user.get_username }}</span>
+        {# LogoutView is POST-only since Django 5.0, so this is a form and
+           not a link: a GET logout can be fired by a prefetch or an <img>. #}
+        <form method="post" action="{% url 'accounts:logout' %}" style="display:inline">
+          {% csrf_token %}
+          <button class="btn" type="submit">Log out</button>
+        </form>
       {% else %}
-        <a href="{% url 'admin:login' %}">Log in</a>
+        <a href="{% url 'accounts:login' %}">Log in</a>
       {% endif %}
     </nav>
   </header>
