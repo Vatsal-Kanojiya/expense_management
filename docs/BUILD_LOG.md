@@ -6,6 +6,8 @@
 > **Companion docs:**
 > [DJANGO_CHEATSHEET.md](DJANGO_CHEATSHEET.md) — commands, project-layout rationale, "signals experience" checklist.
 > [COMMIT_PLAN.md](COMMIT_PLAN.md) — industry-standard build order, phase by phase, commit by commit.
+> [STUDY_MAP.md](STUDY_MAP.md) — what must be *understood*, ranked by interview risk. The Frappe-gap
+> table in §4 below feeds it.
 >
 > **Purpose of this project:** first of 11 Django projects. This one is the *reference build* —
 > the goal is a mind map of a complete end-to-end Django app, deliberately including the parts

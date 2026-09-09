@@ -147,3 +147,4 @@ Tracked in full in [docs/BUILD_LOG.md](docs/BUILD_LOG.md). The two that matter m
 | [docs/BUILD_LOG.md](docs/BUILD_LOG.md) | Living build log, settings change ledger, known issues |
 | [docs/COMMIT_PLAN.md](docs/COMMIT_PLAN.md) | Phase-by-phase build order and the practice-branch workflow |
 | [docs/DJANGO_CHEATSHEET.md](docs/DJANGO_CHEATSHEET.md) | Commands with the reasoning behind them |
+| [docs/STUDY_MAP.md](docs/STUDY_MAP.md) | Topics ranked by depth required, and why |
