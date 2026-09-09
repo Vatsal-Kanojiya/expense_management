@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}
+  {% if form.instance.pk %}Edit category{% else %}New category{% endif %} · Expense Tracker
+{% endblock %}
+
+{% block content %}
+  <h1>{% if form.instance.pk %}Edit category{% else %}New category{% endif %}</h1>
+
+  <div class="card">
+    {# csrf_token is mandatory on every POST form; Django rejects the request without it. #}
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button class="btn btn-primary" type="submit">Save</button>
+      <a class="btn" href="{% url 'expenses:category_list' %}">Cancel</a>
+    </form>
+  </div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Expense Tracker{% endblock %}</title>
+  <style>
+    :root {
+      --bg: #f7f7f8; --surface: #fff; --text: #1b1b1f; --muted: #6b6b76;
+      --border: #e3e3e8; --accent: #2f5fe0; --danger: #c0392b; --ok: #1e7d4f;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #16161a; --surface: #1f1f25; --text: #ececf1; --muted: #9a9aa6;
+        --border: #32323b; --accent: #7aa2ff; --danger: #ff7b6b; --ok: #56c98d;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 1.25rem;
+    }
+    nav { display: flex; gap: 1.25rem; align-items: center; max-width: 900px; margin: 0 auto; }
+    nav a { color: var(--text); text-decoration: none; padding: 0.9rem 0; font-weight: 500; }
+    nav a:hover { color: var(--accent); }
+    nav .spacer { margin-left: auto; }
+    nav .who { color: var(--muted); font-size: 0.875rem; }
+    main { max-width: 900px; margin: 1.5rem auto; padding: 0 1.25rem; }
+    h1 { font-size: 1.4rem; margin: 0 0 1rem; }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); }
+    th, td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; }
+    .btn {
+      display: inline-block; padding: 0.45rem 0.85rem; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--text); text-decoration: none; cursor: pointer; font-size: 0.9rem;
+    }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+    .toolbar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+    .toolbar .spacer { margin-left: auto; }
+    form p { margin: 0 0 1rem; }
+    label { display: block; font-weight: 500; margin-bottom: 0.25rem; }
+    input, select, textarea {
+      width: 100%; padding: 0.5rem; border: 1px solid var(--border);
+      border-radius: 6px; background: var(--bg); color: var(--text); font: inherit;
+    }
+    .errorlist { color: var(--danger); list-style: none; padding: 0; margin: 0.25rem 0; font-size: 0.875rem; }
+    .helptext { color: var(--muted); font-size: 0.825rem; }
+    .empty { color: var(--muted); padding: 2rem; text-align: center; }
+    .messages { list-style: none; padding: 0; margin: 0 0 1rem; }
+    .messages li { padding: 0.6rem 0.85rem; border-radius: 6px; background: var(--surface); border-left: 3px solid var(--ok); }
+    .messages li.error { border-left-color: var(--danger); }
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="{% url 'expenses:category_list' %}">Categories</a>
+      <span class="spacer"></span>
+      {% if user.is_authenticated %}
+        <span class="who">{{ user.get_username }}</span>
+      {% else %}
+        <a href="{% url 'admin:login' %}">Log in</a>
+      {% endif %}
+    </nav>
+  </header>
+  <main>
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}
+          <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

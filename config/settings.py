@@ -57,6 +57,14 @@ INSTALLED_APPS = [
 # swapping it afterwards is a painful data migration.
 AUTH_USER_MODEL = "accounts.User"
 
+# TEMPORARY (phase 3): the app's own login pages do not exist yet, so
+# LoginRequiredMixin redirects to the admin login. Session auth is the same
+# either way, so the views need no changes when phase 2 replaces this with
+# LOGIN_URL = "accounts:login".
+LOGIN_URL = "/admin/login/"
+LOGIN_REDIRECT_URL = "expenses:category_list"
+LOGOUT_REDIRECT_URL = "expenses:category_list"
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -72,7 +80,10 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        # Project-wide templates (base.html, later registration/). App
+        # templates still resolve via APP_DIRS; this directory is searched
+        # first, which is also how you override a third-party app's template.
+        'DIRS': [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
