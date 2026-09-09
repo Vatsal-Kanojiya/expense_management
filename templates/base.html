@@ -57,18 +57,47 @@
     .messages { list-style: none; padding: 0; margin: 0 0 1rem; }
     .messages li { padding: 0.6rem 0.85rem; border-radius: 6px; background: var(--surface); border-left: 3px solid var(--ok); }
     .messages li.error { border-left-color: var(--danger); }
+
+    /* Dashboard */
+    .stat-grid {
+      display: grid; gap: 0.75rem; margin-top: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    }
+    .stat { display: flex; flex-direction: column; gap: 0.3rem; }
+    .stat-label { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .stat-value { font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .stat-sub { color: var(--muted); font-size: 0.82rem; }
+    .stat-value.up { color: var(--danger); }    /* spending more is bad news */
+    .stat-value.down { color: var(--ok); }
+    .muted { color: var(--muted); }
+
+    .breakdown td { border-bottom: none; padding: 0.35rem 0.5rem; }
+    .breakdown .cat-name { white-space: nowrap; font-weight: 500; }
+    .breakdown .cat-bar { width: 100%; }
+    .bar {
+      display: block; height: 10px; border-radius: 3px;
+      background: var(--accent); min-width: 2px;
+    }
+
+    /* Filters */
+    .filters { margin-top: 1rem; padding: 0.85rem 1rem; }
+    .filter-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .filter-row label { margin: 0; font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+    .filter-row input, .filter-row select { width: auto; min-width: 8.5rem; }
+    .filter-summary { color: var(--muted); font-size: 0.85rem; margin: 0.75rem 0 0; }
   </style>
 </head>
 <body>
   <header>
     <nav>
+      <a href="{% url 'expenses:dashboard' %}">Overview</a>
       <a href="{% url 'expenses:expense_list' %}">Expenses</a>
       <a href="{% url 'expenses:category_list' %}">Categories</a>
       <span class="spacer"></span>
       {% if user.is_authenticated %}
         <a class="who" href="{% url 'accounts:password_change' %}">{{ user.get_username }}</a>
-        {# LogoutView is POST-only since Django 5.0, so this is a form and
-           not a link: a GET logout can be fired by a prefetch or an <img>. #}
+        {% comment %} LogoutView is POST-only since Django 5.0, so this is a form and
+           not a link: a GET logout can be fired by a prefetch or an <img>. {% endcomment %}
         <form method="post" action="{% url 'accounts:logout' %}" style="display:inline">
           {% csrf_token %}
           <button class="btn" type="submit">Log out</button>

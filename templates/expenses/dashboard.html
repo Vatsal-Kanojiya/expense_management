@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Overview · Expense Tracker{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Overview</h1>
+    <span class="spacer"></span>
+    <a class="btn btn-primary" href="{% url 'expenses:expense_create' %}">Add expense</a>
+  </div>
+
+  {% comment %} GET, not POST: a filter is a bookmarkable, shareable, back-button-safe
+     read. POST would need a redirect to avoid a resubmit prompt on refresh. {% endcomment %}
+  <form method="get" class="card filters">
+    {{ form.non_field_errors }}
+    <div class="filter-row">
+      <label for="{{ form.start.id_for_label }}">{{ form.start.label }}</label>
+      {{ form.start }}
+      <label for="{{ form.end.id_for_label }}">{{ form.end.label }}</label>
+      {{ form.end }}
+      <button class="btn btn-primary" type="submit">Apply</button>
+      {% if request.GET %}
+        <a class="btn" href="{% url 'expenses:dashboard' %}">This month</a>
+      {% endif %}
+    </div>
+    {{ form.start.errors }}{{ form.end.errors }}
+  </form>
+
+  <div class="stat-grid">
+    <div class="card stat">
+      <div class="stat-label">Total spent</div>
+      <div class="stat-value">{{ summary.total|floatformat:2 }}</div>
+      <div class="stat-sub">
+        {{ summary.start|date:"j M Y" }} – {{ summary.end|date:"j M Y" }}
+      </div>
+    </div>
+
+    <div class="card stat">
+      <div class="stat-label">
+        vs previous {{ previous.start|date:"j M" }} – {{ previous.end|date:"j M" }}
+      </div>
+      {% comment %} change is None when the earlier period had nothing — a different
+         state from "no change", and shown differently. {% endcomment %}
+      {% if change is None %}
+        <div class="stat-value muted">—</div>
+        <div class="stat-sub">Nothing spent in that period</div>
+      {% else %}
+        <div class="stat-value {% if change > 0 %}up{% elif change < 0 %}down{% endif %}">
+          {% if change > 0 %}▲{% elif change < 0 %}▼{% else %}={% endif %}
+          {{ change|floatformat:1 }}%
+        </div>
+        <div class="stat-sub">{{ previous.total|floatformat:2 }} previously</div>
+      {% endif %}
+    </div>
+
+    <div class="card stat">
+      <div class="stat-label">Biggest expense</div>
+      {% if summary.biggest %}
+        <div class="stat-value">{{ summary.biggest.amount|floatformat:2 }}</div>
+        <div class="stat-sub">
+          {{ summary.biggest.category.name }} ·
+          {{ summary.biggest.spent_on|date:"j M Y" }}
+        </div>
+      {% else %}
+        <div class="stat-value muted">—</div>
+        <div class="stat-sub">No expenses yet</div>
+      {% endif %}
+    </div>
+
+    <div class="card stat">
+      <div class="stat-label">Expenses</div>
+      <div class="stat-value">{{ summary.count }}</div>
+      <div class="stat-sub">
+        {{ summary.average_per_expense|floatformat:2 }} average
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:1rem">
+    <h2 style="font-size:1rem;margin:0 0 1rem">By category</h2>
+
+    {% if summary.by_category %}
+      <table class="breakdown">
+        <tbody>
+          {% for row in summary.by_category %}
+              <tr>
+                <td class="cat-name">{{ row.category__name }}</td>
+                <td class="cat-bar">
+                  {% comment %} Pure CSS bar. A charting library would be a JS
+                     dependency and a CSP exception for one rectangle. {% endcomment %}
+                  <span class="bar" style="width: {{ row.share|floatformat:1 }}%"></span>
+                </td>
+                <td class="num">{{ row.total|floatformat:2 }}</td>
+                <td class="num muted">{{ row.share|floatformat:0 }}%</td>
+                <td class="num muted">{{ row.count }}×</td>
+              </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty" style="margin:0">
+        Nothing recorded between {{ summary.start|date:"j M Y" }} and
+        {{ summary.end|date:"j M Y" }}.
+        <a href="{% url 'expenses:expense_create' %}">Add an expense</a>.
+      </p>
+    {% endif %}
+  </div>
+
+  {% if summary.count %}
+    <p style="margin-top:1rem">
+      <a class="btn" href="{% url 'expenses:expense_list' %}?start={{ summary.start|date:'Y-m-d' }}&end={{ summary.end|date:'Y-m-d' }}">
+        View all {{ summary.count }} expenses in this range
+      </a>
+    </p>
+  {% endif %}
+{% endblock %}
