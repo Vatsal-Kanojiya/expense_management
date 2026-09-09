@@ -61,9 +61,7 @@ class CategoryFormTests(TestCase):
     def test_editing_a_category_does_not_collide_with_itself(self):
         # The duplicate query must exclude the instance being edited,
         # otherwise renaming "Food" to "Food" reports a false duplicate.
-        form = CategoryForm(
-            data={"name": "Food"}, user=self.alice, instance=self.alice_food
-        )
+        form = CategoryForm(data={"name": "Food"}, user=self.alice, instance=self.alice_food)
 
         self.assertTrue(form.is_valid(), form.errors)
 
