@@ -125,7 +125,11 @@ expense form is usable.
 
 ---
 
-### Phase 4 — Tests ⬜
+### Phase 4 — Tests ✅ *(tag `phase-4-tests`)*
+
+> **As built:** a fourth file, `test_forms.py`, was added — the forms carry real logic (duplicate
+> checks, dropdown scoping) that belongs neither with models nor views. 59 tests across 3 commits:
+> `ad1273e`, `3f0eb14`, `3393334`.
 
 | # | Commit | Files | Architecture note |
 |---|---|---|---|
