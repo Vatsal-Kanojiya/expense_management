@@ -1,6 +1,8 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
+from . import views
+
 app_name = "accounts"
 
 # Routed explicitly rather than via include("django.contrib.auth.urls").
@@ -23,4 +25,5 @@ urlpatterns = [
     # LogoutView is POST-only since Django 5.0. A GET logout could be fired
     # by a prefetch, a link scanner or an <img> tag, so the nav uses a form.
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path("signup/", views.SignUpView.as_view(), name="signup"),
 ]
