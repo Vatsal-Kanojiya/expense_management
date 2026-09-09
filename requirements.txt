@@ -1,0 +1,6 @@
+# Direct dependencies only. Transitive deps (asgiref, sqlparse, typing_extensions)
+# are resolved by pip and intentionally not listed here.
+# At team scale the usual answer is pip-tools: requirements.in -> compiled requirements.txt.
+
+Django==5.2.17
+django-environ==0.12.0
