@@ -24,5 +24,9 @@
 
       <button class="btn btn-primary" type="submit">Log in</button>
     </form>
+
+    <p class="helptext" style="margin-top:1rem">
+      No account yet? <a href="{% url 'accounts:signup' %}">Create one</a>.
+    </p>
   </div>
 {% endblock %}

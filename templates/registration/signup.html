@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Create an account · Expense Tracker{% endblock %}
+
+{% block content %}
+  <h1>Create an account</h1>
+
+  <div class="card" style="max-width:26rem">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button class="btn btn-primary" type="submit">Sign up</button>
+    </form>
+
+    <p class="helptext" style="margin-top:1rem">
+      Already have an account? <a href="{% url 'accounts:login' %}">Log in</a>.
+    </p>
+  </div>
+{% endblock %}
