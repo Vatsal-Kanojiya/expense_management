@@ -84,11 +84,12 @@ Status: ✅ done · 🔜 next · ⬜ planned
 
 ---
 
-### Phase 2 — Authentication ⬜ *(deferred past phase 3 by choice)*
+### Phase 2 — Authentication ✅ *(tag `phase-2-auth`, built after phases 3–4.5)*
 
-> Deliberately postponed so auth and permissions get studied properly rather than pattern-matched.
-> Safe because phase 3's views were written fully user-scoped, with `LOGIN_URL` temporarily pointing
-> at the admin login. Landing this phase changes one setting and adds templates — no view code.
+> **Outcome:** the bet held. Landing this phase changed `LOGIN_URL` and one test assertion, and
+> touched **no view code in `expenses/`**. As built it is five commits — `eb84d02`, `dadf826`,
+> `9b78c59`, `d853ab0`, `149aa25` — with a model change (unique email) first, because password
+> reset looks users up by email and `AbstractUser` leaves it blank and non-unique.
 
 | # | Commit | Files | Architecture note |
 |---|---|---|---|
