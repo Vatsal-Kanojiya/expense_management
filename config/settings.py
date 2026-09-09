@@ -64,6 +64,20 @@ LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "expenses:expense_list"
 LOGOUT_REDIRECT_URL = "expenses:expense_list"
 
+# Email. The console backend prints messages to stdout instead of sending
+# them, which is what makes the password reset flow testable in development
+# without an SMTP server. Production overrides EMAIL_BACKEND via the
+# environment; nothing in the code needs to change.
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@expense-tracker.local")
+
+# How long a password reset link stays valid. Django's default is 3 days,
+# which is generous for a credential-bearing URL that may sit in an inbox.
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24  # 24 hours
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
