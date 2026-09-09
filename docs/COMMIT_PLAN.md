@@ -84,7 +84,11 @@ Status: ✅ done · 🔜 next · ⬜ planned
 
 ---
 
-### Phase 2 — Authentication ⬜
+### Phase 2 — Authentication ⬜ *(deferred past phase 3 by choice)*
+
+> Deliberately postponed so auth and permissions get studied properly rather than pattern-matched.
+> Safe because phase 3's views were written fully user-scoped, with `LOGIN_URL` temporarily pointing
+> at the admin login. Landing this phase changes one setting and adds templates — no view code.
 
 | # | Commit | Files | Architecture note |
 |---|---|---|---|
@@ -98,7 +102,12 @@ Status: ✅ done · 🔜 next · ⬜ planned
 
 ---
 
-### Phase 3 — CRUD vertical slice ⬜
+### Phase 3 — CRUD vertical slice ✅ *(tag `phase-3-crud`)*
+
+> **As built**, 3.1 was folded into 3.2 — a urlconf pointing at views that don't exist yet won't
+> import, so it can't stand as its own working commit. Scoping (3.4) was written *into* each slice
+> rather than bolted on afterwards; the separate commit became the mixin extraction instead. Three
+> commits: `03b3cff`, `f67f2ee`, `d28d166`.
 
 Category before Expense — `Expense.category` is a FK, so you need categories to exist before the
 expense form is usable.
