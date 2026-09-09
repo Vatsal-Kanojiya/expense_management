@@ -160,7 +160,11 @@ expense form is usable.
 
 ---
 
-### Phase 6 — Async and scheduled work ⬜
+### Phase 6 — Async and scheduled work ✅ *(tag `phase-6-async`)*
+
+> **As built:** three commits — `a970a57`, `cda81e5`, `92cb1e5`. Verified against a real Redis and a
+> real worker rather than eager mode alone. The digest bug (`iterator()` + commit-in-loop) is the
+> clearest example in this project of why `TransactionTestCase` exists.
 
 The phase this whole project exists to demonstrate. See BUILD_LOG §5 for the Celery-vs-cron rationale.
 
