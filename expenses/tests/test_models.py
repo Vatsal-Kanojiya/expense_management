@@ -62,6 +62,11 @@ class CategoryConstraintTests(TestCase):
 
         self.assertEqual(Category.objects.count(), 0)
 
+    def test_str_is_the_category_name(self):
+        category = Category.objects.create(user=self.alice, name="Food")
+
+        self.assertEqual(str(category), "Food")
+
     def test_ordering_is_by_name(self):
         Category.objects.create(user=self.alice, name="Travel")
         Category.objects.create(user=self.alice, name="食費")
@@ -155,6 +160,13 @@ class ExpenseConstraintTests(TestCase):
         self.alice.delete()
 
         self.assertEqual(Category.objects.count(), 0)
+
+    def test_str_is_readable(self):
+        # __str__ is what the admin, the shell and error messages display,
+        # so an unreadable one costs time during every future debugging session.
+        expense = self._expense(amount=Decimal("12.50"), spent_on=date(2026, 9, 3))
+
+        self.assertEqual(str(expense), "12.50 on 2026-09-03")
 
     def test_ordering_is_newest_spend_first(self):
         older = self._expense(spent_on=date(2026, 8, 1))
