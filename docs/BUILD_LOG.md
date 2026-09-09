@@ -18,16 +18,15 @@
 
 ## 1. Current state at a glance
 
-**Session:** 4 — Phases 4 and 4.5 complete. Phase 2 (auth) deferred by choice, see below
-**Last commit:** `0950afe` — *docs: add README*
-**Phase tags:** `phase-1-foundation`, `phase-3-crud`, `phase-4-tests`, `phase-4.5-tooling`
-**Suite:** 61 tests, 100% statement coverage, green in CI
+**Session:** 5 — Phase 2 (auth) complete. All phases through 4.5 done; phase 5 (dashboard) next
+**Last commit:** `149aa25` — *test(accounts): cover authentication flows*
+**Phase tags:** `phase-1-foundation`, `phase-2-auth`, `phase-3-crud`, `phase-4-tests`, `phase-4.5-tooling`
+**Suite:** 89 tests, 100% statement coverage, 0.8s, green in CI
 
-> **Phases run out of order on purpose.** Auth was deferred so it can be studied properly rather
-> than pattern-matched. The original "auth before CRUD" rule was really about *not writing views
-> that ignore `request.user`* — so the views were written fully user-scoped from the start, and
-> `LOGIN_URL` points at the admin login as a temporary door. Phase 2 changes one setting and adds
-> templates; **no view code changes.**
+> **Phases ran out of order on purpose, and the bet paid off.** Auth was deferred past CRUD so it
+> could be studied properly. That was safe because phase 3's views were written fully user-scoped
+> from the start. **Landing phase 2 changed `LOGIN_URL` and nothing else in `expenses/` —
+> zero view code touched**, exactly as predicted.
 
 ### Data model
 
@@ -88,7 +87,12 @@ erDiagram
 | Tooling | pre-commit hooks | `.pre-commit-config.yaml` | ✅ done | 4.5 |
 | Tooling | GitHub Actions CI | `.github/workflows/ci.yml` | ✅ done | 4.5 |
 | Docs | README | `README.md` | ✅ done | 4.5 |
-| Auth | login / logout / signup | `accounts/` | 🔜 **next** (deferred) | phase 2 |
+| Auth | Login / logout | `accounts/urls.py` | ✅ done | 5 |
+| Auth | Signup | `accounts/views.py`, `forms.py` | ✅ done | 5 |
+| Auth | Password change + reset | `accounts/urls.py` | ✅ done | 5 |
+| Auth | Unique, required email | `accounts/models.py` | ✅ done | 5 |
+| Test | Auth flows | `accounts/tests/` | ✅ 28 tests | 5 |
+| Tooling | Fast password hasher in tests | `config/test_runner.py` | ✅ 40× faster | 5 |
 | View | Dashboard aggregation query | `expenses/views.py` | ⬜ not started | phase 5 |
 | Infra | CSV export via Celery *(request-triggered)* | — | 🅿️ parked | phase 6 |
 | Infra | Monthly digest via cron + mgmt command | — | 🅿️ parked | phase 6 |
@@ -205,6 +209,69 @@ rejected as a field error · negative amount rejected · duplicate name rejected
 
 ---
 
+### Session 5 — Phase 2: authentication → tag `phase-2-auth`
+
+| Commit | Message |
+|---|---|
+| `eb84d02` | `feat(accounts): make user email required and unique` |
+| `dadf826` | `feat(accounts): add login and logout` |
+| `9b78c59` | `feat(accounts): add signup` |
+| `d853ab0` | `feat(accounts): add password change and reset flows` |
+| `149aa25` | `test(accounts): cover authentication flows` |
+
+**The deferral bet paid off.** Phase 2 landed after phase 3 and 4. The only change outside
+`accounts/` and `templates/registration/` was `LOGIN_URL`, plus one test asserting the new redirect
+target. **No view code in `expenses/` was touched.** Writing views user-scoped from the start is
+what made reordering safe.
+
+**What Django gives you, and what it doesn't.** Login, logout, password change and the four-step
+password reset are all shipped views — you supply templates and URLs. **Signup is the one it does
+not ship**, because what happens after registration (auto-login, email confirmation, an approval
+queue) is a product decision. It gives you `UserCreationForm` and `login()`; joining them is yours.
+
+**Security properties, and why each exists:**
+
+| Property | Mechanism | Attack it prevents |
+|---|---|---|
+| Login error is identical for wrong password vs unknown user | Django's default message, kept vague | Username enumeration |
+| Reset form responds identically for unknown addresses | Redirect regardless; page text says "if an account exists" | Account enumeration |
+| Session key rotates on login | `login()` | Session fixation |
+| Logout is POST-only (405 on GET) | Django 5.0 default | Logout triggered by a prefetch, scanner or `<img>` |
+| Off-site `?next=` refused | `LoginView` host validation | Open redirect / phishing |
+| Password change requires current password | `PasswordChangeForm` | Unattended session used to lock out the owner |
+| Reset token single-use, dies on password change | Token derived from password hash + `last_login` | Replayed reset link |
+| Reset link expires in 24h | `PASSWORD_RESET_TIMEOUT`, lowered from Django's 3 days | Credential URL lingering in an inbox |
+
+**`AbstractUser.email` is blank and non-unique by default**, which quietly breaks password reset —
+the reset form looks users up by email, so a blank address matches nothing and a duplicate is
+ambiguous. Overriding it to required + unique is a precondition for a reliable reset flow. Free
+here because the DB held zero users; it also immediately broke four test classes whose fixtures
+made two users with blank emails, which is the suite doing its job.
+
+**A test was found to be lying.** `test_duplicate_email_check_ignores_case` passed even with
+`__iexact` replaced by `=`. `clean_email` lowercases the incoming value, so with a lowercase row in
+the DB the two lookups are identical and the test could not distinguish them. Rewritten to store a
+**mixed-case** address first — the shape that actually arises from `createsuperuser` and the admin,
+neither of which uses `SignUpForm`. This is the argument for mutation testing: coverage said 100%
+and the assertion still proved nothing.
+
+**Test suite is now 40× faster.** PBKDF2's slowness is a security property in production and pure
+cost in tests. `config/test_runner.py` swaps in MD5 for the test run only: **20.5s → 0.5s** across
+89 tests, and the gap grows with every test that touches a user.
+
+**Mutation results:** dropping `Meta.model` from the signup form fails 8 tests · removing the
+post-signup `login()` fails 1 · removing `redirect_authenticated_user` fails 1 · `__iexact` → `=`
+fails 1 (after the fix above).
+
+**Django concepts exercised:** `LoginView` / `LogoutView` / `PasswordChangeView` /
+`PasswordResetView` and its four steps · `UserCreationForm` and why `Meta.model` must be overridden
+for a custom user model · `set_password` and `PASSWORD_HASHERS` · `AUTH_PASSWORD_VALIDATORS` ·
+session fixation and key rotation · `uidb64` + token generation · `PASSWORD_RESET_TIMEOUT` ·
+email backends and `mail.outbox` · `LOGIN_URL` / `LOGIN_REDIRECT_URL` / `LOGOUT_REDIRECT_URL` ·
+`redirect_authenticated_user` · open-redirect protection on `?next=` · custom `TEST_RUNNER`.
+
+---
+
 ### Session 4 — Phase 4: tests → tag `phase-4-tests`
 
 | Commit | Message | Tests |
@@ -277,6 +344,11 @@ this is the file set that silently drifts and is worth being able to reconstruct
 | 3 | `LOGIN_URL` | — | `"/admin/login/"` | ⏳ **Temporary.** Phase 2 replaces with `"accounts:login"`. Views need no change — session auth is identical |
 | 3 | `LOGIN_REDIRECT_URL` | — | `"expenses:expense_list"` | Where login lands |
 | 3 | `LOGOUT_REDIRECT_URL` | — | `"expenses:expense_list"` | Where logout lands |
+| 5 | `LOGIN_URL` | `"/admin/login/"` | `"accounts:login"` | ⏳ resolved — the app's own login. **The only settings change phase 2 required** |
+| 5 | `EMAIL_BACKEND` | *(smtp default)* | `env(...)`, default console | Console prints mail to stdout, making reset testable without SMTP |
+| 5 | `DEFAULT_FROM_EMAIL` | — | `env(...)` | Sender for reset mail |
+| 5 | `PASSWORD_RESET_TIMEOUT` | *(3 days)* | `60*60*24` | A credential-bearing URL should not sit valid in an inbox for three days |
+| 5 | `TEST_RUNNER` | *(default)* | `config.test_runner.FastTestRunner` | Fast hasher in tests only: 20.5s → 0.5s |
 
 > The old `SECRET_KEY` is in git history (commit `60fb810`) and is permanently compromised. A fresh
 > key was generated rather than reused. Lesson: once a secret is committed, rotating is the only
@@ -326,6 +398,11 @@ interview-gap list.
 | Test DB created and destroyed per run | Frappe tests run against the site DB inside a rollback | S4 |
 | `assertNumQueries` for N+1 regressions | No direct equivalent; Frappe's query count is mostly framework-controlled | S4 `test_views.py` |
 | `on_delete` interactions (`CASCADE` meeting `PROTECT`) | Frappe link validation is per-link, so this cross-cascade conflict doesn't arise the same way | S4 — found a real bug |
+| Assembling auth yourself | Frappe ships login, signup, reset and roles as framework furniture. Django ships *views* but you wire URLs, templates and the signup view | S5 `accounts/` |
+| Session fixation / key rotation | Never surfaces in Frappe — its login controller handles it | S5 `views.py` |
+| Enumeration-safe error messages | Frappe's login messages are framework-provided | S5 templates |
+| `UserCreationForm.Meta.model` must be overridden | No analogue; Frappe's User doctype is fixed | S5 `forms.py` |
+| Password hashers are pluggable and deliberately slow | Frappe hashes in the User controller | S5 `test_runner.py` |
 
 ---
 
@@ -346,6 +423,7 @@ interview-gap list.
 | # | Issue | Resolved in |
 |---|---|---|
 | 1 | No custom user model | `1293192` (session 2) |
+| 9 | `LOGIN_URL` pointed at the admin login | `dadf826` (session 5) |
 | 2 | No `.gitignore`; venv/db/pycache tracked | `986a3fd` (session 2) |
 | 3 | No `requirements.txt` | `986a3fd` (session 2) |
 | 4 | `SECRET_KEY` hardcoded in source | `9a48cdb` (session 2) |
@@ -357,7 +435,8 @@ interview-gap list.
 | 5 | `.venv/` remains in git *history* (commit `60fb810`) | Repo is heavier than it should be; the old `SECRET_KEY` is permanently in history | Only fixable by rewriting history (`git filter-repo`). **Not worth it here** — no remote, no real secret at risk since the key was rotated. Worth knowing the cost for a real project |
 | 6 | No superuser (DB was rebuilt) | Can't log in at all — **`LOGIN_URL` is the admin login right now**, so this blocks using the app | `python manage.py createsuperuser` |
 | 7 | Settings not split base/dev/prod | Single file with env injection is fine at this size | Revisit in phase 7 if prod config grows |
-| 9 | `LOGIN_URL` points at the admin login | Users would see the Django admin's login page | Phase 2 |
+| 15 | No rate limiting on login or password reset | Both endpoints accept unlimited attempts, so credential stuffing and reset-mail flooding are unthrottled. The single biggest remaining auth gap | `django-axes` or `django-ratelimit`. Deliberately not added yet — worth understanding the attack before installing the fix |
+| 16 | No email verification on signup | An account can be registered against an address the user does not control | Send a confirmation link before activating. `django-allauth` bundles this |
 | 10 | **Account deletion is broken** | `user.delete()` raises `ProtectedError` for any user with expenses. A "delete my account" feature would 500 today | Decide between: (a) an ordered delete — expenses, then categories, then user — in a `User.delete()` override or a service function; (b) `SET_NULL` on `Expense.category` with `null=True`; (c) keep `PROTECT` and expose only the ordered path. **(a) is the usual production answer** — it keeps `PROTECT` protecting against accidental category deletion while making account closure explicit |
 | 11 | Case-sensitivity mismatch on category names | `UniqueConstraint` is exact-match, `clean_name` is `__iexact`. The admin can create `Food` and `food` for one user; the app cannot | Make the DB agree with the form: `UniqueConstraint(Lower("name"), "user", name=...)`. Needs a migration |
 | 13 | `check --deploy` reports 5 warnings | HSTS, SSL redirect, secure session and CSRF cookies, weak dev `SECRET_KEY`. The CI job is `continue-on-error` until these are fixed | Phase 7 — then remove the flag so it becomes a real gate |
