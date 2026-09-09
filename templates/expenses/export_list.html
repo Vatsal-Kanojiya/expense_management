@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Exports · Expense Tracker{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Exports</h1>
+  </div>
+
+  <form method="post" action="{% url 'expenses:export_create' %}" class="card filters">
+    {% csrf_token %}
+    {% comment %}
+      POST, not GET: this creates a row and dispatches work, so it must not
+      be repeatable by a prefetch or a refresh.
+    {% endcomment %}
+    <div class="filter-row">
+      <label for="id_start">From</label>
+      <input type="date" name="start" id="id_start">
+      <label for="id_end">To</label>
+      <input type="date" name="end" id="id_end">
+      <button class="btn btn-primary" type="submit">Export to CSV</button>
+    </div>
+    <p class="filter-summary">
+      Leave the dates blank to export the current month. We'll email you a
+      link when the file is ready.
+    </p>
+  </form>
+
+  {% if jobs %}
+    <table style="margin-top:1rem">
+      <thead>
+        <tr>
+          <th>Requested</th>
+          <th>Period</th>
+          <th>Status</th>
+          <th class="num">Rows</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for job in jobs %}
+          <tr>
+            <td>{{ job.requested_at|date:"j M Y, H:i" }}</td>
+            <td>{{ job.start|date:"j M" }} – {{ job.end|date:"j M Y" }}</td>
+            <td>
+              {% if job.status == "complete" %}
+                <span style="color:var(--ok)">Complete</span>
+              {% elif job.status == "failed" %}
+                <span style="color:var(--danger)" title="{{ job.error }}">Failed</span>
+              {% else %}
+                <span class="muted">{{ job.get_status_display }}…</span>
+              {% endif %}
+            </td>
+            <td class="num">{{ job.row_count }}</td>
+            <td>
+              {% if job.status == "complete" %}
+                <a class="btn" href="{% url 'expenses:export_download' job.pk %}">Download</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="card empty" style="margin-top:1rem">
+      No exports yet.
+    </div>
+  {% endif %}
+{% endblock %}
