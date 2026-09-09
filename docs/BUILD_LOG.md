@@ -8,6 +8,7 @@
 > [COMMIT_PLAN.md](COMMIT_PLAN.md) — industry-standard build order, phase by phase, commit by commit.
 > [STUDY_MAP.md](STUDY_MAP.md) — what must be *understood*, ranked by interview risk. The Frappe-gap
 > table in §4 below feeds it.
+> [RUNNING_ASYNC.md](RUNNING_ASYNC.md) — how to run the worker, the digest, and cron/systemd.
 >
 > **Purpose of this project:** first of 11 Django projects. This one is the *reference build* —
 > the goal is a mind map of a complete end-to-end Django app, deliberately including the parts
@@ -18,10 +19,10 @@
 
 ## 1. Current state at a glance
 
-**Session:** 6 — Phase 5 (read layer) complete. Phase 6 (async/Celery) next
-**Last commit:** `5005cba` — *feat(expenses): add dashboard and expense filtering*
-**Phase tags:** `phase-1-foundation`, `phase-2-auth`, `phase-3-crud`, `phase-4-tests`, `phase-4.5-tooling`, `phase-5-dashboard`
-**Suite:** 135 tests, 100% statement coverage, 1.2s, green in CI
+**Session:** 7 — Phase 6 (async) complete. Only phase 7 (production readiness) remains
+**Last commit:** `92cb1e5` — *feat(expenses): add monthly digest command with idempotency*
+**Phase tags:** `phase-1-foundation`, `phase-2-auth`, `phase-3-crud`, `phase-4-tests`, `phase-4.5-tooling`, `phase-5-dashboard`, `phase-6-async`
+**Suite:** 169 tests, 1.7s, green in CI
 
 > **Phases ran out of order on purpose, and the bet paid off.** Auth was deferred past CRUD so it
 > could be studied properly. That was safe because phase 3's views were written fully user-scoped
@@ -97,9 +98,12 @@ erDiagram
 | Form | Date range + filter forms | `expenses/filters.py` | ✅ done | 6 |
 | Test | Aggregation, dashboard, filters | `expenses/tests/` | ✅ 46 tests | 6 |
 | Test | Template render guards | `expenses/tests/test_templates.py` | ✅ done | 6 |
+| Infra | Celery + Redis broker | `config/celery.py` | ✅ done | 7 |
+| Model | `ExportJob`, `MonthlyDigest` | `expenses/models.py` | ✅ done | 7 |
+| Infra | **CSV export** *(request-triggered → Celery)* | `expenses/tasks.py` | ✅ done | 7 |
+| Infra | **Monthly digest** *(clock-triggered → cron)* | `expenses/management/commands/` | ✅ done | 7 |
+| Test | Exports and digests | `expenses/tests/` | ✅ 34 tests | 7 |
 | Tooling | Fast password hasher in tests | `config/test_runner.py` | ✅ 40× faster | 5 |
-| Infra | CSV export via Celery *(request-triggered)* | — | 🅿️ parked | phase 6 |
-| Infra | Monthly digest via cron + mgmt command | — | 🅿️ parked | phase 6 |
 
 Legend: ✅ done · 🔜 next · ⬜ not started · 🅿️ deliberately parked · ❌ problem
 
@@ -210,6 +214,70 @@ conventions (`<model>_list/_form/_confirm_delete.html`) · `ModelChoiceField.que
 **Verified:** anonymous → 302 · cross-user GET/POST → 404 on both models · foreign category id
 rejected as a field error · negative amount rejected · duplicate name rejected case-insensitively ·
 `PROTECT` surfaces a message not a 500 · empty category deletes · 11-row list = **4 queries**.
+
+---
+
+### Session 7 — Phase 6: async → tag `phase-6-async`
+
+| Commit | Message |
+|---|---|
+| `a970a57` | `chore: add celery with a redis broker` |
+| `cda81e5` | `feat(expenses): add async CSV export` |
+| `92cb1e5` | `feat(expenses): add monthly digest command with idempotency` |
+
+**The whole point of the phase, in one table:**
+
+| | CSV export | Monthly digest |
+|---|---|---|
+| Trigger | A user clicks a button | The 1st of the month |
+| Machinery | **Celery task** | **Management command + cron** |
+| Why | Request-triggered; building inline holds the connection open for an unbounded time | Clock-triggered; nobody is waiting, so there is nothing to unblock |
+| Runs twice? | Yes, `acks_late` redelivers | Yes, cron re-fires after a restart |
+| Guard | `status == COMPLETE` early return | `UniqueConstraint(user, month)`, claimed *before* sending |
+
+The rule worth saying out loud in an interview: **reach for a queue when the trigger is a request.
+When the trigger is a clock, a command plus cron is usually the honest answer.**
+
+**Celery settings, each with a failure mode behind it:** JSON-only serialisation (pickle turns broker
+write access into RCE on every worker) · `acks_late` (a killed worker redelivers rather than losing
+the task — the price is that tasks must be idempotent) · `prefetch_multiplier = 1` (with `acks_late`,
+a worker holding ten prefetched tasks redelivers all ten when it dies) · soft and hard time limits ·
+`autodiscover_tasks` (without it the worker starts fine and reports "unregistered task" at call time).
+
+**Tasks take primary keys, never model instances.** Arguments are JSON on the broker, so an instance
+either fails to serialise or arrives as a stale snapshot. Re-reading is also what lets a redelivered
+task see current state.
+
+**`transaction.on_commit`, not `.delay()` directly.** Dispatching inside an open transaction is a
+real race — the worker is fast enough to query for a row the web process has not committed yet.
+
+**🐛 A bug no `TestCase` could have caught.** The digest command iterated users with
+`queryset.iterator()`, which holds a server-side cursor open, while committing inside the loop. The
+commit invalidates the cursor and the second user raises `InterfaceError`.
+
+**All sixteen tests passed with the bug present.** `TestCase` wraps each test in a transaction, so
+`transaction.atomic()` is only a savepoint and never really commits. It surfaced only when the
+command was run for real against a live database.
+
+Fixed by materialising ids before the loop. `DigestCursorTests` uses **`TransactionTestCase`** to pin
+it, and reintroducing the bug leaves all sixteen `TestCase` tests green while failing
+`TransactionTestCase` alone. That is the clearest demonstration in this project of *why the two base
+classes exist* — and the second time this phase-by-phase build has found a bug by running the thing
+rather than asserting about it.
+
+**Verified against real infrastructure**, not just eager mode: a live Redis and a real worker,
+`inspect ping` answering, a dispatched export producing the correct CSV and emailing a link, and a
+second delivery of the same task returning without redoing the work.
+
+**Mutation results:** reordering the digest to send-then-record fails 4 tests · reintroducing the
+cursor bug fails `TransactionTestCase` only.
+
+**Django concepts exercised:** Celery app setup and `config_from_object` with a namespace ·
+`shared_task` vs `@app.task` · `bind=True`, `autoretry_for`, `retry_backoff`, jitter, `max_retries` ·
+`acks_late` and idempotency · `transaction.on_commit` · `FileField` with a callable `upload_to` ·
+`ContentFile` · `queryset.iterator()` and cursor lifetime · `TestCase` vs `TransactionTestCase` ·
+`BaseCommand`, `add_arguments`, `CommandError`, `self.style` · `call_command` in tests ·
+`IntegrityError` as a concurrency primitive · `FileResponse` · `MEDIA_ROOT`.
 
 ---
 
@@ -404,6 +472,13 @@ this is the file set that silently drifts and is worth being able to reconstruct
 | 5 | `TEST_RUNNER` | *(default)* | `config.test_runner.FastTestRunner` | Fast hasher in tests only: 20.5s → 0.5s |
 | 6 | `LOGIN_REDIRECT_URL` | `expenses:expense_list` | `expenses:dashboard` | Dashboard is now the site root |
 | 6 | `LOGOUT_REDIRECT_URL` | `expenses:expense_list` | `expenses:dashboard` | Same |
+| 7 | `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND` | — | Redis db 0 / db 1 | Separate databases so flushing results cannot drop the pending queue |
+| 7 | `CELERY_TASK_SERIALIZER` etc. | *(pickle-capable)* | `json` only | Pickle deserialisation is arbitrary code execution |
+| 7 | `CELERY_TASK_ACKS_LATE` | `False` | `True` | Redelivery on worker death instead of silent loss |
+| 7 | `CELERY_WORKER_PREFETCH_MULTIPLIER` | `4` | `1` | Limits the blast radius of a redelivery |
+| 7 | `CELERY_TASK_SOFT_TIME_LIMIT` / `TIME_LIMIT` | — | 5min / 10min | A hung task otherwise holds a worker forever |
+| 7 | `CELERY_TASK_ALWAYS_EAGER` | — | `env.bool`, default `False` | Lets the suite run with no broker. Never true in production |
+| 7 | `MEDIA_URL` / `MEDIA_ROOT` | — | `media/` | Generated exports |
 
 > The old `SECRET_KEY` is in git history (commit `60fb810`) and is permanently compromised. A fresh
 > key was generated rather than reused. Lesson: once a secret is committed, rotating is the only
@@ -461,6 +536,10 @@ interview-gap list.
 | Aggregation written by hand | Frappe's report builder and `get_all` with `group_by` do this declaratively | S6 `managers.py` |
 | `values()` before `annotate()` changes the SQL | No analogue — Frappe's query builder is not lazy in this way | S6 `managers.py` |
 | Template comment syntax has two forms with different rules | Frappe uses Jinja, where `{# #}` spans lines fine | S6 — caused a real bug |
+| Wiring a queue by hand | Frappe ships a background job system (`frappe.enqueue`) with its own workers, and a scheduler with `scheduler_events` in hooks.py | S7 `config/celery.py` |
+| Idempotency is your problem | Frappe's scheduler dedupes some events, so the failure mode rarely surfaces | S7 digest command |
+| `TestCase` vs `TransactionTestCase` | Frappe tests roll back too, so the same trap exists but is rarely named | S7 — caused a real bug |
+| Choosing between a queue and cron | Frappe gives one answer (`enqueue` / `scheduler_events`), so the trade-off never has to be argued | S7 |
 
 ---
 
@@ -497,6 +576,9 @@ interview-gap list.
 | 16 | No email verification on signup | An account can be registered against an address the user does not control | Send a confirmation link before activating. `django-allauth` bundles this |
 | 17 | `note__icontains` search will not scale | A leading-wildcard `LIKE` cannot use a btree index, so search is a full scan | Fine at this size. At volume, Postgres full-text search (`SearchVector` + a GIN index) |
 | 18 | No test reads rendered HTML beyond template-syntax markers | `test_templates.py` catches leaks, but nothing checks the page *says the right thing* | Consider a few `assertContains` on key numbers, or a snapshot test |
+| 19 | Generated export files are never deleted | `media/exports/` grows without bound, holding copies of users' financial history indefinitely | A periodic cleanup job removing files older than N days, plus a retention note in any privacy policy |
+| 20 | No worker supervision, monitoring or dead-letter handling | A crashed worker stays down; after `max_retries` a task is simply lost with nothing visible | systemd unit or container for the worker; Flower or event export for monitoring. See RUNNING_ASYNC.md |
+| 21 | `FileResponse` streams exports through Python | Fine in development, wasteful in production | `X-Accel-Redirect` (nginx) or a signed object-storage URL |
 | 10 | **Account deletion is broken** | `user.delete()` raises `ProtectedError` for any user with expenses. A "delete my account" feature would 500 today | Decide between: (a) an ordered delete — expenses, then categories, then user — in a `User.delete()` override or a service function; (b) `SET_NULL` on `Expense.category` with `null=True`; (c) keep `PROTECT` and expose only the ordered path. **(a) is the usual production answer** — it keeps `PROTECT` protecting against accidental category deletion while making account closure explicit |
 | 11 | Case-sensitivity mismatch on category names | `UniqueConstraint` is exact-match, `clean_name` is `__iexact`. The admin can create `Food` and `food` for one user; the app cannot | Make the DB agree with the form: `UniqueConstraint(Lower("name"), "user", name=...)`. Needs a migration |
 | 13 | `check --deploy` reports 5 warnings | HSTS, SSL redirect, secure session and CSRF cookies, weak dev `SECRET_KEY`. The CI job is `continue-on-error` until these are fixed | Phase 7 — then remove the flag so it becomes a real gate |

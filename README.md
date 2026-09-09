@@ -46,7 +46,9 @@ pre-commit install
 | Command | Purpose |
 |---|---|
 | `python manage.py runserver` | Development server |
-| `python manage.py test` | Run the test suite (135 tests) |
+| `python manage.py test` | Run the test suite (169 tests) |
+| `celery -A config worker -l info` | Start the background worker (needs Redis) |
+| `python manage.py send_monthly_digests --dry-run` | Rehearse the monthly digest |
 | `coverage run manage.py test && coverage report` | Tests with coverage, fails under 95% |
 | `ruff check . && ruff format .` | Lint and format |
 | `python manage.py makemigrations --check --dry-run` | Fail if a model changed without a migration |
@@ -77,6 +79,8 @@ expenses/          Domain app
   managers.py        ExpenseQuerySet - chainable query building blocks
   summaries.py       Period aggregation, shared with the digest email
   filters.py         Forms that validate query-string parameters
+  tasks.py           Celery tasks (CSV export)
+  management/        send_monthly_digests - cron-driven, idempotent
   forms.py           ModelForms with user-scoped validation
   views.py           Class-based CRUD views
   mixins.py          Owner-scoping mixins  <- the security model lives here
@@ -155,3 +159,4 @@ Tracked in full in [docs/BUILD_LOG.md](docs/BUILD_LOG.md). The two that matter m
 | [docs/COMMIT_PLAN.md](docs/COMMIT_PLAN.md) | Phase-by-phase build order and the practice-branch workflow |
 | [docs/DJANGO_CHEATSHEET.md](docs/DJANGO_CHEATSHEET.md) | Commands with the reasoning behind them |
 | [docs/STUDY_MAP.md](docs/STUDY_MAP.md) | Topics ranked by depth required, and why |
+| [docs/RUNNING_ASYNC.md](docs/RUNNING_ASYNC.md) | Running the worker, the digest, cron and systemd |
