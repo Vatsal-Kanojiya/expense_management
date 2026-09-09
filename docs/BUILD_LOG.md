@@ -16,10 +16,10 @@
 
 ## 1. Current state at a glance
 
-**Session:** 4 — Phase 4 (tests) complete. Phase 2 (auth) deferred by choice, see below
-**Last commit:** `3393334` — *test(expenses): cover ownership boundaries*
-**Phase tags:** `phase-1-foundation`, `phase-3-crud`, `phase-4-tests`
-**Suite:** 59 tests, all passing (`python manage.py test`)
+**Session:** 4 — Phases 4 and 4.5 complete. Phase 2 (auth) deferred by choice, see below
+**Last commit:** `0950afe` — *docs: add README*
+**Phase tags:** `phase-1-foundation`, `phase-3-crud`, `phase-4-tests`, `phase-4.5-tooling`
+**Suite:** 61 tests, 100% statement coverage, green in CI
 
 > **Phases run out of order on purpose.** Auth was deferred so it can be studied properly rather
 > than pattern-matched. The original "auth before CRUD" rule was really about *not writing views
@@ -81,6 +81,11 @@ erDiagram
 | Test | Forms | `expenses/tests/test_forms.py` | ✅ 15 tests | 4 |
 | Test | CRUD views + auth redirects | `expenses/tests/test_views.py` | ✅ 17 tests | 4 |
 | Test | Ownership boundaries | `expenses/tests/test_permissions.py` | ✅ 13 tests | 4 |
+| Tooling | Ruff lint + format | `pyproject.toml` | ✅ done | 4.5 |
+| Tooling | Coverage, threshold 95% | `pyproject.toml` | ✅ 100% | 4.5 |
+| Tooling | pre-commit hooks | `.pre-commit-config.yaml` | ✅ done | 4.5 |
+| Tooling | GitHub Actions CI | `.github/workflows/ci.yml` | ✅ done | 4.5 |
+| Docs | README | `README.md` | ✅ done | 4.5 |
 | Auth | login / logout / signup | `accounts/` | 🔜 **next** (deferred) | phase 2 |
 | View | Dashboard aggregation query | `expenses/views.py` | ⬜ not started | phase 5 |
 | Infra | CSV export via Celery *(request-triggered)* | — | 🅿️ parked | phase 6 |
@@ -353,4 +358,5 @@ interview-gap list.
 | 9 | `LOGIN_URL` points at the admin login | Users would see the Django admin's login page | Phase 2 |
 | 10 | **Account deletion is broken** | `user.delete()` raises `ProtectedError` for any user with expenses. A "delete my account" feature would 500 today | Decide between: (a) an ordered delete — expenses, then categories, then user — in a `User.delete()` override or a service function; (b) `SET_NULL` on `Expense.category` with `null=True`; (c) keep `PROTECT` and expose only the ordered path. **(a) is the usual production answer** — it keeps `PROTECT` protecting against accidental category deletion while making account closure explicit |
 | 11 | Case-sensitivity mismatch on category names | `UniqueConstraint` is exact-match, `clean_name` is `__iexact`. The admin can create `Food` and `food` for one user; the app cannot | Make the DB agree with the form: `UniqueConstraint(Lower("name"), "user", name=...)`. Needs a migration |
-| 12 | Coverage not measured | 59 tests, but no numbers on what is untouched | `pip install coverage`; likely gaps are templates and `accounts/` |
+| 13 | `check --deploy` reports 5 warnings | HSTS, SSL redirect, secure session and CSRF cookies, weak dev `SECRET_KEY`. The CI job is `continue-on-error` until these are fixed | Phase 7 — then remove the flag so it becomes a real gate |
+| 14 | No settings split, no Docker | Fine at this size; both are phase 7 candidates | Phase 7 |
