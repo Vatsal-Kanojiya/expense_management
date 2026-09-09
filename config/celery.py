@@ -28,4 +28,4 @@ def debug_task():
     though the task ran fine. That is a confusing thing to hand someone as
     their first check.
     """
-    return "pong from worker"
+    return "pong from worker"  # pragma: no cover - exercised by a live worker, not the suite

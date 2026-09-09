@@ -13,7 +13,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 from django.test import TestCase
 
-from expenses.models import Category, Expense
+from expenses.models import Category, Expense, ExportJob, MonthlyDigest
 
 User = get_user_model()
 
@@ -177,3 +177,67 @@ class ExpenseConstraintTests(TestCase):
         newer = self._expense(spent_on=date(2026, 9, 1))
 
         self.assertEqual(list(Expense.objects.all()), [newer, older])
+
+
+class AsyncModelTests(TestCase):
+    """ExportJob and MonthlyDigest: the rows the background jobs write."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user(
+            "alice", email="alice@example.com", password="pw12345!"
+        )
+
+    def test_export_job_str_names_the_status(self):
+        job = ExportJob.objects.create(
+            user=self.alice, start=date(2026, 9, 1), end=date(2026, 9, 30)
+        )
+
+        self.assertEqual(str(job), f"Export {job.pk} (pending)")
+
+    def test_monthly_digest_str_names_the_month(self):
+        digest = MonthlyDigest.objects.create(
+            user=self.alice,
+            month=date(2026, 8, 1),
+            total=Decimal("9000"),
+            expense_count=2,
+        )
+
+        self.assertIn("August 2026", str(digest))
+
+    def test_a_user_cannot_have_two_digests_for_one_month(self):
+        # This constraint IS the idempotency guarantee for the cron job, so
+        # it is asserted at the database level, not just via the command.
+        MonthlyDigest.objects.create(
+            user=self.alice, month=date(2026, 8, 1), total=Decimal("1"), expense_count=1
+        )
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            MonthlyDigest.objects.create(
+                user=self.alice,
+                month=date(2026, 8, 1),
+                total=Decimal("2"),
+                expense_count=2,
+            )
+
+    def test_the_same_month_is_allowed_for_different_users(self):
+        bob = User.objects.create_user("bob", email="bob@example.com", password="pw12345!")
+        MonthlyDigest.objects.create(
+            user=self.alice, month=date(2026, 8, 1), total=Decimal("1"), expense_count=1
+        )
+
+        MonthlyDigest.objects.create(
+            user=bob, month=date(2026, 8, 1), total=Decimal("2"), expense_count=2
+        )
+
+        self.assertEqual(MonthlyDigest.objects.count(), 2)
+
+    def test_different_months_are_allowed_for_one_user(self):
+        MonthlyDigest.objects.create(
+            user=self.alice, month=date(2026, 8, 1), total=Decimal("1"), expense_count=1
+        )
+        MonthlyDigest.objects.create(
+            user=self.alice, month=date(2026, 9, 1), total=Decimal("2"), expense_count=2
+        )
+
+        self.assertEqual(MonthlyDigest.objects.count(), 2)
