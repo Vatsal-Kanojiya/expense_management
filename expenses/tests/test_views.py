@@ -72,9 +72,7 @@ class CategoryViewTests(TestCase):
         self.assertContains(response, "No categories yet")
 
     def test_create_assigns_the_logged_in_user(self):
-        response = self.client.post(
-            reverse("expenses:category_create"), {"name": "Travel"}
-        )
+        response = self.client.post(reverse("expenses:category_create"), {"name": "Travel"})
 
         self.assertRedirects(response, reverse("expenses:category_list"))
         self.assertEqual(Category.objects.get(name="Travel").user, self.alice)
@@ -82,12 +80,12 @@ class CategoryViewTests(TestCase):
     def test_create_rejects_duplicate_without_a_500(self):
         Category.objects.create(user=self.alice, name="Food")
 
-        response = self.client.post(
-            reverse("expenses:category_create"), {"name": "Food"}
-        )
+        response = self.client.post(reverse("expenses:category_create"), {"name": "Food"})
 
         self.assertEqual(response.status_code, 200)
-        self.assertFormError(response.context["form"], "name", ["You already have a category with this name."])
+        self.assertFormError(
+            response.context["form"], "name", ["You already have a category with this name."]
+        )
 
     def test_update_renames(self):
         category = Category.objects.create(user=self.alice, name="Food")

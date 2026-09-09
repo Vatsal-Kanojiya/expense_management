@@ -73,9 +73,7 @@ class OwnershipBoundaryTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_cannot_open_another_users_category_edit_form(self):
-        response = self.client.get(
-            reverse("expenses:category_update", args=[self.bob_rent.pk])
-        )
+        response = self.client.get(reverse("expenses:category_update", args=[self.bob_rent.pk]))
 
         self.assertEqual(response.status_code, 404)
 
@@ -85,9 +83,7 @@ class OwnershipBoundaryTests(TestCase):
             ("expenses:category_delete", self.bob_rent.pk),
         ]:
             with self.subTest(view=name):
-                self.assertEqual(
-                    self.client.get(reverse(name, args=[pk])).status_code, 404
-                )
+                self.assertEqual(self.client.get(reverse(name, args=[pk])).status_code, 404)
 
     # ---- Writing to someone else's row: refused AND unchanged ---------
 
@@ -129,9 +125,7 @@ class OwnershipBoundaryTests(TestCase):
         self.assertTrue(Expense.objects.filter(pk=self.bob_rent_payment.pk).exists())
 
     def test_cannot_delete_another_users_category(self):
-        response = self.client.post(
-            reverse("expenses:category_delete", args=[self.bob_rent.pk])
-        )
+        response = self.client.post(reverse("expenses:category_delete", args=[self.bob_rent.pk]))
 
         self.assertEqual(response.status_code, 404)
         self.assertTrue(Category.objects.filter(pk=self.bob_rent.pk).exists())
