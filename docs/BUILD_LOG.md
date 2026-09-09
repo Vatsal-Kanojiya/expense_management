@@ -16,9 +16,10 @@
 
 ## 1. Current state at a glance
 
-**Session:** 3 — Phase 3 (CRUD) complete. Phase 2 (auth) deferred by choice, see below
-**Last commit:** `d28d166` — *refactor(expenses): extract owner-scoping mixins*
-**Phase tags:** `phase-1-foundation`, `phase-3-crud`
+**Session:** 4 — Phase 4 (tests) complete. Phase 2 (auth) deferred by choice, see below
+**Last commit:** `3393334` — *test(expenses): cover ownership boundaries*
+**Phase tags:** `phase-1-foundation`, `phase-3-crud`, `phase-4-tests`
+**Suite:** 59 tests, all passing (`python manage.py test`)
 
 > **Phases run out of order on purpose.** Auth was deferred so it can be studied properly rather
 > than pattern-matched. The original "auth before CRUD" rule was really about *not writing views
@@ -76,8 +77,11 @@ erDiagram
 | View | Category CRUD (user-scoped) | `expenses/views.py` | ✅ done | 3 |
 | View | Expense CRUD (user-scoped) | `expenses/views.py` | ✅ done | 3 |
 | View | Owner-scoping mixins | `expenses/mixins.py` | ✅ done | 3 |
+| Test | Model constraints | `expenses/tests/test_models.py` | ✅ 14 tests | 4 |
+| Test | Forms | `expenses/tests/test_forms.py` | ✅ 15 tests | 4 |
+| Test | CRUD views + auth redirects | `expenses/tests/test_views.py` | ✅ 17 tests | 4 |
+| Test | Ownership boundaries | `expenses/tests/test_permissions.py` | ✅ 13 tests | 4 |
 | Auth | login / logout / signup | `accounts/` | 🔜 **next** (deferred) | phase 2 |
-| Test | Models, views, ownership boundaries | `expenses/tests/` | ⬜ stock stub | phase 4 |
 | View | Dashboard aggregation query | `expenses/views.py` | ⬜ not started | phase 5 |
 | Infra | CSV export via Celery *(request-triggered)* | — | 🅿️ parked | phase 6 |
 | Infra | Monthly digest via cron + mgmt command | — | 🅿️ parked | phase 6 |
@@ -194,6 +198,56 @@ rejected as a field error · negative amount rejected · duplicate name rejected
 
 ---
 
+### Session 4 — Phase 4: tests → tag `phase-4-tests`
+
+| Commit | Message | Tests |
+|---|---|---|
+| `ad1273e` | `test(expenses): cover model constraints` | 14 |
+| `3f0eb14` | `test(expenses): cover forms and CRUD views` | 32 |
+| `3393334` | `test(expenses): cover ownership boundaries` | 13 |
+
+`expenses/tests.py` became the package `expenses/tests/`. Split by *what fails when it breaks*:
+
+| File | Question it answers |
+|---|---|
+| `test_models.py` | What does the **database** guarantee, even if app code is wrong? |
+| `test_forms.py` | What does the **application explain** instead of 500-ing? |
+| `test_views.py` | Does the **request/response cycle** work for the happy paths? |
+| `test_permissions.py` | Can Alice touch Bob's data? *(the file that must never go red)* |
+
+**Two bugs found by writing the tests.** Both documented, neither silently fixed — see Known Issues.
+
+1. **Account deletion is broken.** `Expense.category` is `PROTECT` while the user FKs are `CASCADE`.
+   Deleting a user cascades to their categories, which are still referenced by their expenses, so
+   `PROTECT` fires — even though those expenses would have cascaded away too. Django refuses rather
+   than ordering the deletes. `test_deleting_user_with_expenses_currently_fails` is a tripwire: it
+   asserts the current failure and will itself fail once fixed.
+2. **Case-sensitivity mismatch.** `UniqueConstraint(user, name)` is exact-match; `clean_name` uses
+   `__iexact`. The form is stricter than the DB, so the **admin** (which doesn't use our form) can
+   create both `Food` and `food` for one user.
+
+**Proving the suite has teeth.** A passing test proves nothing until it has been seen to fail, so
+each safeguard was sabotaged in turn:
+
+| Sabotage | Tests that went red |
+|---|---|
+| Remove `.filter(user=...)` from `OwnerScopedMixin` | **11** |
+| Unscope the category dropdown to `Category.objects.all()` | **4** |
+| Drop `select_related("category")` | **1** |
+
+**Design choices worth knowing:** 404 not 403 on forbidden rows — a 403 confirms the row exists,
+leaking what scoping hides, and a test pins that a forbidden id and a nonexistent id are
+indistinguishable. Write tests assert the victim's row is *unchanged*, not just the status code.
+`assertNumQueries(4)` pins the `select_related` win so an N+1 regression fails loudly.
+
+**Django concepts exercised:** `TestCase` transaction rollback · `setUpTestData` vs `setUp` ·
+`assertRaises(IntegrityError)` needing its own `transaction.atomic()` savepoint · `subTest` ·
+`force_login` · `assertRedirects` / `assertTemplateUsed` / `assertContains` / `assertFormError` ·
+`assertNumQueries` · `refresh_from_db` · test DB creation and teardown · mutation testing as a
+sanity check on coverage.
+
+---
+
 ## 3. Boilerplate / config change ledger
 
 Every deviation from what `django-admin startproject` and `startapp` generated. Keep appending —
@@ -261,6 +315,10 @@ interview-gap list.
 | `select_related` / N+1 | Frappe's `get_list` with `fields` does the join for you | S3 `views.py` |
 | URL routing is explicit | Frappe derives routes from DocType names | S3 `urls.py` |
 | CSRF token per form | Frappe injects it in its own form framework | S3 templates |
+| Tests as a first-class deliverable | Frappe has `bench run-tests`, but DocType CRUD is framework-tested, so app tests are rarer | S4 `tests/` |
+| Test DB created and destroyed per run | Frappe tests run against the site DB inside a rollback | S4 |
+| `assertNumQueries` for N+1 regressions | No direct equivalent; Frappe's query count is mostly framework-controlled | S4 `test_views.py` |
+| `on_delete` interactions (`CASCADE` meeting `PROTECT`) | Frappe link validation is per-link, so this cross-cascade conflict doesn't arise the same way | S4 — found a real bug |
 
 ---
 
@@ -292,5 +350,7 @@ interview-gap list.
 | 5 | `.venv/` remains in git *history* (commit `60fb810`) | Repo is heavier than it should be; the old `SECRET_KEY` is permanently in history | Only fixable by rewriting history (`git filter-repo`). **Not worth it here** — no remote, no real secret at risk since the key was rotated. Worth knowing the cost for a real project |
 | 6 | No superuser (DB was rebuilt) | Can't log in at all — **`LOGIN_URL` is the admin login right now**, so this blocks using the app | `python manage.py createsuperuser` |
 | 7 | Settings not split base/dev/prod | Single file with env injection is fine at this size | Revisit in phase 7 if prod config grows |
-| 8 | No automated tests yet | Phase 3 was verified with a throwaway script, not a committed suite. Nothing guards the ownership boundaries against regression | Phase 4 — port that script into `expenses/tests/`, especially the cross-user 404 cases |
 | 9 | `LOGIN_URL` points at the admin login | Users would see the Django admin's login page | Phase 2 |
+| 10 | **Account deletion is broken** | `user.delete()` raises `ProtectedError` for any user with expenses. A "delete my account" feature would 500 today | Decide between: (a) an ordered delete — expenses, then categories, then user — in a `User.delete()` override or a service function; (b) `SET_NULL` on `Expense.category` with `null=True`; (c) keep `PROTECT` and expose only the ordered path. **(a) is the usual production answer** — it keeps `PROTECT` protecting against accidental category deletion while making account closure explicit |
+| 11 | Case-sensitivity mismatch on category names | `UniqueConstraint` is exact-match, `clean_name` is `__iexact`. The admin can create `Food` and `food` for one user; the app cannot | Make the DB agree with the form: `UniqueConstraint(Lower("name"), "user", name=...)`. Needs a migration |
+| 12 | Coverage not measured | 59 tests, but no numbers on what is untouched | `pip install coverage`; likely gaps are templates and `accounts/` |
