@@ -1,0 +1,15 @@
+Hi {{ user.get_username }},
+
+Here's what you spent in {{ summary.start|date:"F Y" }}.
+
+  Total       {{ summary.total|floatformat:2 }}
+  Expenses    {{ summary.count }}
+{% if change is not None %}  vs {{ previous.start|date:"F" }}  {% if change > 0 %}up{% else %}down{% endif %} {{ change|floatformat:1 }}% (from {{ previous.total|floatformat:2 }}){% else %}  vs {{ previous.start|date:"F" }}  nothing recorded{% endif %}
+{% if summary.biggest %}
+Biggest single expense
+  {{ summary.biggest.amount|floatformat:2 }} — {{ summary.biggest.category.name }} on {{ summary.biggest.spent_on|date:"j M" }}
+{% endif %}
+By category
+{% for row in summary.by_category %}  {{ row.category__name|ljust:"16" }} {{ row.total|floatformat:2 }} ({{ row.share|floatformat:0 }}%)
+{% endfor %}
+You're receiving this because you have an Expense Tracker account.
