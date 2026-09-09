@@ -2,6 +2,8 @@
 from django.conf import settings
 from django.db import models
 
+from .managers import ExpenseQuerySet
+
 
 class Category(models.Model):
     user = models.ForeignKey(
@@ -41,6 +43,12 @@ class Expense(models.Model):
     spent_on = models.DateField()
     note = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # as_manager() turns the queryset's methods into manager methods, so
+    # Expense.objects.for_user(u) works as well as
+    # Expense.objects.filter(...).for_user(u). Managers do not affect the
+    # schema, so this needs no migration.
+    objects = ExpenseQuerySet.as_manager()
 
     class Meta:
         ordering = ["-spent_on", "-id"]
