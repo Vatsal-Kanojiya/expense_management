@@ -178,7 +178,57 @@ The phase this whole project exists to demonstrate. See BUILD_LOG §5 for the Ce
 
 ---
 
-## 3. Reviewing your own work later
+## 3. Practice branches — re-implementing a phase by hand
+
+The tags mark history. They are **not** where you practise: checking out a tag puts you in detached
+HEAD, so you cannot commit. Branch off the tag instead.
+
+The loop: start from the state *before* a phase, write that phase yourself from memory, then diff
+your version against the reference.
+
+```bash
+# 1. Start from the state before phase 3, on a writable branch
+git switch -c practice/phase-3 phase-1-foundation
+
+# 2. Write the phase yourself. urls.py, forms.py, views.py, templates.
+#    Do NOT look at the reference. Use the BUILD_LOG concept list as the spec.
+
+# 3. Compare against the reference when you are done or stuck
+git diff practice/phase-3 phase-3-crud -- expenses/ templates/ config/
+
+# 4. One file at a time is usually more useful than the whole diff
+git diff practice/phase-3 phase-3-crud -- expenses/views.py
+
+# 5. Go back to the real line of work
+git switch master
+```
+
+**Why this works here:** phase 3 added no migrations, and `.env` and `db.sqlite3` are gitignored, so
+they survive the switch. The app runs on either branch with no re-migration and no re-setup. Check
+this holds before practising a phase that *does* add migrations:
+
+```bash
+git diff <from-tag> <to-tag> --stat -- '*/migrations/*'   # empty = safe to switch freely
+```
+
+If a phase does add migrations, run `migrate` after switching, or keep a separate SQLite file per
+branch via `DATABASE_URL` in `.env`.
+
+**Grading yourself.** An empty diff is not the goal — naming and ordering will differ harmlessly.
+What matters is whether you independently arrived at the load-bearing decisions. For phase 3 those are:
+
+- `get_queryset()` scoped by user on **every** detail-bound view (not just the list)
+- scoping in `get_queryset`, not `get_object`
+- `user` excluded from the form's fields
+- `ModelChoiceField.queryset` scoped in the form's `__init__`
+- `select_related` on the list view
+- a `clean_*` method backing each DB constraint
+
+Miss one of those and the diff is telling you something real. Everything else is style.
+
+---
+
+## 4. Reviewing your own work later
 
 ```bash
 git tag                                          # every phase boundary
