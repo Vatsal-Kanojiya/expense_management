@@ -1,0 +1,7 @@
+# Revisions to skip in `git blame`, so a mass reformat does not claim
+# authorship of every line. Git picks this up automatically via the
+# blame.ignoreRevsFile config set below:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: apply ruff lint fixes and formatting
+f9701f73b1c85d10bf3e01885307319861a9df52
