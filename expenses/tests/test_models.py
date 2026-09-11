@@ -43,19 +43,31 @@ class CategoryConstraintTests(TestCase):
         with self.assertRaises(IntegrityError), transaction.atomic():
             Category.objects.create(user=self.alice, name="Food")
 
-    def test_db_uniqueness_is_case_sensitive(self):
-        """Documents current behaviour, which is NOT what the form enforces.
+    def test_db_uniqueness_is_case_insensitive(self):
+        """The database now agrees with the form. Known issue 11, closed.
 
-        UniqueConstraint(user, name) is an exact match, while
-        CategoryForm.clean_name uses __iexact. So the form is stricter than
-        the database: "food" is refused through the app but accepted by the
-        ORM and by the admin, which does not use our form. See BUILD_LOG
-        known issues.
+        For six sessions this asserted the opposite, documenting a real
+        mismatch: UniqueConstraint(user, name) matched exactly while
+        CategoryForm.clean_name used __iexact, so the form was stricter
+        than the schema. "food" was refused through the app and accepted by
+        the ORM, the shell, the admin and later the API -- every entry
+        point that does not go through our form.
+
+        UniqueConstraint(Lower("name"), "user") is a functional index, and
+        it closes the gap at the only layer that covers all of them.
         """
         Category.objects.create(user=self.alice, name="Food")
-        Category.objects.create(user=self.alice, name="food")
 
-        self.assertEqual(Category.objects.filter(user=self.alice).count(), 2)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Category.objects.create(user=self.alice, name="food")
+
+    def test_case_insensitive_uniqueness_is_still_per_user(self):
+        Category.objects.create(user=self.alice, name="Food")
+
+        # Bob is unaffected: the constraint covers (lower(name), user).
+        Category.objects.create(user=self.bob, name="food")
+
+        self.assertEqual(Category.objects.count(), 2)
 
     def test_deleting_user_cascades_to_categories(self):
         Category.objects.create(user=self.alice, name="Food")

@@ -12,6 +12,7 @@ here and keeps the mechanics visible.
 from datetime import date
 
 from django import forms
+from django.db import connection
 from django.db.models import Q
 
 from .models import Category
@@ -102,17 +103,54 @@ class ExpenseFilterForm(DateRangeForm):
             # is mandatory here, not tidiness -- without it the page shows
             # duplicate rows and the pagination count is wrong.
             #
-            # icontains is fine at this scale. At real volume this wants a
-            # database full-text index instead of a leading-wildcard LIKE,
-            # which cannot use a btree index. See known issue 17.
+            # The note is searched through a full-text index where the
+            # database has one, and with LIKE where it does not. See
+            # _note_match below for what that trade costs.
+            queryset, note_match = self._note_match(queryset, search)
+
             queryset = queryset.filter(
-                Q(note__icontains=search)
+                note_match
                 | Q(items__name__icontains=search)
                 | Q(participants__name__icontains=search)
                 | Q(items__shares__participant__name__icontains=search)
             ).distinct()
 
         return queryset
+
+    @staticmethod
+    def _note_match(queryset, search):
+        """Full-text search on Postgres, LIKE everywhere else.
+
+        Known issue 17: ``note__icontains`` compiles to ``LIKE '%term%'``,
+        and a **leading** wildcard cannot use a btree index. Every search is
+        a full table scan that gets linearly worse forever.
+
+        Postgres fixes it with a GIN index over ``to_tsvector('english',
+        note)`` (migration 0005). The annotation here must name the *same*
+        expression, config included -- ``to_tsvector(note)`` and
+        ``to_tsvector('english', note)`` are different expressions, and an
+        index on one is invisible to the other. That silent miss is the
+        usual reason a full-text index appears not to help.
+
+        **The semantics change, and that is a real trade, not a free win.**
+        Full-text search matches whole words and their stems: "dinner"
+        finds "dinners", and "inn" no longer finds "dinner". LIKE does the
+        opposite. Searching for a fragment is what a user does when they
+        half-remember a note, so this is worth knowing before assuming the
+        indexed version is strictly better.
+
+        The item and participant lookups stay on ``icontains``. They cross
+        a join, so no single-table index could serve them, and those tables
+        are small.
+        """
+        if connection.vendor != "postgresql":
+            return queryset, Q(note__icontains=search)
+
+        from django.contrib.postgres.search import SearchQuery, SearchVector
+
+        queryset = queryset.annotate(note_vector=SearchVector("note", config="english"))
+
+        return queryset, Q(note_vector=SearchQuery(search, config="english"))
 
     def is_filtered(self) -> bool:
         """Whether the user narrowed anything, for showing a 'clear' link."""
