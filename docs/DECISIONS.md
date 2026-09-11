@@ -175,3 +175,50 @@ phase 11, 14.6s after, 3.7s with the swaps.
 Faster still, and it would make the middleware-ordering assertion test nothing.
 Pointing `STATIC_ROOT` at an empty temporary directory keeps the middleware in
 the chain in its real position while making the scan free.
+
+## Session 15 — phase 14
+
+### D11. Cache invalidation is explicit, not signal-driven
+
+**Decided:** `bump_version(user_id)` is called at each write site — the
+expense create, update and delete views, and the API ViewSet's
+`perform_create` / `perform_update` / `perform_destroy`.
+
+**Alternative:** a `post_save` / `post_delete` receiver on `Expense`,
+`ExpenseItem`, `ItemShare` and `Settlement`, which would catch every write
+including the admin, the shell and data migrations.
+
+**Why explicit, for now:** the signal version is genuinely more correct and
+genuinely more invisible. Someone reading `ExpenseCreateView` would have no
+way to know a cache was being invalidated, and the project has been
+deliberately biased toward code that explains itself at the call site.
+
+**The cost is real and is logged as issue 26**, with a test asserting the
+staleness rather than pretending it away. A 15-minute timeout is the
+backstop.
+
+**Revisit in phase 15**, which covers signals directly. This is exactly the
+case where they earn their keep, and deciding it there with the trade-off
+already felt is better than guessing now.
+
+### D12. Version-stamped keys, not key deletion
+
+**Decided:** every summary key embeds a per-user version integer.
+Invalidating means incrementing it.
+
+**Why:** deleting the right keys would mean knowing every date range anyone
+has ever viewed. Bumping one integer makes the whole family unreachable at
+once. `cache.incr` is atomic on Redis, so concurrent writers cannot collide.
+
+**The cost:** orphaned entries occupy memory until they expire. At this scale
+that is nothing, and Redis evicts under pressure anyway.
+
+### D13. Caching is disabled in tests by default
+
+**Decided:** `FastTestRunner` swaps in `DummyCache`. Tests that are about the
+cache re-enable it with `override_settings`.
+
+**Why:** Django does not clear the cache between tests. A cached dashboard
+survived into the next test and made its pinned query count wrong — 2 queries
+where 8 were expected — breaking an assertion that had nothing to do with
+caching. A test that caches by accident passes for a reason nobody chose.

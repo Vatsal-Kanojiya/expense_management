@@ -8,3 +8,4 @@ djangorestframework==3.16.1
 whitenoise==6.11.0
 gunicorn==23.0.0
 psycopg[binary]==3.2.10
+redis==5.2.1
