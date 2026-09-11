@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Check your email · Expense Tracker{% endblock %}
+
+{% block content %}
+  <h1>Check your email</h1>
+
+  <div class="card" style="max-width:32rem">
+    <p>
+      We sent a confirmation link to the address you registered. Click it to activate your
+      account and sign in.
+    </p>
+    <p class="muted">
+      {% comment %}
+        A single-line {# #} cannot span lines -- Django's lexer does not
+        close it, and the rest of the template becomes comment text. That
+        is the bug test_templates.py exists to catch, and it caught this.
+
+        The wording is deliberate: nothing here says whether the address
+        was already registered, because that would confirm which addresses
+        have accounts to anyone who asks.
+      {% endcomment %}
+      The link expires in three days.
+    </p>
+  </div>
+{% endblock %}

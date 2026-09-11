@@ -1,0 +1,8 @@
+Hello {{ user.get_username }},
+
+Confirm this address to activate your Expense Tracker account:
+
+{{ url }}
+
+The link expires in three days. If you did not create an account, you can
+ignore this message and nothing will happen.

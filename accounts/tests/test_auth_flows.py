@@ -134,11 +134,69 @@ class SignUpTests(TestCase):
         }
         return {**defaults, **overrides}
 
-    def test_signup_creates_and_signs_in_the_user(self):
+    def test_signup_creates_an_inactive_user_and_does_not_sign_them_in(self):
+        """Changed in phase 16. This used to sign the user straight in.
+
+        Known issue 16: that let anyone register an address they did not
+        control. The quiet danger is not the unwanted account, it is that
+        password reset then becomes a takeover in reverse -- the real owner
+        of the address clicks "forgot password" and inherits whatever the
+        impostor put in the account.
+        """
         response = self.client.post(reverse("accounts:signup"), self._data(), follow=True)
 
-        self.assertTrue(User.objects.filter(username="alice").exists())
+        user = User.objects.get(username="alice")
+        self.assertFalse(user.is_active)
+        self.assertFalse(response.context["user"].is_authenticated)
+
+    def test_signup_sends_one_confirmation_email(self):
+        self.client.post(reverse("accounts:signup"), self._data())
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Confirm", mail.outbox[0].subject)
+
+    def test_following_the_link_activates_and_signs_in(self):
+        self.client.post(reverse("accounts:signup"), self._data())
+        link = re.search(r"(/accounts/verify/[^/\s]+/[^/\s]+/)", mail.outbox[0].body).group(1)
+
+        response = self.client.get(link, follow=True)
+
+        self.assertTrue(User.objects.get(username="alice").is_active)
         self.assertTrue(response.context["user"].is_authenticated)
+
+    def test_the_link_is_single_use(self):
+        # The token hash includes is_active, so activating the account
+        # invalidates every outstanding link without storing anything.
+        self.client.post(reverse("accounts:signup"), self._data())
+        link = re.search(r"(/accounts/verify/[^/\s]+/[^/\s]+/)", mail.outbox[0].body).group(1)
+        self.client.get(link)
+        self.client.logout()
+
+        response = self.client.get(link, follow=True)
+
+        self.assertFalse(response.context["user"].is_authenticated)
+
+    def test_a_tampered_token_is_refused(self):
+        self.client.post(reverse("accounts:signup"), self._data())
+        link = re.search(r"(/accounts/verify/[^/\s]+/[^/\s]+/)", mail.outbox[0].body).group(1)
+
+        response = self.client.get(link[:-3] + "xx/", follow=True)
+
+        self.assertFalse(User.objects.get(username="alice").is_active)
+        self.assertFalse(response.context["user"].is_authenticated)
+
+    def test_an_unverified_user_cannot_sign_in(self):
+        self.client.post(reverse("accounts:signup"), self._data())
+
+        response = self.client.post(
+            reverse("accounts:login"),
+            {"username": "alice", "password": "correct-horse-42"},
+        )
+
+        # is_active=False is refused by ModelBackend, so no extra check is
+        # needed on the login view.
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context["user"].is_authenticated)
 
     def test_password_is_hashed_not_stored_in_clear_text(self):
         self.client.post(reverse("accounts:signup"), self._data())

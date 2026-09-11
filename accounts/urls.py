@@ -13,19 +13,28 @@ app_name = "accounts"
 urlpatterns = [
     path(
         "login/",
-        auth_views.LoginView.as_view(
-            # An authenticated user hitting /login/ should go to the app, not
-            # be shown a login form again. Safe here only because
-            # LOGIN_REDIRECT_URL points elsewhere; pointing it back at login
-            # would be an infinite redirect.
-            redirect_authenticated_user=True,
-        ),
+        # An authenticated user hitting /login/ should go to the app, not
+        # be shown a login form again. Safe here only because
+        # LOGIN_REDIRECT_URL points elsewhere; pointing it back at login
+        # would be an infinite redirect. Set on the view class.
+        views.ThrottledLoginView.as_view(),
         name="login",
     ),
     # LogoutView is POST-only since Django 5.0. A GET logout could be fired
     # by a prefetch, a link scanner or an <img> tag, so the nav uses a form.
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("signup/", views.SignUpView.as_view(), name="signup"),
+    path("delete/", views.DeleteAccountView.as_view(), name="delete_account"),
+    path(
+        "signup/check-email/",
+        views.VerifyEmailSentView.as_view(),
+        name="verify_email_sent",
+    ),
+    path(
+        "verify/<uidb64>/<token>/",
+        views.VerifyEmailView.as_view(),
+        name="verify_email",
+    ),
     # Changing a known password (user is logged in).
     path(
         "password/change/",
@@ -44,7 +53,7 @@ urlpatterns = [
     # confirm the new password was saved.
     path(
         "password/reset/",
-        auth_views.PasswordResetView.as_view(
+        views.ThrottledPasswordResetView.as_view(
             email_template_name="registration/password_reset_email.html",
             subject_template_name="registration/password_reset_subject.txt",
             success_url=reverse_lazy("accounts:password_reset_done"),

@@ -266,3 +266,52 @@ arrived exactly on schedule.
 **The trade:** the badge is absent until the user visits the balances page
 once. That is the right trade for a decoration — a nav badge is never worth a
 query, let alone six.
+
+## Session 17 — phase 16
+
+### D16. Rate limiting is hand-written, not django-axes
+
+**Decided:** roughly forty lines in `accounts/ratelimit.py`, backed by the
+cache, keyed on `(client address, identifier)`.
+
+**Alternative:** `django-axes`, which is the right answer for production. It
+has lockout policies, an admin interface, and a decade of edge cases already
+handled.
+
+**Why hand-written here:** the keying decision is the whole design, and a
+library hides it. By address alone, one office behind one NAT is one blocked
+building. By username alone, an attacker locks any account out of its own
+login for free. By both, a single source against a single account is slowed,
+which is the shape of credential stuffing.
+
+**What it does not do,** stated in the module rather than implied: it does not
+stop a distributed attack, and its fixed window lets a determined caller get
+up to twice the limit across a boundary. A sliding window costs a sorted set
+per key and is not worth it at this scale.
+
+### D17. Email verification reuses Django's password-reset token machinery
+
+**Decided:** no new model and no new column. `PasswordResetTokenGenerator` is
+subclassed with `is_active` mixed into the hash, and `is_active=False` is the
+existing flag that keeps an unverified user out.
+
+**Why:** a custom token table would reimplement signing, expiry and
+single-use semantics that the framework already gets right. Mixing `is_active`
+into the hash makes the link self-invalidating on use with nothing stored.
+
+**Subclassed rather than reused directly** so a verification link can never be
+replayed as a password-reset link.
+
+### D18. Account deletion is ordered, not a changed `on_delete`
+
+**Decided:** `accounts/deletion.py` deletes expenses, then settlements, then
+participants, then categories, then the user.
+
+**Alternatives rejected:** switching the FKs to `CASCADE` would fix deletion
+and remove the protection that stops someone deleting a category out from
+under a year of expenses. `SET_NULL` on `Expense.category` would make the
+column nullable, so every query and template must handle a category-less
+expense forever, to solve a problem that happens once per account.
+
+**The kept test `test_the_plain_delete_still_raises`** documents why this
+module exists. Without it, someone would eventually delete it as redundant.
