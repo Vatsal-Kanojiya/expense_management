@@ -78,6 +78,22 @@ class Expense(models.Model):
     def __str__(self):
         return f"{self.amount} on {self.spent_on}"
 
+    def shared_with(self):
+        """Every participant on this expense, however they got there.
+
+        Reads only prefetched caches -- ``.all()`` on an already-prefetched
+        relation does not hit the database. Without the prefetch in
+        ExpenseListView this is two levels of N+1 per row, which is exactly
+        why the query count is pinned in the tests.
+        """
+        names = {participant.name for participant in self.participants.all()}
+
+        for item in self.items.all():
+            for share in item.shares.all():
+                names.add(share.participant.name)
+
+        return sorted(names)
+
 
 def export_upload_path(instance, filename):
     """Unguessable path for a generated export.

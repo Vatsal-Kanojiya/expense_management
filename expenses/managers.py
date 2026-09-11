@@ -26,9 +26,27 @@ class ExpenseQuerySet(models.QuerySet):
         return self.filter(spent_on__gte=start, spent_on__lte=end)
 
     def total(self) -> Decimal:
+        """Sum of this queryset's amounts, safe across joins.
+
+        The obvious ``self.aggregate(Sum("amount"))`` is wrong the moment a
+        filter crosses a multi-valued relation. Searching items or
+        participants joins one expense to several child rows, and the
+        aggregate then counts that expense once per match -- a 900 expense
+        with two matching items reports 1800.
+
+        ``.distinct()`` does not fix it. DISTINCT removes duplicate rows
+        from a result set; the aggregate has already consumed them.
+
+        Summing over the distinct set of primary keys does fix it, at the
+        cost of a subquery. ``order_by()`` clears the model's default
+        ordering, which some databases reject inside a subquery.
+        """
+        pks = self.order_by().values("pk")
+        totals = self.model._default_manager.filter(pk__in=pks).aggregate(total=Sum("amount"))
+
         # Sum() returns None over an empty queryset, which would propagate a
         # None into arithmetic and templates. Coerce it once, here.
-        return self.aggregate(total=Sum("amount"))["total"] or Decimal("0")
+        return totals["total"] or Decimal("0")
 
     def by_category(self):
         """Per-category totals, largest first.

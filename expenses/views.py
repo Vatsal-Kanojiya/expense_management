@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, Prefetch
 from django.db.models.deletion import ProtectedError
 from django.http import FileResponse, Http404
 from django.shortcuts import redirect
@@ -22,7 +22,7 @@ from .balances import balances
 from .filters import DateRangeForm, ExpenseFilterForm
 from .forms import CategoryForm, ExpenseForm, ExpenseItemFormSet, ParticipantForm
 from .mixins import ItemFormSetMixin, OwnerFormMixin, OwnerScopedMixin
-from .models import Category, Expense, ExportJob, Participant
+from .models import Category, Expense, ExpenseItem, ExportJob, Participant
 from .summaries import previous_period, summarise
 from .tasks import build_expense_export
 
@@ -213,7 +213,27 @@ class ExpenseListView(OwnerScopedMixin, ListView):
         # select_related joins the category in the same query. Without it the
         # template's {{ expense.category.name }} fires one extra query per row
         # — the classic N+1.
-        queryset = super().get_queryset().select_related("category")
+        # select_related joins the category into the same query; it is a
+        # forward FK, so a JOIN is possible. participants and items are
+        # multi-valued, where a JOIN would multiply rows instead, so those
+        # need prefetch_related -- one extra query each, not one per row.
+        #
+        # The nested Prefetch reaches three levels: items, their shares, and
+        # each share's participant. Without it, rendering "shared with" on a
+        # 25-row page costs 25 queries for items plus one per item for its
+        # shares. test_orm.py pins the count so it cannot drift back.
+        queryset = (
+            super()
+            .get_queryset()
+            .select_related("category")
+            .prefetch_related(
+                "participants",
+                Prefetch(
+                    "items",
+                    queryset=ExpenseItem.objects.prefetch_related("shares__participant"),
+                ),
+            )
+        )
         return self.get_filter_form().apply(queryset)
 
     def get_context_data(self, **kwargs):

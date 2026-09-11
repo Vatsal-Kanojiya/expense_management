@@ -225,21 +225,26 @@ class ExpenseViewTests(TestCase):
         for _ in range(10):
             self._create()
 
-        # Six queries: session, user, pagination count, the rows themselves,
-        # the filtered total, and the category dropdown's options. The number
-        # grew from four when filtering was added, and every addition is
-        # accounted for above.
+        # Eight queries: session, user, pagination count, the rows
+        # themselves, the filtered total, the category dropdown's options,
+        # and one each for the participants and items prefetches. The number
+        # grew from four when filtering was added and from six when splitting
+        # did; every addition is accounted for above.
         #
-        # What matters is that it is FLAT: select_related means it does not
-        # grow with the number of rows. test_query_count_is_flat_as_rows_grow
-        # asserts that property directly.
-        with self.assertNumQueries(6):
+        # Note these expenses have no items, so the nested shares prefetch is
+        # skipped -- Django does not run a prefetch whose parent set is
+        # empty. test_orm.py pins the itemised case, where it does run.
+        #
+        # What matters is that it is FLAT: select_related and prefetch_related
+        # mean it does not grow with the number of rows.
+        # test_query_count_is_flat_as_rows_grow asserts that property.
+        with self.assertNumQueries(8):
             self.client.get(reverse("expenses:expense_list"))
 
     def test_query_count_is_flat_as_rows_grow(self):
         for _ in range(3):
             self._create()
-        with self.assertNumQueries(6):
+        with self.assertNumQueries(8):
             self.client.get(reverse("expenses:expense_list"))
 
         for _ in range(20):
@@ -247,5 +252,5 @@ class ExpenseViewTests(TestCase):
 
         # Same count with 23 rows as with 3. This is the N+1 guarantee
         # stated as a property rather than a magic number.
-        with self.assertNumQueries(6):
+        with self.assertNumQueries(8):
             self.client.get(reverse("expenses:expense_list"))
