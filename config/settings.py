@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "accounts",
+    "rest_framework",
     "expenses",
 ]
 
@@ -311,4 +312,42 @@ LOGGING = {
             "propagate": False,
         },
     },
+}
+
+
+# Django REST Framework
+# https://www.django-rest-framework.org/api-guide/settings/
+REST_FRAMEWORK = {
+    # Session auth so the browsable API works while logged into the site.
+    # A mobile or script client wants tokens instead; that is a phase of its
+    # own, and session auth is the honest starting point rather than a JWT
+    # nobody has thought about expiring.
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    # Deny by default. The alternative leaves a forgotten permission_classes
+    # on one view open to the world, and nothing about the code looks wrong.
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    # Cursor, not page number. Offset pagination re-reads the same rows when
+    # something is inserted while a client is paging, so a row can be seen
+    # twice or skipped entirely. Cursor pagination is stable across writes.
+    # The price is no page count and no jumping to page 7.
+    "DEFAULT_PAGINATION_CLASS": "expenses.api.pagination.IdCursorPagination",
+    "PAGE_SIZE": 25,
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.AnonRateThrottle",
+    ],
+    # Generous enough not to annoy a real client, low enough to make a
+    # runaway script or a scraper visible. Known issue 15 is about the login
+    # endpoint, which is Django's, not DRF's -- this does not close it.
+    "DEFAULT_THROTTLE_RATES": {
+        "user": "1000/hour",
+        "anon": "60/hour",
+    },
+    "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.NamespaceVersioning",
+    "DEFAULT_VERSION": "v1",
+    "ALLOWED_VERSIONS": ["v1"],
 }
