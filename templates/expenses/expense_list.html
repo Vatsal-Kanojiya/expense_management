@@ -37,6 +37,7 @@
           <th>Date</th>
           <th>Category</th>
           <th>Note</th>
+          <th>Shared with</th>
           <th class="num">Amount</th>
           <th></th>
         </tr>
@@ -48,6 +49,7 @@
             {# select_related in the view means this does not hit the DB again. #}
             <td>{{ expense.category.name }}</td>
             <td>{{ expense.note|default:"—" }}</td>
+            <td>{{ expense.shared_with|join:", "|default:"—" }}</td>
             <td class="num">{{ expense.amount }}</td>
             <td>
               <a class="btn" href="{% url 'expenses:expense_update' expense.pk %}">Edit</a>

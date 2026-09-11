@@ -12,6 +12,7 @@ here and keeps the mechanics visible.
 from datetime import date
 
 from django import forms
+from django.db.models import Q
 
 from .models import Category
 from .summaries import month_bounds
@@ -70,7 +71,7 @@ class ExpenseFilterForm(DateRangeForm):
     )
     search = forms.CharField(
         required=False,
-        widget=forms.TextInput(attrs={"placeholder": "Search notes"}),
+        widget=forms.TextInput(attrs={"placeholder": "Search notes, items or people"}),
     )
 
     def __init__(self, *args, user=None, **kwargs):
@@ -93,10 +94,23 @@ class ExpenseFilterForm(DateRangeForm):
             queryset = queryset.filter(category=category)
 
         if search := self.cleaned_data.get("search"):
+            # Q objects are how you build OR. Chained .filter() calls are
+            # AND, and there is no keyword-argument syntax for OR at all.
+            #
+            # Three of these four lookups cross a multi-valued relation, so
+            # one expense matching two items comes back twice. .distinct()
+            # is mandatory here, not tidiness -- without it the page shows
+            # duplicate rows and the pagination count is wrong.
+            #
             # icontains is fine at this scale. At real volume this wants a
             # database full-text index instead of a leading-wildcard LIKE,
-            # which cannot use a btree index.
-            queryset = queryset.filter(note__icontains=search)
+            # which cannot use a btree index. See known issue 17.
+            queryset = queryset.filter(
+                Q(note__icontains=search)
+                | Q(items__name__icontains=search)
+                | Q(participants__name__icontains=search)
+                | Q(items__shares__participant__name__icontains=search)
+            ).distinct()
 
         return queryset
 
