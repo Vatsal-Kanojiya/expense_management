@@ -79,3 +79,24 @@ class DeploySettingsTests(SimpleTestCase):
         # redirect makes http://localhost unreachable, so local development
         # must fail these checks.
         self.assertNotEqual(self._check_deploy("True").returncode, 0)
+
+
+class StaticFilesTests(SimpleTestCase):
+    """WhiteNoise, and the middleware order that makes it worth having."""
+
+    def test_whitenoise_sits_directly_after_security_middleware(self):
+        from django.conf import settings
+
+        middleware = settings.MIDDLEWARE
+        index = middleware.index("whitenoise.middleware.WhiteNoiseMiddleware")
+
+        # Placed later it would still serve files, having first paid for
+        # session lookup, authentication and CSRF on every asset request.
+        self.assertEqual(middleware[index - 1], "django.middleware.security.SecurityMiddleware")
+
+    def test_static_root_is_configured(self):
+        from django.conf import settings
+
+        # Unset, collectstatic refuses to run -- the usual first failure of
+        # a container build.
+        self.assertTrue(settings.STATIC_ROOT)

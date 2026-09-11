@@ -1,9 +1,11 @@
+import tempfile
+
 from django.conf import settings
 from django.test.runner import DiscoverRunner
 
 
 class FastTestRunner(DiscoverRunner):
-    """Test runner that swaps the password hasher for a fast one.
+    """Test runner that swaps two production-only settings for fast ones.
 
     Django's default PBKDF2 hasher is deliberately slow — that slowness is
     the security property, since it is what makes brute-forcing a stolen
@@ -18,8 +20,36 @@ class FastTestRunner(DiscoverRunner):
 
     The alternative is a settings split (config/settings/test.py). This is
     the lighter option while the project has a single settings module.
+
+    The second swap is the static files storage. Phase 11 turned on
+    WhiteNoise's CompressedManifestStaticFilesStorage, which hashes and
+    gzips every file it is asked for. That is exactly right in production
+    and pure overhead in tests: the suite went from 3.6s to 14.6s on the
+    commit that enabled it, for no assertion's benefit.
+
+    It also makes tests fail for an unrelated reason. Manifest storage
+    raises when asked for a file that is not in the manifest, so any test
+    rendering a template with {% static %} fails unless collectstatic has
+    been run first.
+
+    The third swap is STATIC_ROOT, and it is the expensive one. WhiteNoise
+    builds its index of every collected file when the middleware is
+    constructed, and the test client constructs a fresh handler per client
+    instance -- so a suite with many TestCase classes rescans hundreds of
+    files hundreds of times. Pointing STATIC_ROOT at an empty directory
+    keeps the middleware in the chain, and in its real position, while
+    making that scan free. Removing the middleware instead would be faster
+    still and would stop the ordering assertion testing anything.
+
+    Measured on this suite: 3.6s before phase 11, 14.6s with WhiteNoise
+    unmodified, 3.9s with these swaps.
     """
 
     def setup_test_environment(self, **kwargs):
         super().setup_test_environment(**kwargs)
         settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+        settings.STORAGES = {
+            **settings.STORAGES,
+            "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+        }
+        settings.STATIC_ROOT = tempfile.mkdtemp(prefix="test-static-")

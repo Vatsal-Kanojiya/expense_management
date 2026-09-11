@@ -86,6 +86,11 @@ TEST_RUNNER = "config.test_runner.FastTestRunner"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Directly after SecurityMiddleware and before everything else, so a
+    # static file is served without paying for session lookup, auth or CSRF.
+    # Ordering is not cosmetic here: placed last it would still work and
+    # would do all that work first.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -165,6 +170,26 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
+
+# Where collectstatic gathers files for a production server to serve.
+# Unset, collectstatic refuses to run, which is the usual first failure of a
+# container build.
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# WhiteNoise lets the application server serve its own static files, so
+# there is no nginx to configure and no bucket to sync. It compresses and
+# fingerprints at collectstatic time, so files are cached forever and a
+# changed file gets a new name.
+#
+# The honest limit: this is fine up to real traffic, and at real traffic a
+# CDN in front is the answer. It is not a worse choice than nginx, it is a
+# simpler one that stops being enough later.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

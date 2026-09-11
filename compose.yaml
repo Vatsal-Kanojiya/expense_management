@@ -1,0 +1,87 @@
+# One command for the whole stack: web, worker, scheduler, broker, database.
+#
+# Before this, running the async parts meant three terminals and a
+# hand-started Redis (see docs/RUNNING_ASYNC.md). That is the utility this
+# phase ships; Postgres arriving with it is what makes phase 13 possible,
+# because select_for_update is a no-op on SQLite.
+
+name: expense-tracker
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: expense_tracker
+      POSTGRES_USER: expense
+      POSTGRES_PASSWORD: expense-local-only
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # depends_on alone only waits for the container to start, not for
+      # Postgres to accept connections. Without this the web container
+      # races the database on every cold start and loses about half the time.
+      test: ["CMD-SHELL", "pg_isready -U expense -d expense_tracker"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build: .
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000
+             --workers 3 --access-logfile - --error-logfile -"
+    environment: &django-env
+      SECRET_KEY: compose-local-only-not-a-real-secret
+      DEBUG: "False"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      # Redirecting to HTTPS inside a compose network breaks every request:
+      # nothing here terminates TLS. In a real deployment a proxy does, and
+      # this stays at its default of True.
+      SECURE_SSL_REDIRECT: "False"
+      DATABASE_URL: postgres://expense:expense-local-only@db:5432/expense_tracker
+      # Separate Redis databases. The broker and the cache share a server
+      # and must not share a keyspace, or `FLUSHDB` on the cache takes the
+      # queue with it.
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build: .
+    # No migrate here. Two containers running migrations at once is a race,
+    # so exactly one owns it -- web, above.
+    command: celery -A config worker --loglevel=info
+    environment: *django-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  beat:
+    build: .
+    command: celery -A config beat --loglevel=info
+    environment: *django-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
