@@ -19,15 +19,29 @@
 
 ## 1. Current state at a glance
 
-**Session:** 7 — Phase 6 (async) complete. Only phase 7 (production readiness) remains
-**Last commit:** `92cb1e5` — *feat(expenses): add monthly digest command with idempotency*
-**Phase tags:** `phase-1-foundation`, `phase-2-auth`, `phase-3-crud`, `phase-4-tests`, `phase-4.5-tooling`, `phase-5-dashboard`, `phase-6-async`
-**Suite:** 169 tests, 1.7s, green in CI
+**Session:** 17 — **all sixteen phases complete**
+**Last commit:** `94cd2c4` — *docs: mark all sixteen phases complete*
+**Phase tags:** 17, `phase-1-foundation` … `phase-16-hardening` (`git tag | sort -V`)
+**Suite:** 357 tests, 95% coverage — green on SQLite, Postgres 16, the CI environment and real Redis
+
+| Dimension | State |
+|---|---|
+| Database | Postgres 16 (SQLite still works for a zero-setup run; 9 tests skip there) |
+| Interfaces | Server-rendered views · versioned JSON API · admin · management commands |
+| Async | Celery worker + beat, Redis broker, separate result backend |
+| Cache | Redis, version-stamped per-user keys (LocMem fallback) |
+| Deploy | Multi-stage image, compose stack of five services, gunicorn, WhiteNoise |
+| Open issues | 6, all deliberate — see §6 |
 
 > **Phases ran out of order on purpose, and the bet paid off.** Auth was deferred past CRUD so it
 > could be studied properly. That was safe because phase 3's views were written fully user-scoped
 > from the start. **Landing phase 2 changed `LOGIN_URL` and nothing else in `expenses/` —
 > zero view code touched**, exactly as predicted.
+>
+> **The scoping lesson recurred five times.** `ModelChoiceField` (phase 3),
+> `ModelMultipleChoiceField` twice (phase 8), the per-item formset field (phase 8) and
+> `PrimaryKeyRelatedField` (phase 10). Each defaults to *every row in the table*, and the API one
+> has no dropdown to notice it in.
 
 ### Data model
 
@@ -35,9 +49,16 @@
 erDiagram
     USER ||--o{ CATEGORY : "owns"
     USER ||--o{ EXPENSE  : "owns"
+    USER ||--o{ PARTICIPANT : "owns"
+    USER ||--o{ SETTLEMENT : "records"
     USER ||--o{ EXPORTJOB : "requests"
     USER ||--o{ MONTHLYDIGEST : "receives"
     CATEGORY ||--o{ EXPENSE : "classifies"
+    EXPENSE ||--o{ EXPENSEITEM : "itemises"
+    EXPENSE }o--o{ PARTICIPANT : "split evenly (generated join, CASCADE)"
+    EXPENSEITEM ||--o{ ITEMSHARE : "shared via"
+    PARTICIPANT ||--o{ ITEMSHARE : "consumes"
+    PARTICIPANT ||--o{ SETTLEMENT : "repays"
 
     USER {
         int id PK
@@ -47,17 +68,43 @@ erDiagram
     CATEGORY {
         int id PK
         int user_id FK "CASCADE"
-        string name "unique per user"
+        string name "UNIQUE with user, case-insensitive via Lower()"
         datetime created_at
     }
     EXPENSE {
         int id PK
         int user_id FK "CASCADE"
         int category_id FK "PROTECT"
-        decimal amount "must be > 0"
-        date spent_on "indexed with user"
-        string note
+        decimal amount "must be > 0; items must sum to this (form-enforced)"
+        date spent_on "indexed (user, spent_on) and (user, category, spent_on)"
+        string note "GIN full-text index on Postgres"
         datetime created_at
+    }
+    PARTICIPANT {
+        int id PK
+        int user_id FK "CASCADE"
+        string name "UNIQUE with user, case-insensitive via Lower()"
+        datetime created_at
+    }
+    EXPENSEITEM {
+        int id PK
+        int expense_id FK "CASCADE"
+        string name
+        decimal amount "must be > 0"
+    }
+    ITEMSHARE {
+        int id PK
+        int item_id FK "CASCADE"
+        int participant_id FK "PROTECT"
+        int weight "must be > 0; UNIQUE (item, participant)"
+    }
+    SETTLEMENT {
+        int id PK
+        int user_id FK "CASCADE"
+        int participant_id FK "CASCADE"
+        decimal amount "must be > 0; written under select_for_update"
+        datetime settled_at
+        string note
     }
     EXPORTJOB {
         int id PK
@@ -124,10 +171,105 @@ erDiagram
 | Infra | **Monthly digest** *(clock-triggered → cron)* | `expenses/management/commands/` | ✅ done | 7 |
 | Test | Exports and digests | `expenses/tests/` | ✅ 34 tests | 7 |
 | Tooling | Fast password hasher in tests | `config/test_runner.py` | ✅ 40× faster | 5 |
+| Config | Security settings (HSTS, cookies, HTTPS) | `config/settings.py` | ✅ done | 8 |
+| Config | `LOGGING` dict | `config/settings.py` | ✅ done | 8 |
+| Template | Error pages 400/403/404/500 | `templates/` | ✅ done | 8 |
+| Tooling | Deploy check as a CI gate | `.github/workflows/ci.yml` | ✅ done | 8 |
+| Model | `Participant` | `expenses/models.py` | ✅ done | 9 |
+| Model | `ExpenseItem` | `expenses/models.py` | ✅ done | 9 |
+| Model | `ItemShare` *(explicit through, PROTECT)* | `expenses/models.py` | ✅ done | 9 |
+| Query | **Largest-remainder money split** | `expenses/splitting.py` | ✅ done | 9 |
+| Form | `ParticipantForm` | `expenses/forms.py` | ✅ done | 9 |
+| Form | **Inline item formset + sum invariant** | `expenses/forms.py` | ✅ done | 9 |
+| View | Participant CRUD | `expenses/views.py` | ✅ done | 9 |
+| View | Formset save mixin (atomic) | `expenses/mixins.py` | ✅ done | 9 |
+| Query | Per-participant balances | `expenses/balances.py` | ✅ done | 9 |
+| View | Balances page | `expenses/views.py` | ✅ done | 9 |
+| Test | Splitting, items, shares, balances | `expenses/tests/` | ✅ 47 tests | 9 |
+| Query | Nested prefetch (3 levels) | `expenses/views.py` | ✅ done | 10 |
+| Query | Join-safe `total()` | `expenses/managers.py` | ✅ done | 10 |
+| Form | Search across items and people (`Q`) | `expenses/filters.py` | ✅ done | 10 |
+| Query | `Subquery` last-spend annotation | `expenses/views.py` | ✅ done | 10 |
+| Infra | `check_splits` audit command | `expenses/management/commands/` | ✅ done | 10 |
+| Test | ORM behaviour and query counts | `expenses/tests/test_orm.py` | ✅ 26 tests | 10 |
+| API | Serializers + writable nested writes | `expenses/api/serializers.py` | ✅ done | 11 |
+| API | ViewSets, router, object permissions | `expenses/api/views.py` | ✅ done | 11 |
+| API | Cursor pagination | `expenses/api/pagination.py` | ✅ done | 11 |
+| Config | DRF settings (throttle, version, auth) | `config/settings.py` | ✅ done | 11 |
+| Test | API scoping and nested writes | `expenses/tests/test_api.py` | ✅ 17 tests | 11 |
+| Infra | Multi-stage image, non-root | `Dockerfile`, `.dockerignore` | ✅ done | 12 |
+| Infra | Compose: web, worker, beat, redis, db | `compose.yaml` | ✅ done | 12 |
+| Infra | gunicorn + WhiteNoise + `STATIC_ROOT` | `config/settings.py` | ✅ done | 12 |
+| Model | Case-insensitive unique constraints | `expenses/migrations/0004_*.py` | ✅ done | 13 |
+| Model | Composite index (user, category, date) | `expenses/models.py` | ✅ done | 13 |
+| Query | **GIN full-text index** *(Postgres only)* | `expenses/migrations/0005_*.py` | ✅ done | 13 |
+| Test | Postgres-only index and FTS behaviour | `expenses/tests/test_postgres.py` | ✅ 7 tests | 13 |
+| Model | `Settlement` | `expenses/models.py` | ✅ done | 14 |
+| Query | `settle_up` under `select_for_update` | `expenses/settlements.py` | ✅ done | 14 |
+| View | Settle-up (POST only) | `expenses/views.py` | ✅ done | 14 |
+| Test | **Race proved in both directions** | `expenses/tests/test_concurrency.py` | ✅ 10 tests | 14 |
+| Infra | Redis cache, version-stamped keys | `expenses/cache.py` | ✅ done | 15 |
+| Query | Cached dashboard aggregation | `expenses/views.py` | ✅ done | 15 |
+| Test | Cache keys and the `cache_page` leak | `expenses/tests/test_cache.py` | ✅ 13 tests | 15 |
+| Config | Request-ID middleware + log filter | `config/middleware.py` | ✅ done | 16 |
+| Template | `rupees` / `owed_label` filters | `expenses/templatetags/money.py` | ✅ done | 16 |
+| View | Nav context processor *(cache-read only)* | `expenses/context_processors.py` | ✅ done | 16 |
+| Infra | **Signal-based cache invalidation** | `expenses/signals.py` | ✅ done | 16 |
+| Test | Middleware, filters, context processor | `expenses/tests/test_internals.py` | ✅ 17 tests | 16 |
+| Auth | Login + reset rate limiting | `accounts/ratelimit.py` | ✅ done | 17 |
+| Auth | Email verification on signup | `accounts/verification.py` | ✅ done | 17 |
+| Auth | Ordered account deletion | `accounts/deletion.py` | ✅ done | 17 |
+| Infra | Export retention + beat schedule | `expenses/management/commands/` | ✅ done | 17 |
+| Test | Hardening: throttle, verify, delete, purge | `accounts/tests/test_hardening.py` | ✅ 18 tests | 17 |
+| Docs | Decisions log | `docs/DECISIONS.md` | ✅ 18 entries | 8-17 |
 
 Legend: ✅ done · 🔜 next · ⬜ not started · 🅿️ deliberately parked · ❌ problem
 
 Phase numbers map to the tagged phases in [COMMIT_PLAN.md](COMMIT_PLAN.md).
+
+### What you can draw from these tables
+
+Every table in this document is kept machine-readable on purpose: fixed columns, one fact per row,
+no prose in a cell that a chart would have to parse. That is what makes the following derivable
+rather than re-researched.
+
+| Want | Source | How |
+|---|---|---|
+| **Swimlane by layer** | §1 component status | `Layer` is the lane, `Session` is the x-axis, `Status` the fill |
+| **Gantt / timeline** | §1 component status | One bar per component, `Session` start, grouped by `Layer` |
+| **ER diagram** | §1 data model | Already mermaid — paste and render |
+| **Dependency graph of phases** | COMMIT_PLAN §2b | Already mermaid |
+| **Burn-down of known issues** | §6 resolved + open | Each resolved row carries the session that closed it |
+| **Test growth curve** | §2 session log | Every session entry ends with a suite count |
+| **Concept coverage by session** | §4 Frappe-gap tracker | `First seen` column is `S<n>` |
+| **Settings drift over time** | §3 settings ledger | `Session`, `From`, `To` per setting |
+| **Decision log / ADR index** | [DECISIONS.md](DECISIONS.md) | One `D<n>` per decision, each with its rejected alternative |
+
+Two conventions make this work, and breaking either breaks the charts:
+
+1. **Session numbers are never reused or renumbered.** They are the shared x-axis across four
+   different tables.
+2. **A row is appended, never rewritten.** When something changes, the old row keeps its session
+   and a new row records the change — which is why the settings ledger shows `From` and `To` rather
+   than only the current value.
+
+To regenerate the component counts:
+
+```bash
+# Rows per layer, scoped to the component table only. The naive
+# grep across the whole file also catches the session log's commit
+# tables, which share the leading-capital shape.
+awk '/^### Component status/,/^Legend:/' docs/BUILD_LOG.md \
+  | awk -F'|' '/^\| [A-Z]/ {gsub(/^ +| +$/, "", $2); if ($2 != "Layer") print $2}' \
+  | sort | uniq -c | sort -rn
+
+# Components per session, the swimlane x-axis
+awk '/^### Component status/,/^Legend:/' docs/BUILD_LOG.md \
+  | awk -F'|' '/^\| [A-Z]/ {gsub(/ /, "", $6); if ($6 != "Session") print $6}' \
+  | sort -n | uniq -c
+
+git tag | sort -V                                    # the phase axis
+```
 
 ---
 
@@ -994,6 +1136,36 @@ interview-gap list.
 | Idempotency is your problem | Frappe's scheduler dedupes some events, so the failure mode rarely surfaces | S7 digest command |
 | `TestCase` vs `TransactionTestCase` | Frappe tests roll back too, so the same trap exists but is rarely named | S7 — caused a real bug |
 | Choosing between a queue and cron | Frappe gives one answer (`enqueue` / `scheduler_events`), so the trade-off never has to be argued | S7 |
+| Settings gated on `DEBUG` run at *import* time | Frappe reads `site_config.json` at runtime, so the same value is always live | S8 — broke CI and made `override_settings` useless |
+| An HTML comment is **not** a template comment | Jinja's `{# #}` behaves the same way, but Frappe rarely puts tag syntax in comments | S8 — made the 500 page unparseable |
+| Explicit `through` model vs generated join table | Frappe child tables are always explicit DocTypes; there is no "generated" variant to contrast with | S9 `models.py` |
+| A generated M2M join table hard-codes `CASCADE` | No analogue — Frappe child tables always cascade from the parent by design | S9 |
+| `commit=False` then `save_m2m()` | Frappe saves parent and children in one `doc.save()` | S9 `mixins.py` |
+| Inline formsets | Frappe renders child tables from the DocType automatically | S9 `forms.py` |
+| Invariants that span rows cannot be constraints | Frappe's `validate()` is the only layer anyway, so the question never arises | S9 |
+| Money: largest-remainder allocation | Framework-independent, but Frappe's currency fields hide the rounding decision | S9 `splitting.py` |
+| Filtering across a multi-valued relation multiplies rows | Frappe's `get_all` with a child-table filter has the same trap, unnamed | S10 `filters.py` |
+| `.distinct()` does **not** fix an aggregate | No analogue — Frappe reports rarely aggregate across child joins | S10 — caused a real bug |
+| `Subquery` / `OuterRef` for a field of one related row | Frappe would need a second `get_value` call per row | S10 `views.py` |
+| Filtering an annotation vs re-traversing the relation | No analogue; Frappe's query builder does not chain this way | S10 — caused a real bug |
+| DRF: `has_object_permission` never runs on list | Frappe applies permissions uniformly to list and detail | S11 `api/views.py` |
+| Writable nested serializers are hand-written | Frappe's REST API accepts a doc with child rows out of the box | S11 `api/serializers.py` |
+| Cursor pagination constrains the ordering column | Frappe paginates by offset only | S11 `api/pagination.py` |
+| Container build order and layer caching | Frappe ships `bench` and a documented deployment path | S12 `Dockerfile` |
+| Index expression must match the query expression exactly | Frappe's `search_index` flag hides the expression entirely | S13 — silent index miss |
+| Functional unique index (`Lower(name)`) | Frappe uniqueness is per-field and case-follows-collation | S13 `models.py` |
+| Full-text search changes matching semantics | Frappe's search is `LIKE`-based throughout | S13 |
+| `select_for_update` is a no-op on SQLite | Frappe is always on MariaDB/Postgres, so the question never arises | S14 |
+| Savepoints: which caught error poisons a transaction | Frappe wraps each request in one transaction and rarely nests | S14 — corrected a wrong assumption |
+| `@cache_page` keys on URL only, so it leaks per-user data | Frappe's cache API is key-based; there is no page-cache decorator to misuse | S15 — demonstrated then rejected |
+| Cache is not cleared between tests | Frappe tests roll back the DB but share the cache too | S15 — broke an unrelated query count |
+| A context processor runs on **every** render | Frappe's boot info is assembled once per session | S16 — cost 6 queries per request |
+| Signals: when implicit control flow is worth it | `doc_events` in hooks.py is the direct analogue, and is used far more freely | S16 `signals.py` |
+| `bulk_create` fires no signals | `frappe.db.bulk_insert` likewise skips hooks, but it is rarely used | S16 |
+| `ContextVar` vs `threading.local` under ASGI | Frappe is WSGI-only, so the distinction never surfaces | S16 `middleware.py` |
+| Rate limiting: what the key should be | Frappe ships a rate limiter configured by site | S17 `ratelimit.py` |
+| Reusing the password-reset token generator | Frappe's key-based tokens are a single built-in mechanism | S17 `verification.py` |
+| `PROTECT` blocks cascade deletes in the same plan | Frappe link validation is per-link, so ordered deletion is rarely needed | S17 `deletion.py` |
 
 ---
 
