@@ -112,3 +112,19 @@ phase 13, where the row lock it needs is the point of the phase.
 **Explicitly out of scope:** debt simplification (collapsing "A owes B, B owes
 C"). It is a graph problem and it is where this design would stop being
 bounded. Per-participant balances are shown raw.
+
+### D8. Commit granularity is tuned for interruption, not for review
+
+**Decided:** during autonomous sessions, each commit is a self-contained,
+green, lint-clean unit — schema in one, pure logic in another, UI in a third —
+and the build log carries a **"Resume here"** block naming what is done and
+what is next.
+
+**Alternative:** one large commit per phase, or work-in-progress commits.
+
+**Why:** a session can end at any point. Anything uncommitted is lost, and
+anything committed broken is worse than nothing. Ordering the work so the data
+layer and pure logic land before the UI means an interrupted phase leaves a
+working, tested foundation rather than a half-wired feature. The build log
+block exists so a session starting with no memory of this one can pick up
+without re-deriving the decisions.
