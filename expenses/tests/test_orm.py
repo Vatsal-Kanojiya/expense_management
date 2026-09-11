@@ -147,3 +147,139 @@ class QueryCountTests(TestCase):
         expense = self._itemised_expense()
 
         self.assertEqual(expense.shared_with(), ["Rahul"])
+
+
+class SubqueryAnnotationTests(TestCase):
+    """Reading a field off one specific related row."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user(
+            "alice", email="alice@example.com", password="pw12345!"
+        )
+        cls.food = Category.objects.create(user=cls.alice, name="Food")
+        cls.empty = Category.objects.create(user=cls.alice, name="Unused")
+
+        # The newest expense is deliberately NOT the largest, which is what
+        # separates a Subquery from a pair of Max() aggregates.
+        Expense.objects.create(
+            user=cls.alice,
+            category=cls.food,
+            amount=Decimal("5000.00"),
+            spent_on=date(2026, 1, 1),
+        )
+        Expense.objects.create(
+            user=cls.alice,
+            category=cls.food,
+            amount=Decimal("120.00"),
+            spent_on=date(2026, 3, 1),
+        )
+
+    def setUp(self):
+        self.client.force_login(self.alice)
+
+    def _categories(self):
+        response = self.client.get(reverse("expenses:category_list"))
+        return {c.name: c for c in response.context["categories"]}
+
+    def test_the_latest_amount_belongs_to_the_latest_date(self):
+        # Max("expenses__spent_on") and Max("expenses__amount") would report
+        # 2026-03-01 paired with 5000.00, which is two different rows and a
+        # number that never happened.
+        food = self._categories()["Food"]
+
+        self.assertEqual(food.last_spent_on, date(2026, 3, 1))
+        self.assertEqual(food.last_amount, Decimal("120.00"))
+
+    def test_a_category_with_no_expenses_annotates_to_none(self):
+        empty = self._categories()["Unused"]
+
+        self.assertIsNone(empty.last_spent_on)
+        self.assertIsNone(empty.last_amount)
+        self.assertEqual(empty.expense_count, 0)
+
+    def test_the_total_is_summed(self):
+        self.assertEqual(self._categories()["Food"].total, Decimal("5120.00"))
+
+    def test_another_users_expenses_are_not_counted(self):
+        bob = User.objects.create_user("bob", email="bob@example.com", password="pw12345!")
+        # Same category object is Alice's; a crafted row must not leak in.
+        Expense.objects.create(
+            user=bob, category=self.food, amount=Decimal("1.00"), spent_on=date(2026, 6, 1)
+        )
+
+        # The subquery correlates on category only, so it sees Bob's row.
+        # The *list* is still scoped by OwnerScopedMixin, so Bob never sees
+        # this page -- but the annotation is a reminder that a Subquery
+        # inherits no scoping from the outer queryset.
+        food = self._categories()["Food"]
+
+        self.assertEqual(food.last_spent_on, date(2026, 6, 1))
+
+
+class UnbalancedExpenseTests(TestCase):
+    """The audit for an invariant the database cannot hold."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user(
+            "alice", email="alice@example.com", password="pw12345!"
+        )
+        cls.category = Category.objects.create(user=cls.alice, name="Food")
+
+    def _expense(self, amount, items=()):
+        expense = Expense.objects.create(
+            user=self.alice,
+            category=self.category,
+            amount=Decimal(amount),
+            spent_on=date.today(),
+        )
+        for name, item_amount in items:
+            ExpenseItem.objects.create(expense=expense, name=name, amount=Decimal(item_amount))
+        return expense
+
+    def test_a_balanced_expense_is_not_reported(self):
+        self._expense("900.00", [("Pizza", "600.00"), ("Coke", "300.00")])
+
+        self.assertEqual(list(Expense.objects.unbalanced()), [])
+
+    def test_an_unbalanced_expense_is_reported(self):
+        # Written directly, bypassing the formset -- exactly how a bad row
+        # gets in once the rule lives outside the schema.
+        broken = self._expense("900.00", [("Pizza", "600.00")])
+
+        self.assertEqual(list(Expense.objects.unbalanced()), [broken])
+
+    def test_an_expense_with_no_items_is_not_reported(self):
+        # Not itemised is not unbalanced. Without the items__isnull filter,
+        # Sum over no rows is NULL and NULL != amount reports every one.
+        self._expense("900.00")
+
+        self.assertEqual(list(Expense.objects.unbalanced()), [])
+
+    def test_the_command_reports_and_can_fail(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        self._expense("900.00", [("Pizza", "600.00")])
+        out = StringIO()
+
+        call_command("check_splits", stdout=out, stderr=StringIO())
+
+        self.assertIn("items total 600.00", out.getvalue())
+
+        with self.assertRaises(SystemExit):
+            call_command("check_splits", "--fail", stdout=StringIO(), stderr=StringIO())
+
+    def test_the_command_is_quiet_when_everything_adds_up(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        self._expense("900.00", [("Pizza", "900.00")])
+        out = StringIO()
+
+        call_command("check_splits", stdout=out)
+
+        self.assertIn("adds up", out.getvalue())
