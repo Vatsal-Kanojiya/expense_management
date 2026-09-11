@@ -19,6 +19,7 @@ from django.views.generic import (
 )
 
 from .balances import balances, outstanding_balances
+from .cache import bump_version, cached_summary
 from .filters import DateRangeForm, ExpenseFilterForm
 from .forms import CategoryForm, ExpenseForm, ExpenseItemFormSet, ParticipantForm
 from .mixins import ItemFormSetMixin, OwnerFormMixin, OwnerScopedMixin
@@ -47,8 +48,18 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         form = DateRangeForm(self.request.GET or None)
         start, end = form.range_or_default()
 
-        current = summarise(self.request.user, start, end)
-        previous = summarise(self.request.user, *previous_period(start, end))
+        user = self.request.user
+        previous_start, previous_end = previous_period(start, end)
+
+        # The aggregation is three queries over every expense in the range,
+        # run on every page view, and it changes only when the user writes.
+        current = cached_summary(user, start, end, lambda: summarise(user, start, end))
+        previous = cached_summary(
+            user,
+            previous_start,
+            previous_end,
+            lambda: summarise(user, previous_start, previous_end),
+        )
 
         context.update(
             form=form,
@@ -309,6 +320,7 @@ class ExpenseCreateView(OwnerScopedMixin, ItemFormSetMixin, OwnerFormMixin, Crea
         # so the message is queued before the transaction that writes the
         # items. Django only flushes messages when the response is rendered,
         # so a rollback below still discards it.
+        bump_version(self.request.user.pk)
         messages.success(self.request, "Expense added.")
         return super().form_valid(form)
 
@@ -320,6 +332,7 @@ class ExpenseUpdateView(OwnerScopedMixin, ItemFormSetMixin, OwnerFormMixin, Upda
     success_url = reverse_lazy("expenses:expense_list")
 
     def form_valid(self, form):
+        bump_version(self.request.user.pk)
         messages.success(self.request, "Expense updated.")
         return super().form_valid(form)
 
@@ -329,6 +342,7 @@ class ExpenseDeleteView(OwnerScopedMixin, DeleteView):
     success_url = reverse_lazy("expenses:expense_list")
 
     def form_valid(self, form):
+        bump_version(self.request.user.pk)
         messages.success(self.request, "Expense deleted.")
         return super().form_valid(form)
 

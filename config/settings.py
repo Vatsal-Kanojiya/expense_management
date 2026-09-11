@@ -376,3 +376,17 @@ REST_FRAMEWORK = {
     "DEFAULT_VERSION": "v1",
     "ALLOWED_VERSIONS": ["v1"],
 }
+
+
+# Cache
+# LocMemCache by default so a fresh clone runs with no Redis. It is
+# per-process, so it is also *wrong* under gunicorn with three workers --
+# each would hold its own copy and a version bump in one would not reach the
+# others. That is fine for development and a real bug in production, which
+# is why compose sets CACHE_URL.
+CACHES = {
+    "default": env.cache_url(
+        "CACHE_URL",
+        default="locmemcache://expense-tracker",
+    )
+}

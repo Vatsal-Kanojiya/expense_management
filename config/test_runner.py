@@ -43,6 +43,14 @@ class FastTestRunner(DiscoverRunner):
 
     Measured on this suite: 3.6s before phase 11, 14.6s with WhiteNoise
     unmodified, 3.9s with these swaps.
+
+    The fourth swap is the cache, and it is about correctness rather than
+    speed. Django does not clear the cache between tests, so a cached
+    dashboard survives into the next test and makes its query count wrong
+    -- which is exactly how phase 14 broke an unrelated assertion. Caching
+    is therefore off by default and tests that are *about* the cache turn
+    it back on with override_settings. A test that caches by accident is a
+    test that passes for a reason nobody chose.
     """
 
     def setup_test_environment(self, **kwargs):
@@ -53,3 +61,4 @@ class FastTestRunner(DiscoverRunner):
             "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
         }
         settings.STATIC_ROOT = tempfile.mkdtemp(prefix="test-static-")
+        settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}

@@ -4,6 +4,7 @@ from django.db.models import Prefetch
 from rest_framework import viewsets
 from rest_framework.permissions import BasePermission, IsAuthenticated
 
+from expenses.cache import bump_version
 from expenses.models import Category, Expense, ExpenseItem, Participant
 
 from .serializers import CategorySerializer, ExpenseSerializer, ParticipantSerializer
@@ -41,6 +42,15 @@ class OwnerScopedViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+        bump_version(self.request.user.pk)
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        bump_version(self.request.user.pk)
+
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
+        bump_version(self.request.user.pk)
 
 
 class CategoryViewSet(OwnerScopedViewSet):
