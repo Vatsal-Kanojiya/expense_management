@@ -301,6 +301,69 @@ cursor bug fails `TransactionTestCase` only.
 
 ---
 
+### Session 10 — Phase 9: ORM depth → tag `phase-9-orm`
+
+| Commit | Message |
+|---|---|
+| `70a8389` | `perf(expenses): prefetch splits and search across relations` |
+| `f043804` | `feat(expenses): annotate categories with their last spend and audit splits` |
+
+**One join, three different bugs.** Searching across items and participants crosses a
+multi-valued relation, and that single fact breaks three things in three different ways. This is
+the phase's whole lesson.
+
+| Symptom | Why | Fix |
+|---|---|---|
+| One expense listed twice | The join produces a row per matching child | `.distinct()` |
+| Total reports 1800 for a 900 expense | `Sum()` consumed the duplicate rows before DISTINCT could remove them | Aggregate over the distinct set of **pks**, via a subquery |
+| A query per row rendering "shared with" | `select_related` cannot follow a multi-valued relation | Nested `Prefetch` |
+
+The middle one is the dangerous one: **`.distinct()` does not fix an aggregate.** DISTINCT removes
+duplicate rows from a result set; the aggregate has already eaten them. And the failure returns a
+*plausible wrong number*, not an error, so nothing tells you it happened.
+
+**`select_related` vs `prefetch_related`, stated once properly.** Forward FK or one-to-one →
+`select_related`, one query, a JOIN widens the row. Multi-valued (reverse FK, M2M) →
+`prefetch_related`, a second query, because a JOIN would *multiply* rows instead of widening them.
+The expense list uses both: `select_related("category")`, `prefetch_related("participants", ...)`.
+
+**Nested prefetches are skipped when the parent set is empty**, so the pinned query count depends
+on the data. `test_views` pins 8 for un-itemised rows, `test_orm` pins 10 for itemised ones. Worth
+knowing before reading a changed count as a regression.
+
+**Subquery, because no aggregate can do it.** The category list shows "last spend: ₹120 on 1 Mar".
+`Max("expenses__spent_on")` gives the latest date and `Max("expenses__amount")` gives the largest
+amount — pair them and you print a combination *that never happened*. `Subquery` selects one row
+and reads fields off it; `OuterRef("pk")` is the correlation that ties it to the row being
+annotated. Note a Subquery **inherits no scoping** from the queryset it annotates.
+
+**Filtering on an annotation is not the same as filtering on the relation again.**
+`.filter(items__isnull=False)` after `.annotate(Sum("items__amount"))` adds a *second join*, which
+multiplied rows and made every un-itemised expense report as broken. `Sum` over no rows is NULL, so
+`.filter(items_total__isnull=True)` already answers the question with no extra join. This was a
+real bug in this phase, caught by a test.
+
+**`F()` is how a comparison stays in the database.** `exclude(items_total=F("amount"))` compares two
+columns row by row. Without `F`, the right-hand side would be a Python value, and there is no
+Python value that means "this row's amount".
+
+**`only()` / `defer()` can create the N+1 they exist to avoid.** A deferred field is lazy, not
+missing: touching it re-queries that one row. `values()` has no such trap, because a dict has
+nothing to lazily re-populate.
+
+**`exists()` vs `count()` vs truthiness.** All one query. `EXISTS` can stop at the first match;
+`COUNT(*)` must scan. `if queryset:` evaluates and *caches* every row, which is a bargain when the
+next line iterates and pure waste when you only wanted yes-or-no.
+
+**`check_splits` is the other half of phase 8's trade.** An invariant moved into a form because no
+`CheckConstraint` can span rows is an invariant the database cannot hold — so the admin, a shell
+session, a data migration, or any earlier version of the code can violate it silently. A rule
+enforced at one entry point needs a way to audit the rows at rest.
+
+**Suite:** 266 tests, green under both `DEBUG=True` and the CI environment.
+
+---
+
 ### Session 9 — Phase 8: split expenses → tag `phase-8-splitting`
 
 | Commit | Message |
