@@ -301,6 +301,48 @@ cursor bug fails `TransactionTestCase` only.
 
 ---
 
+### Session 9 — Phase 8: split expenses → *in progress*
+
+**Resume here.** The data layer and the arithmetic are done, committed and green. What is left is
+the UI layer, which was not reached before the session ended.
+
+| Commit | Message | State |
+|---|---|---|
+| `fa01f02` | `feat(expenses): add participants, line items and item shares` | ✅ models + migration `0003` |
+| `5e45bcb` | `feat(expenses): split money without losing any` | ✅ `splitting.allocate()` |
+| — | `feat(expenses): add participant CRUD` | ⬜ **next** |
+| — | `feat(expenses): split an expense evenly` | ⬜ form field must be scoped |
+| — | `feat(expenses): add line items` | ⬜ `inlineformset_factory` |
+| — | `feat(expenses): show per-participant balances` | ⬜ |
+
+**Done so far, and why each choice:**
+
+| Decision | Rejected alternative | Reason |
+|---|---|---|
+| Participants are plain rows, not `User` | Real accounts, invitations | No second tenancy model. "Rahul" in two users' lists are unrelated rows |
+| `ItemShare` stores a **weight** | Storing each share as money | Money drifts. Change one share and every sibling needs re-deriving, and the parts stop summing to the item |
+| No `split_mode` field | A stored enum | Derivable from the rows. A stored copy is a second source of truth that can disagree |
+| `ItemShare.participant` is `PROTECT` | `CASCADE` | Deleting someone from a past bill would leave that item charged to nobody |
+| Items-sum-to-total is **not** a DB constraint | A `CheckConstraint` | It cannot see across sibling rows. The rule belongs to the formset's `clean()` plus a transaction |
+
+**The asymmetry worth remembering:** `Expense.participants` has no through model, so Django
+generates the join table and **hard-codes CASCADE** — there is no `on_delete` to pass. Deleting a
+participant silently drops their even-split rows while `ItemShare` refuses. *The moment a
+relationship needs a payload or a delete policy of its own, it has to become a real model.* Both
+behaviours are asserted in `test_splits.py` rather than assumed.
+
+**The arithmetic, because it is the part that must be exactly right.** `100.00` split three ways is
+`33.333...` each. Rounding each share independently fails in both directions: half-up gives `99.99`
+and loses a paisa, up gives `100.02` and invents money. Neither is visible on one bill and both
+accumulate. `allocate()` uses the **largest remainder method** — floor every share to the paisa,
+then hand the leftover paisas to whoever was rounded down hardest, ties going to the earlier
+position so it is reproducible. The test asserts the *property* (parts reconstitute the whole)
+across a grid of totals and weightings, not one lucky example.
+
+**Suite:** 197 tests, green under both `DEBUG=True` and the CI environment.
+
+---
+
 ### Session 8 — Phase 7: production readiness → tag `phase-7-production`
 
 | Commit | Message |
