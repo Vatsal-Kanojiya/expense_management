@@ -128,3 +128,50 @@ layer and pure logic land before the UI means an interrupted phase leaves a
 working, tested foundation rather than a half-wired feature. The build log
 block exists so a session starting with no memory of this one can pick up
 without re-deriving the decisions.
+
+## Session 12 — phase 11
+
+### D9. Settings stay in one file; no base/dev/prod split
+
+**Decided:** `config/settings.py` remains a single env-driven module.
+COMMIT_PLAN listed 11.2 as `chore(config): split settings into base/dev/prod`,
+closing known issue 7. That commit was not made.
+
+**Why the plan changed:** the split solves a problem this project does not
+have. Its purpose is to vary configuration per environment, and every setting
+that varies here already does so through `django-environ`, proven across three
+environments at once — local development, CI, and now a container. Splitting
+would add three files and an import graph without adding a single capability,
+and it would fragment the settings ledger in BUILD_LOG §3, which is currently
+one table anyone can read top to bottom.
+
+Single-module-plus-environment is also the 12-factor answer and what most
+recent Django projects do. The split is the older convention, not the better
+one.
+
+**What is genuinely lost:** nothing operationally. For interview purposes the
+split is a common talking point, so it is worth being able to describe: `base.py`
+holds the shared settings, `dev.py` and `prod.py` import `*` from it and
+override, and `DJANGO_SETTINGS_MODULE` selects one.
+
+**Reverse it if:** the environments stop differing only by values — if
+production needs different `INSTALLED_APPS` or a different middleware chain,
+`if` statements in one file become worse than two files.
+
+**Issue 7 is therefore closed as "won't do", not fixed.** Issue 14's Docker half
+is genuinely done.
+
+### D10. The test runner swaps three settings, not one
+
+**Decided:** `FastTestRunner` now overrides `STORAGES` and `STATIC_ROOT`
+alongside `PASSWORD_HASHERS`.
+
+**Why:** WhiteNoise indexes every collected static file when the middleware is
+constructed, and the test client builds a handler per client instance, so the
+suite rescanned hundreds of files hundreds of times. Measured: 3.6s before
+phase 11, 14.6s after, 3.7s with the swaps.
+
+**Alternative:** drop `WhiteNoiseMiddleware` from `MIDDLEWARE` during tests.
+Faster still, and it would make the middleware-ordering assertion test nothing.
+Pointing `STATIC_ROOT` at an empty temporary directory keeps the middleware in
+the chain in its real position while making the scan free.

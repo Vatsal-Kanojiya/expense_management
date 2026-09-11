@@ -1,0 +1,21 @@
+# Everything here would otherwise be copied into the build context and into
+# the image. The venv is the expensive one -- it is both large and wrong,
+# since it was built against the host's Python, not the image's.
+.venv/
+__pycache__/
+*.pyc
+.git/
+.github/
+.ruff_cache/
+.coverage
+htmlcov/
+staticfiles/
+media/
+db.sqlite3
+
+# Secrets. .env is gitignored; it must be image-ignored too, or the
+# container ships with the developer's local key baked in.
+.env
+
+docs/
+*.md
