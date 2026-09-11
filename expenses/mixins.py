@@ -62,7 +62,15 @@ class ItemFormSetMixin:
     formset_prefix = "items"
 
     def build_formset(self, instance=None, data=None):
-        return self.formset_class(data=data, instance=instance, prefix=self.formset_prefix)
+        return self.formset_class(
+            data=data,
+            instance=instance,
+            prefix=self.formset_prefix,
+            # Reaches every child form. Without it the "shared with" checkboxes
+            # would list every user's people -- the same leak as an unscoped
+            # ModelChoiceField, multiplied by the number of rows.
+            form_kwargs={"user": self.request.user},
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

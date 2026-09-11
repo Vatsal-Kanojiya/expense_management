@@ -16,6 +16,7 @@ urlpatterns = [
     path("exports/", views.ExportListView.as_view(), name="export_list"),
     path("exports/new/", views.ExportCreateView.as_view(), name="export_create"),
     path("exports/<int:pk>/download/", views.ExportDownloadView.as_view(), name="export_download"),
+    path("balances/", views.BalanceView.as_view(), name="balances"),
     path("people/", views.ParticipantListView.as_view(), name="participant_list"),
     path("people/new/", views.ParticipantCreateView.as_view(), name="participant_create"),
     path(
