@@ -72,10 +72,18 @@ class ExpenseForm(forms.ModelForm):
 
     class Meta:
         model = Expense
-        fields = ["category", "amount", "spent_on", "note"]
+        fields = ["category", "amount", "spent_on", "note", "participants"]
         widgets = {
             "spent_on": forms.DateInput(attrs={"type": "date"}),
             "note": forms.TextInput(attrs={"placeholder": "Optional"}),
+            # A multi-select box hides how many are chosen and needs a modifier
+            # key to pick more than one. Checkboxes show the whole set and its
+            # state at a glance, which is what this field is actually for.
+            "participants": forms.CheckboxSelectMultiple,
+        }
+        labels = {"participants": "Split evenly with"}
+        help_texts = {
+            "participants": "Leave empty if this expense is only yours.",
         }
 
     def __init__(self, *args, user=None, **kwargs):
@@ -89,6 +97,14 @@ class ExpenseForm(forms.ModelForm):
         # because ModelChoiceField re-queries it when cleaning the field.
         self.fields["category"].queryset = Category.objects.filter(user=user)
         self.fields["category"].empty_label = "Select a category"
+
+        # Exactly the same trap, one field along. ModelMultipleChoiceField
+        # also defaults to every row in the table, so an unscoped queryset
+        # lists every other user's people and lets a crafted POST attach
+        # them. Third time this bug has been available in this project;
+        # scoping the queryset is the only thing that closes it, because
+        # the field re-queries it when cleaning.
+        self.fields["participants"].queryset = Participant.objects.filter(user=user)
 
     def clean_amount(self):
         amount = self.cleaned_data["amount"]
