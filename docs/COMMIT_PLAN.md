@@ -200,6 +200,10 @@ The phase this whole project exists to demonstrate. See BUILD_LOG §5 for the Ce
 
 ## 2b. The second half — phases 8 to 16
 
+> **All sixteen phases are complete.** Every `⬜` below is now `✅`, and what was *planned* often
+> differs from what was *built* — the deviations are recorded in BUILD_LOG and DECISIONS rather than
+> quietly edited out of this file.
+>
 > Phases 0-7 built a correct Django app. Phases 8-16 are about **depth**: the concepts a reviewer
 > probes at 2-3 years that a CRUD app never forces you to meet.
 >
@@ -233,7 +237,7 @@ teach the API without the behaviour, and the race test would pass for the wrong 
 to land first, and compose is the cheapest way to get it — which is why containerisation, the phase
 that looks most deferrable, sits in the middle.
 
-### Phase 8 — Split expenses 🔜
+### Phase 8 — Split expenses ✅ *(tag `phase-8-splitting`)*
 
 > **The domain change the rest of the half depends on.** An expense can be shared. Participants are
 > plain strings owned by you, **not** `User` rows — no invitations, no account linking, no second
@@ -267,7 +271,7 @@ that looks most deferrable, sits in the middle.
 **Deliberately out of scope:** debt simplification — collapsing "A owes B, B owes C" into minimal
 transfers. It is a graph problem and the point where this stops being bounded. Balances are shown raw.
 
-### Phase 9 — ORM depth ⬜
+### Phase 9 — ORM depth ✅ *(tag `phase-9-orm`)*
 
 | # | Commit | Architecture note |
 |---|---|---|
@@ -279,7 +283,7 @@ transfers. It is a graph problem and the point where this stops being bounded. B
 
 **Tag:** `phase-9-orm` · Also: `F()` comparing two columns, `bulk_create` (and what it skips), `exists()` vs `count()`.
 
-### Phase 10 — Django REST Framework ⬜
+### Phase 10 — Django REST Framework ✅ *(tag `phase-10-api`)*
 
 | # | Commit | Architecture note |
 |---|---|---|
@@ -291,7 +295,7 @@ transfers. It is a graph problem and the point where this stops being bounded. B
 
 **Tag:** `phase-10-api` · Closes nothing, but it is the Tier-1 gap STUDY_MAP §5 flagged.
 
-### Phase 11 — Containerisation ⬜
+### Phase 11 — Containerisation ✅ *(tag `phase-11-docker`)*
 
 | # | Commit | Architecture note |
 |---|---|---|
@@ -302,7 +306,7 @@ transfers. It is a graph problem and the point where this stops being bounded. B
 **Tag:** `phase-11-docker` · **Closes issues 7 and 14.** Also removes the manual Redis and worker
 startup documented in RUNNING_ASYNC.md — one command instead of three terminals.
 
-### Phase 12 — Postgres depth ⬜
+### Phase 12 — Postgres depth ✅ *(tag `phase-12-postgres`)*
 
 | # | Commit | Architecture note |
 |---|---|---|
@@ -313,7 +317,7 @@ startup documented in RUNNING_ASYNC.md — one command instead of three terminal
 
 **Tag:** `phase-12-postgres` · **Closes issues 11 and 17.**
 
-### Phase 13 — Concurrency and transactions ⬜
+### Phase 13 — Concurrency and transactions ✅ *(tag `phase-13-concurrency`)*
 
 | # | Commit | Architecture note |
 |---|---|---|
@@ -324,7 +328,7 @@ startup documented in RUNNING_ASYNC.md — one command instead of three terminal
 
 **Tag:** `phase-13-concurrency` · Also: savepoints, nested `atomic`, the `get_or_create` race.
 
-### Phase 14 — Caching ⬜
+### Phase 14 — Caching ✅ *(tag `phase-14-caching`)*
 
 | # | Commit | Architecture note |
 |---|---|---|
@@ -335,7 +339,7 @@ startup documented in RUNNING_ASYNC.md — one command instead of three terminal
 
 **Tag:** `phase-14-caching` · Also: stampede (`get_or_set` is not atomic), and clearing the cache between tests.
 
-### Phase 15 — Django internals ⬜
+### Phase 15 — Django internals ✅ *(tag `phase-15-internals`)*
 
 | # | Commit | Architecture note |
 |---|---|---|
@@ -346,7 +350,7 @@ startup documented in RUNNING_ASYNC.md — one command instead of three terminal
 
 **Tag:** `phase-15-internals` · **Closes issue 18.**
 
-### Phase 16 — Security hardening ⬜
+### Phase 16 — Security hardening ✅ *(tag `phase-16-hardening`)*
 
 | # | Commit | Architecture note |
 |---|---|---|
