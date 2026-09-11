@@ -864,6 +864,8 @@ interview-gap list.
 | 14 | No Docker | session 12 — `Dockerfile` + `compose.yaml` |
 | 11 | Case-sensitivity mismatch on category names | migration `0004` (session 13) — `UniqueConstraint(Lower("name"), "user")` |
 | 17 | `note__icontains` search will not scale | migration `0005` (session 13) — GIN over `to_tsvector`, Postgres only |
+| 26 | Cache invalidation missed writes that bypassed the app | `post_save` receiver (session 16). Opened and closed within two phases |
+| 18 | No test read rendered HTML beyond template markers | session 16 — `rupees` filter tests assert formatted output, nav badge asserted in context |
 | 7 | Settings not split base/dev/prod | **Closed as won't-do** (session 12). Env injection already varies every setting across local, CI and container. See DECISIONS D9 |
 | 9 | README claimed the app had no login pages | session 8 (stale since `dadf826`) |
 | 22 | `templates/500.html` was unparseable — tags spelled out in an HTML comment | `17134ea` (session 8) |
@@ -877,9 +879,7 @@ interview-gap list.
 | 6 | No superuser (DB was rebuilt) | Can't log in at all — **`LOGIN_URL` is the admin login right now**, so this blocks using the app | `python manage.py createsuperuser` |
 | 15 | No rate limiting on login or password reset | Both endpoints accept unlimited attempts, so credential stuffing and reset-mail flooding are unthrottled. The single biggest remaining auth gap | `django-axes` or `django-ratelimit`. Deliberately not added yet — worth understanding the attack before installing the fix |
 | 16 | No email verification on signup | An account can be registered against an address the user does not control | Send a confirmation link before activating. `django-allauth` bundles this |
-| 18 | No test reads rendered HTML beyond template-syntax markers | `test_templates.py` catches leaks, but nothing checks the page *says the right thing* | Consider a few `assertContains` on key numbers, or a snapshot test |
 | 19 | Generated export files are never deleted | `media/exports/` grows without bound, holding copies of users' financial history indefinitely | A periodic cleanup job removing files older than N days, plus a retention note in any privacy policy |
-| 26 | Cache invalidation is explicit, so writes that bypass the app leave the dashboard stale | `bump_version` is called from the views and the API. The admin, a shell session or a data migration reach none of them, and the dashboard serves the old number until the 15-minute timeout | A `post_save` signal would close it and would make the invalidation invisible at the call site. Phase 15 argues that trade. The timeout is the deliberate backstop meanwhile, and a test asserts the staleness rather than pretending it away |
 | 20 | No worker supervision, monitoring or dead-letter handling | A crashed worker stays down; after `max_retries` a task is simply lost with nothing visible | systemd unit or container for the worker; Flower or event export for monitoring. See RUNNING_ASYNC.md |
 | 21 | `FileResponse` streams exports through Python | Fine in development, wasteful in production | `X-Accel-Redirect` (nginx) or a signed object-storage URL |
 | 25 | Participant deletion is refused once they are on a line item | `ItemShare.participant` is `PROTECT`, so removing someone from your list fails while any item still charges them. The view explains it rather than 500ing, but there is no way to re-share those items in bulk | Same shape as issue 10: an ordered delete, or a bulk re-share action. Deliberately left visible rather than papered over with `CASCADE`, which would leave items charged to nobody |

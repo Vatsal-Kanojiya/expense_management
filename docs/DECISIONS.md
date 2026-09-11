@@ -222,3 +222,47 @@ cache re-enable it with `override_settings`.
 survived into the next test and made its pinned query count wrong — 2 queries
 where 8 were expected — breaking an assertion that had nothing to do with
 caching. A test that caches by accident passes for a reason nobody chose.
+
+## Session 16 — phase 15
+
+### D14. Signals are used exactly once, for cache invalidation
+
+**Decided:** D11 is reversed. `bump_version` is no longer called from the
+views and the API; a `post_save` / `post_delete` receiver in
+`expenses/signals.py` handles every write path at once. Known issue 26 is
+closed.
+
+**Why the reversal:** D11 said "revisit in phase 15 with the trade-off
+already felt", and having felt it, the signal wins for this specific concern.
+Three properties decide it:
+
+1. It is not business logic. Nothing about the meaning of "record an expense"
+   involves a cache.
+2. Forgetting is silent. A missed bump does not raise, fail a test, or look
+   wrong in review. It serves one user a stale number indefinitely.
+3. The write sites are unbounded — views, API, admin, shell, migrations,
+   management commands, Celery tasks. The ORM is the one chokepoint they all
+   share.
+
+**The rule this project settles on:** a signal is right when the concern is
+cross-cutting, invisible by nature, and must not be forgotten. Cache
+invalidation and audit logging qualify. "Create a related row when this one
+is saved" does not — that is business logic hiding from its caller.
+
+**The documented limit:** `bulk_create` and `queryset.update()` do not fire
+signals, because they operate on rows rather than instances. A test asserts
+this rather than leaving it to be discovered.
+
+### D15. The nav badge context processor never computes anything
+
+**Decided:** `nav_summary` reads a cached value and returns nothing on a miss.
+The balances view populates the cache as a side effect of work it already does.
+
+**Why:** the first version walked every expense to count balances. A context
+processor runs on *every* template render, so that added four to six queries
+to every request in the project and broke three pinned query counts. The tax
+arrived exactly on schedule.
+
+**The trade:** the badge is absent until the user visits the balances page
+once. That is the right trade for a decoration — a nav badge is never worth a
+query, let alone six.
