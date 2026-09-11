@@ -45,6 +45,32 @@ def balances(user, start=None, end=None):
     return [(participant, amount) for participant, amount in ranked if amount]
 
 
+def outstanding_balances(user, start=None, end=None):
+    """Balances net of what has already been repaid.
+
+    Kept separate from ``balances`` so the gross figure stays available:
+    "Rahul owed 900 this year and has repaid 750" is two numbers, and
+    collapsing them loses the first.
+    """
+    from django.db.models import Sum
+
+    from .models import Settlement
+
+    repaid = {
+        row["participant"]: row["total"]
+        for row in Settlement.objects.filter(user=user)
+        .values("participant")
+        .annotate(total=Sum("amount"))
+    }
+
+    net = [
+        (participant, amount - repaid.get(participant.pk, Decimal("0")))
+        for participant, amount in balances(user, start, end)
+    ]
+
+    return [(participant, amount) for participant, amount in net if amount > 0]
+
+
 def _expenses(user, start, end):
     """Every expense, with its items, shares and people already loaded.
 

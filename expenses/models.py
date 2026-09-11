@@ -308,3 +308,43 @@ class ItemShare(models.Model):
 
     def __str__(self):
         return f"{self.participant} x{self.weight}"
+
+
+class Settlement(models.Model):
+    """Money a participant has paid back.
+
+    A balance is "what they owe" minus "what they have repaid". Storing the
+    repayments rather than a running balance column is deliberate: a
+    denormalised total is a second source of truth that drifts, and the
+    expenses it derives from are already immutable history.
+
+    The cost is that settling is a read-then-write, which is exactly the
+    shape that races. See ``settlements.settle_up``.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="settlements",
+    )
+    participant = models.ForeignKey(
+        Participant,
+        on_delete=models.CASCADE,
+        related_name="settlements",
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    settled_at = models.DateTimeField(auto_now_add=True)
+    note = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["-settled_at", "-id"]
+        indexes = [models.Index(fields=["user", "participant"])]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0),
+                name="settlement_amount_positive",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.participant} settled {self.amount}"

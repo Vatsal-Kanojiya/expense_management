@@ -17,18 +17,25 @@
   {% if balances %}
     <table>
       <thead>
-        <tr><th>Person</th><th class="num">Owes you</th></tr>
+        <tr><th>Person</th><th class="num">Owes you</th><th></th></tr>
       </thead>
       <tbody>
         {% for participant, amount in balances %}
           <tr>
             <td>{{ participant.name }}</td>
             <td class="num">{{ amount }}</td>
+            <td>
+              {# POST, not a link: this one writes money. #}
+              <form method="post" action="{% url 'expenses:settle_up' participant.pk %}">
+                {% csrf_token %}
+                <button class="btn" type="submit">Settle up</button>
+              </form>
+            </td>
           </tr>
         {% endfor %}
       </tbody>
       <tfoot>
-        <tr><th>Total</th><th class="num">{{ total }}</th></tr>
+        <tr><th>Total</th><th class="num">{{ total }}</th><th></th></tr>
       </tfoot>
     </table>
     <p class="muted">
