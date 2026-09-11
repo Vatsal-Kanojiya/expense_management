@@ -1,4 +1,5 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
 
 
 class OwnerScopedMixin(LoginRequiredMixin):
@@ -38,3 +39,48 @@ class OwnerFormMixin:
         # ownership, server-side, from the session.
         form.instance.user = self.request.user
         return super().form_valid(form)
+
+
+class ItemFormSetMixin:
+    """Save an expense and its line items as one unit.
+
+    Two things make this more than boilerplate.
+
+    **Ordering.** A child row needs its parent's primary key, so the parent
+    must be saved first. But the formset's validation needs the parent's
+    *amount* to check the sum, and that amount only exists on an unsaved
+    instance at that point. So the formset is validated against the unsaved
+    parent and saved against the saved one.
+
+    **Atomicity.** Because the parent is written before the children, a
+    failure between the two would leave an expense whose items do not add up
+    -- exactly the state the invariant exists to prevent. The transaction is
+    what makes the rule hold at rest, not just at submit time.
+    """
+
+    formset_class = None
+    formset_prefix = "items"
+
+    def build_formset(self, instance=None, data=None):
+        return self.formset_class(data=data, instance=instance, prefix=self.formset_prefix)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # setdefault, not assignment: form_invalid re-renders with a bound
+        # formset that already carries its errors, and overwriting it here
+        # would silently discard them.
+        context.setdefault("formset", self.build_formset(instance=self.object))
+        return context
+
+    def form_valid(self, form):
+        formset = self.build_formset(instance=form.instance, data=self.request.POST)
+
+        if not formset.is_valid():
+            return self.render_to_response(self.get_context_data(form=form, formset=formset))
+
+        with transaction.atomic():
+            response = super().form_valid(form)
+            formset.instance = self.object
+            formset.save()
+
+        return response

@@ -13,6 +13,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from expenses.models import Category, Expense
+from expenses.tests.helpers import item_formset
 
 User = get_user_model()
 
@@ -180,6 +181,7 @@ class ExpenseViewTests(TestCase):
                 "amount": "25.00",
                 "spent_on": "2026-09-05",
                 "note": "Dinner",
+                **item_formset(),
             },
         )
 
@@ -196,6 +198,7 @@ class ExpenseViewTests(TestCase):
                 "amount": "99.00",
                 "spent_on": "2026-09-01",
                 "note": "",
+                **item_formset(),
             },
         )
 

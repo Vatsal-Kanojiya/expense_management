@@ -1,6 +1,9 @@
-from django import forms
+from decimal import Decimal
 
-from .models import Category, Expense, Participant
+from django import forms
+from django.forms import BaseInlineFormSet, inlineformset_factory
+
+from .models import Category, Expense, ExpenseItem, Participant
 
 
 class CategoryForm(forms.ModelForm):
@@ -116,3 +119,67 @@ class ExpenseForm(forms.ModelForm):
             raise forms.ValidationError("Amount must be greater than zero.")
 
         return amount
+
+
+class BaseExpenseItemFormSet(BaseInlineFormSet):
+    """Line items, and the invariant the database cannot hold.
+
+    ``CheckConstraint`` works within one row. "These children must sum to
+    their parent's amount" spans rows, so no constraint can express it and it
+    has to live here, backed by a transaction so a half-written split is
+    never committed.
+
+    That is the honest version of a rule people often try to push into the
+    schema. The database still guarantees what it can -- every item costs
+    something, every share has a positive weight -- and the form guarantees
+    what the database cannot see.
+    """
+
+    def clean(self):
+        super().clean()
+
+        # If individual forms already failed, the totals are meaningless and
+        # a second error about them would only add noise.
+        if any(self.errors):
+            return
+
+        items = [
+            form.cleaned_data
+            for form in self.forms
+            if form.cleaned_data and not form.cleaned_data.get("DELETE")
+        ]
+
+        # Itemising is optional. An expense with no items is either yours
+        # alone or an even split, both of which are valid.
+        if not items:
+            return
+
+        total = sum((item["amount"] for item in items), Decimal("0"))
+        expected = self.instance.amount
+
+        # None when the parent form failed its own validation.
+        if expected is None:
+            return
+
+        if total != expected:
+            difference = abs(total - expected)
+            raise forms.ValidationError(
+                f"The items add up to {total}, but the expense is {expected}. "
+                f"That is {difference} out. Add a line for the difference, or "
+                f"correct the amounts.",
+                code="items_do_not_sum",
+            )
+
+
+ExpenseItemFormSet = inlineformset_factory(
+    Expense,
+    ExpenseItem,
+    formset=BaseExpenseItemFormSet,
+    fields=["name", "amount"],
+    widgets={
+        "name": forms.TextInput(attrs={"placeholder": "What was it?"}),
+        "amount": forms.NumberInput(attrs={"step": "0.01", "placeholder": "0.00"}),
+    },
+    extra=3,
+    can_delete=True,
+)

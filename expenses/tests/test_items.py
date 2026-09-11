@@ -1,0 +1,168 @@
+"""Line items, the invariant no constraint can express, and atomicity.
+
+The rule under test is "the items of an expense must sum to that expense's
+amount". It spans rows, so a CheckConstraint cannot hold it. These tests
+cover both halves of the answer: the formset refuses it at submit time, and
+the transaction stops a half-written split existing at rest.
+"""
+
+from decimal import Decimal
+
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.urls import reverse
+
+from expenses.models import Category, Expense, ExpenseItem
+from expenses.tests.helpers import item_formset
+
+User = get_user_model()
+
+
+class ItemFormSetTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user(
+            "alice", email="alice@example.com", password="pw12345!"
+        )
+        cls.category = Category.objects.create(user=cls.alice, name="Food")
+
+    def setUp(self):
+        self.client.force_login(self.alice)
+
+    def _post(self, amount="900.00", items=(), initial=0, url=None):
+        return self.client.post(
+            url or reverse("expenses:expense_create"),
+            {
+                "category": self.category.pk,
+                "amount": amount,
+                "spent_on": "2026-01-15",
+                "note": "",
+                **item_formset(*items, initial=initial),
+            },
+        )
+
+    def test_an_expense_can_be_itemised(self):
+        self._post(items=[("Pizza", "600.00"), ("Coke", "300.00")])
+
+        expense = Expense.objects.get()
+        self.assertEqual(expense.items.count(), 2)
+        self.assertEqual(expense.items.first().name, "Pizza")
+
+    def test_items_that_do_not_sum_are_refused(self):
+        response = self._post(items=[("Pizza", "600.00"), ("Coke", "200.00")])
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "add up to 800.00")
+        self.assertContains(response, "100.00 out")
+
+    def test_nothing_is_written_when_the_items_do_not_sum(self):
+        # The half that matters. The parent is saved before its children, so
+        # without the transaction this would leave an expense whose items do
+        # not add up -- exactly the state the rule exists to prevent.
+        self._post(items=[("Pizza", "600.00"), ("Coke", "200.00")])
+
+        self.assertEqual(Expense.objects.count(), 0)
+        self.assertEqual(ExpenseItem.objects.count(), 0)
+
+    def test_itemising_is_optional(self):
+        self._post(items=[])
+
+        self.assertEqual(Expense.objects.get().items.count(), 0)
+
+    def test_an_item_must_cost_something(self):
+        response = self._post(items=[("Free", "0.00")])
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Expense.objects.count(), 0)
+
+    def test_items_can_be_edited(self):
+        self._post(items=[("Pizza", "900.00")])
+        expense = Expense.objects.get()
+        item = expense.items.get()
+
+        self.client.post(
+            reverse("expenses:expense_update", args=[expense.pk]),
+            {
+                "category": self.category.pk,
+                "amount": "900.00",
+                "spent_on": "2026-01-15",
+                "note": "",
+                "items-TOTAL_FORMS": "1",
+                "items-INITIAL_FORMS": "1",
+                "items-MIN_NUM_FORMS": "0",
+                "items-MAX_NUM_FORMS": "1000",
+                # Without this id the edit becomes an insert and the totals
+                # double. This is why the template renders {{ form.id }}.
+                "items-0-id": str(item.pk),
+                "items-0-name": "Large pizza",
+                "items-0-amount": "900.00",
+            },
+        )
+
+        self.assertEqual(expense.items.get().name, "Large pizza")
+        self.assertEqual(expense.items.count(), 1)
+
+    def test_an_item_can_be_deleted_if_the_rest_still_sums(self):
+        self._post(amount="900.00", items=[("Pizza", "600.00"), ("Coke", "300.00")])
+        expense = Expense.objects.get()
+        pizza, coke = expense.items.all()
+
+        self.client.post(
+            reverse("expenses:expense_update", args=[expense.pk]),
+            {
+                "category": self.category.pk,
+                "amount": "600.00",
+                "spent_on": "2026-01-15",
+                "note": "",
+                "items-TOTAL_FORMS": "2",
+                "items-INITIAL_FORMS": "2",
+                "items-MIN_NUM_FORMS": "0",
+                "items-MAX_NUM_FORMS": "1000",
+                "items-0-id": str(pizza.pk),
+                "items-0-name": pizza.name,
+                "items-0-amount": "600.00",
+                "items-1-id": str(coke.pk),
+                "items-1-name": coke.name,
+                "items-1-amount": "300.00",
+                "items-1-DELETE": "on",
+            },
+        )
+
+        self.assertEqual(expense.items.count(), 1)
+        self.assertEqual(expense.items.get().name, "Pizza")
+
+    def test_a_deleted_row_is_excluded_from_the_sum(self):
+        # If DELETE were ignored, this would be rejected as 900 against 600.
+        self._post(amount="900.00", items=[("Pizza", "900.00")])
+
+        self.assertEqual(Expense.objects.count(), 1)
+
+    def test_a_missing_management_form_rejects_the_whole_post(self):
+        """The trap that makes a valid-looking POST fail.
+
+        Django cannot tell how many child forms came back without the
+        management form, so it refuses the submission entirely. In a browser
+        that means someone deleted ``{{ formset.management_form }}`` from the
+        template; in a test it means the helper was not used.
+        """
+        response = self.client.post(
+            reverse("expenses:expense_create"),
+            {
+                "category": self.category.pk,
+                "amount": "900.00",
+                "spent_on": "2026-01-15",
+                "note": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Expense.objects.count(), 0)
+
+    def test_the_sum_is_compared_exactly_not_approximately(self):
+        # Decimal, not float. 0.1 + 0.2 != 0.3 in binary floating point, and
+        # money that is "close enough" is money that is wrong.
+        response = self._post(amount="0.30", items=[("A", "0.10"), ("B", "0.20")])
+
+        self.assertEqual(Expense.objects.count(), 1)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(sum(i.amount for i in Expense.objects.get().items.all()), Decimal("0.30"))
