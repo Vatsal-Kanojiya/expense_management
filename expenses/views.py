@@ -18,11 +18,12 @@ from django.views.generic import (
     UpdateView,
 )
 
-from .balances import balances
+from .balances import balances, outstanding_balances
 from .filters import DateRangeForm, ExpenseFilterForm
 from .forms import CategoryForm, ExpenseForm, ExpenseItemFormSet, ParticipantForm
 from .mixins import ItemFormSetMixin, OwnerFormMixin, OwnerScopedMixin
 from .models import Category, Expense, ExpenseItem, ExportJob, Participant
+from .settlements import settle_up
 from .summaries import previous_period, summarise
 from .tasks import build_expense_export
 
@@ -146,16 +147,43 @@ class BalanceView(LoginRequiredMixin, TemplateView):
 
         form = DateRangeForm(self.request.GET or None)
         start, end = form.range_or_default()
-        owed = balances(self.request.user, start, end)
+        gross = balances(self.request.user, start, end)
+        net = outstanding_balances(self.request.user, start, end)
 
         context.update(
             form=form,
             start=start,
             end=end,
-            balances=owed,
-            total=sum((amount for _, amount in owed), Decimal("0")),
+            balances=net,
+            gross=dict(gross),
+            total=sum((amount for _, amount in net), Decimal("0")),
         )
         return context
+
+
+class SettleUpView(LoginRequiredMixin, View):
+    """Record that a participant has repaid what they owe.
+
+    POST only. A GET that writes could be triggered by a link prefetch or
+    an <img> tag, and this one writes money.
+    """
+
+    def post(self, request, pk, *args, **kwargs):
+        try:
+            settlement = settle_up(request.user, pk)
+        except Participant.DoesNotExist as exc:
+            # Someone else's participant is a 404, matching every other
+            # detail-bound view rather than confirming the row exists.
+            raise Http404("No such person.") from exc
+
+        if settlement is None:
+            messages.info(request, "Nothing outstanding.")
+        else:
+            messages.success(
+                request, f"Recorded {settlement.amount} back from {settlement.participant}."
+            )
+
+        return redirect("expenses:balances")
 
 
 class ParticipantListView(OwnerScopedMixin, ListView):
