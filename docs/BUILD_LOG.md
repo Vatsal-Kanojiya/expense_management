@@ -301,6 +301,164 @@ cursor bug fails `TransactionTestCase` only.
 
 ---
 
+### Sessions 12-17 — Phases 11 to 16
+
+Six phases in one working block. Each is tagged; `git log --oneline phase-10-api..phase-16-hardening`
+is the commit-level view. What follows is the part worth re-reading.
+
+#### Phase 11 — containerisation → `phase-11-docker`
+
+One command replaces three terminals and a hand-started Redis. **Postgres arriving here is what
+makes phase 13 possible at all**, which is why the phase that looks most deferrable sits in the
+middle of the plan.
+
+Three things that are load-bearing rather than boilerplate:
+
+* **Healthchecks.** `depends_on` waits for a *container* to start, not for Postgres to accept
+  connections. Without `condition: service_healthy` the web container races the database on every
+  cold start.
+* **Exactly one service runs `migrate`.** Two containers migrating at once is a race.
+* **`collectstatic` at build time.** Every replica would otherwise repeat it, and a start-up that
+  writes into the image fails on a read-only filesystem.
+
+**WhiteNoise cost the test suite 11 seconds** before anyone noticed. It indexes every collected file
+when the middleware is constructed, and the test client builds a handler per client instance, so the
+suite rescanned hundreds of files hundreds of times. `FastTestRunner` now points `STATIC_ROOT` at an
+empty temp directory, which keeps the middleware in the chain in its real position while making the
+scan free. 3.6s → 14.6s → 3.7s.
+
+**Settings were deliberately not split** into base/dev/prod. Issue 7 is closed as won't-do, not
+fixed — see DECISIONS D9.
+
+#### Phase 12 — Postgres depth → `phase-12-postgres`
+
+**Closes issues 11 and 17, both open since session 3.**
+
+`UniqueConstraint(Lower("name"), "user")` finally makes the database agree with `clean_name`. The
+mismatch mattered more each phase: by now the ORM, the shell, the admin **and the API** could each
+create `Food` beside `food` while the form refused. A model test that had asserted the mismatch for
+six sessions now asserts the opposite.
+
+The GIN index over `to_tsvector('english', note)` exists **on one backend only**, so
+`ExpenseFilterForm` branches on `connection.vendor`. That branch is the honest cost of an index one
+backend cannot have. The index is created by `RunPython`, not declared in `Meta`, because a
+`GinIndex` on the model would be attempted on SQLite and fail to migrate.
+
+> **The silent failure worth knowing:** `to_tsvector(note)` and `to_tsvector('english', note)` are
+> *different expressions*. An index on one is invisible to the other, the query still returns
+> correct results, and nothing says the index was skipped. A test reads the definition back out of
+> `pg_indexes`.
+
+**Full-text search is a trade, not a win.** It matches whole words and their stems, so `dinners`
+now finds `dinner` and `inn` no longer does. Searching for a fragment is exactly what someone does
+when they half-remember a note. Tests assert both directions.
+
+**Composite index column order:** equality columns first, range column last. An index is usable only
+up to and including the first range predicate, so `(user, category, spent_on)` serves the list view
+and `(user, spent_on, category)` would not use the category equality at all.
+
+#### Phase 13 — concurrency → `phase-13-concurrency`
+
+Settling a balance is a read-then-write, the canonical lost update. Two requests read 150
+outstanding, both write a settlement, and a 150 debt is repaid 300. **No constraint could catch it** —
+two genuine settlements of the same amount on the same day are perfectly legal.
+
+`select_for_update` on the participant row is the fix. The row is not modified; it is the lock,
+because the thing needing protection is a number derived from four tables and has no row of its own.
+
+> **The race test was verified in both directions.** With the lock: one settlement of 150. With the
+> line deleted: 300 repaid, and the test fails. *A concurrency test that has never been seen to fail
+> is not evidence of anything.*
+
+`TransactionTestCase`, not `TestCase` — the latter rolls back per test, so a second thread could
+never see the first's committed rows. Same trap as the phase 6 digest bug, different costume.
+
+**The savepoint rule, corrected.** I first wrote a test asserting that catching an exception outside
+an inner `atomic()` poisons the outer block. It does not — that block *is* a savepoint and has
+already rolled back cleanly. What poisons a transaction is catching a **database** error with no
+savepoint between it and the outer block. That is why every constraint test here reads
+`with self.assertRaises(IntegrityError), transaction.atomic():` — the `atomic()` is the savepoint,
+not decoration.
+
+#### Phase 14 — caching → `phase-14-caching`
+
+**`@cache_page` on the dashboard is a data breach.** It keys on the URL and nothing else, so every
+signed-in user requesting `/` is served whatever the first one put there. There is a test that
+builds it, demonstrates one user receiving another's page (*the view never runs for the second
+user*), and rejects it.
+
+Keys carry user id + date range + a **version stamp**. Invalidation bumps the stamp rather than
+deleting keys, because deleting the right ones would mean knowing every date range anyone has ever
+viewed. `cache.incr` is atomic on Redis.
+
+**Caching is off in tests by default.** Django does not clear the cache between tests, and a cached
+dashboard survived into an unrelated test and made its pinned query count wrong — 2 queries where 8
+were expected. A test that caches by accident passes for a reason nobody chose.
+
+LocMemCache is the default so a fresh clone runs with no Redis. It is per-process, which makes it
+**wrong under gunicorn with three workers**: each holds its own copy and a bump in one never reaches
+the others. Compose sets a third Redis database index, separate from broker and result backend, so
+flushing the cache cannot take the queue.
+
+#### Phase 15 — Django internals → `phase-15-internals`
+
+**The context processor is the cautionary tale of this phase.** Its first version counted balances,
+which walks every expense. A context processor runs on *every* template render, so that added four
+to six queries to every request in the project and broke three pinned query counts. It now only ever
+reads a cached value; the balances page populates it as a side effect of work it already does. The
+badge is absent until that page is visited once, which is the right price for a decoration.
+
+**Signals: used exactly once, and the reversal is the interesting part.** Phase 14 invalidated
+explicitly and shipped the gap as issue 26, with a test asserting the staleness. Phase 15 closed it
+with a `post_save` receiver.
+
+> **The rule this project settles on:** a signal is right when the concern is *cross-cutting*,
+> *invisible by nature*, and *must not be forgotten*. Cache invalidation and audit logging qualify.
+> "Create a related row when this one is saved" does not — that is business logic hiding from its
+> caller.
+
+Three properties decided it: it is not business logic, forgetting is silent, and the write sites are
+unbounded (views, API, admin, shell, migrations, commands, tasks) while the ORM is the one
+chokepoint they share. **`bulk_create` fires no signal** — it operates on rows, not instances — and a
+test asserts that limit rather than leaving it to be discovered.
+
+Request ids use `ContextVar`, not `threading.local`: under ASGI one thread interleaves many
+requests, and a thread-local would leak one request's id into another's log lines.
+
+#### Phase 16 — security hardening → `phase-16-hardening`
+
+**Closes issues 10, 15, 16 and 19** — the four longest-open in the log.
+
+| Issue | Open since | Closed by |
+|---|---|---|
+| 15 — no rate limiting | session 5 | Cache-backed limiter keyed on (address, identifier) |
+| 16 — no email verification | session 5 | Inactive user + signed link, no new model |
+| 10 — account deletion raised | session 4 | Ordered delete, protection kept intact |
+| 19 — exports never deleted | session 7 | `purge_exports` command + beat schedule |
+
+**Rate limiting is hand-written because the keying decision is the whole design**, and a library
+hides it: by address alone, one office behind one NAT is one blocked building; by username alone, an
+attacker locks any account out of its own login for free. What it does *not* do is written in the
+module — it does not stop a distributed attack, and its fixed window allows up to 2× the limit
+across a boundary.
+
+**Email verification adds no model and no column.** Django's `PasswordResetTokenGenerator` is
+subclassed with `is_active` mixed into the hash, so the link self-invalidates on use with nothing
+stored. Subclassing (rather than reusing) stops a verification link being replayed as a reset link.
+
+**Account deletion stays ordered rather than changing an `on_delete`.** `CASCADE` would remove the
+protection that stops a category being deleted out from under a year of expenses; `SET_NULL` would
+make the column nullable so every query and template handles a category-less expense forever, to
+solve a problem that happens once per account. The test asserting that plain `user.delete()` *still*
+raises is kept so nobody deletes this module as redundant.
+
+**A template I wrote in this phase tripped the multi-line `{# #}` check.** Third time that gap has
+drawn blood here. The test caught it, which is the system working.
+
+**Suite:** 357 tests, green on SQLite, Postgres 16, the CI environment and real Redis.
+
+---
+
 ### Session 11 — Phase 10: REST API → tag `phase-10-api`
 
 | Commit | Message |
