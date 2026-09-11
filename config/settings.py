@@ -215,3 +215,100 @@ CELERY_TASK_EAGER_PROPAGATES = True
 # Media files (generated exports)
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+
+# Security
+# https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+#
+# Gated on DEBUG because every one of these breaks local development:
+# SSL redirect makes http://localhost unreachable, and secure cookies are
+# not sent over plain HTTP so you cannot stay logged in.
+if not DEBUG:
+    # Send Strict-Transport-Security. Start LOW (a few hours) when first
+    # deploying: browsers cache this, so a wrong value with preload set
+    # makes the domain unreachable over HTTP for up to a year with no way
+    # to take it back.
+    SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=3600)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", default=True)
+    # Deliberately opt-in. Preload submits the domain to a browser-baked
+    # list that is slow and painful to leave.
+    SECURE_HSTS_PRELOAD = env.bool("SECURE_HSTS_PRELOAD", default=False)
+
+    SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
+
+    # Cookies never travel over plain HTTP. Without these, one request on a
+    # hostile network hands over the session.
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # Blocks the cookie from JavaScript, limiting what an XSS can steal.
+    SESSION_COOKIE_HTTPONLY = True
+    # CSRF_COOKIE_HTTPONLY stays False on purpose: it would break any
+    # future JS that has to read the token for an AJAX POST.
+
+    # Lax lets the cookie ride top-level navigations (so following a link
+    # from email keeps you logged in) while blocking cross-site POSTs.
+    SESSION_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SAMESITE = "Lax"
+
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
+    # W021 warns that HSTS preload is off. That is deliberate, not an
+    # oversight: preloading submits the domain to a list baked into browser
+    # binaries, which takes months to undo and breaks any subdomain that
+    # cannot serve HTTPS. It is a decision for a specific deployment, so the
+    # check is silenced with a reason rather than satisfied by flipping a
+    # flag nobody understood.
+    SILENCED_SYSTEM_CHECKS = ["security.W021"]
+    SECURE_REFERRER_POLICY = "same-origin"
+
+    # Behind a reverse proxy, Django sees plain HTTP. Set only when the
+    # proxy is trusted to strip a client-supplied version of this header,
+    # or anyone can forge "I am on HTTPS".
+    if env.bool("USE_X_FORWARDED_PROTO", default=False):
+        SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+
+# Logging
+# The default config only reports to the console when DEBUG is on, so a
+# production exception is silent apart from an email to ADMINS.
+LOGGING = {
+    "version": 1,
+    # Never True: it would kill Django's own error mail and security logging.
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {name} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": env("LOG_LEVEL", default="INFO"),
+    },
+    "loggers": {
+        # Requests that 4xx/5xx. Off by default without an explicit handler.
+        "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        # Suspicious operations, host header attacks, tampered sessions.
+        "django.security": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "expenses": {
+            "handlers": ["console"],
+            "level": env("LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
+    },
+}
