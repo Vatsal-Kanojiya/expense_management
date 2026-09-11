@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from django.conf import settings
 from django.db import models
+from django.db.models.functions import Lower
 
 from .managers import ExpenseQuerySet
 
@@ -20,9 +21,20 @@ class Category(models.Model):
         ordering = ["name"]
         verbose_name_plural = "categories"
         constraints = [
+            # Lower(), so the database finally agrees with the form.
+            #
+            # clean_name has always rejected a duplicate case-insensitively
+            # while the constraint matched exactly, which meant the admin,
+            # the shell and the API could each create "Food" alongside
+            # "food" and the app could not. Known issue 11 from session 3.
+            #
+            # This is a functional index. Postgres and SQLite both support
+            # one; MySQL before 8.0.13 does not, which is the usual reason
+            # people reach for a stored lowercase column instead.
             models.UniqueConstraint(
-                fields=["user", "name"],
-                name="uniq_category_per_user",
+                Lower("name"),
+                "user",
+                name="uniq_category_name_per_user_ci",
             )
         ]
 
@@ -67,7 +79,19 @@ class Expense(models.Model):
 
     class Meta:
         ordering = ["-spent_on", "-id"]
-        indexes = [models.Index(fields=["user", "spent_on"])]
+        indexes = [
+            models.Index(fields=["user", "spent_on"]),
+            # Column order is the whole design of a composite index.
+            # Equality columns first, the range column last: the list view
+            # filters user = ? AND category = ? AND spent_on BETWEEN ? AND ?,
+            # and an index can only use columns up to and including the
+            # first range predicate. Put spent_on first and the category
+            # equality cannot be used at all.
+            models.Index(
+                fields=["user", "category", "spent_on"],
+                name="expense_user_cat_date",
+            ),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(amount__gt=0),
@@ -192,9 +216,12 @@ class Participant(models.Model):
     class Meta:
         ordering = ["name"]
         constraints = [
+            # Same correction as Category above, applied before the same
+            # mismatch had time to become a second known issue.
             models.UniqueConstraint(
-                fields=["user", "name"],
-                name="uniq_participant_per_user",
+                Lower("name"),
+                "user",
+                name="uniq_participant_name_per_user_ci",
             )
         ]
 
