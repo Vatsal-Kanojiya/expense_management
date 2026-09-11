@@ -179,16 +179,183 @@ The phase this whole project exists to demonstrate. See BUILD_LOG §5 for the Ce
 
 ---
 
-### Phase 7 — Production readiness ⬜
+### Phase 7 — Production readiness ✅ *(tag `phase-7-production`)*
+
+> **As built:** three commits — `65639bf`, `17134ea`, `c675726`. The README landed earlier, so 7.4
+> became a correction instead. Two bugs surfaced that neither the plan nor the tests predicted: the
+> `if not DEBUG` gate runs at *import* time, which broke 106 CI tests via the SSL redirect and made
+> `override_settings` useless for testing the block; and `500.html` was unparseable because the
+> comment explaining "no `{%` tags here" spelled the tags out inside an **HTML** comment, which
+> Django parses anyway. See BUILD_LOG session 8.
 
 | # | Commit | Files | Architecture note |
 |---|---|---|---|
-| 7.1 | `chore: fix check --deploy warnings` | `settings/prod.py` | HSTS, secure cookies, `ALLOWED_HOSTS` |
-| 7.2 | `feat: add 404 and 500 templates` | `templates/` | Only render with `DEBUG=False` |
-| 7.3 | `chore: add logging configuration` | `settings.py` | `LOGGING` dict — the thing everyone skips |
-| 7.4 | `docs: add readme with setup and architecture` | `README.md` | The file a reviewer opens first |
+| 7.1 | `chore(config): harden production settings and add logging` | `settings.py` | HSTS, secure cookies, `SILENCED_SYSTEM_CHECKS` with a reason |
+| 7.2 | `feat: add error page templates` | `templates/`, `tests/` | Only render with `DEBUG=False`. 500 must be standalone |
+| 7.3 | `ci: make the deploy check a gate` | `ci.yml` | `--fail-level WARNING`; test job relaxes the SSL redirect only |
 
 **Tag:** `phase-7-production`
+
+---
+
+## 2b. The second half — phases 8 to 16
+
+> Phases 0-7 built a correct Django app. Phases 8-16 are about **depth**: the concepts a reviewer
+> probes at 2-3 years that a CRUD app never forces you to meet.
+>
+> The rule for this half is **utility first**. Every phase ships something a user of this app would
+> actually want, and the concept rides along. No phase exists to host a concept. Where a phase
+> closes a numbered issue from BUILD_LOG §6, that is noted — five of the nine do.
+
+### The dependency graph
+
+```mermaid
+flowchart TD
+    P7["Phase 7 ✅<br/>production readiness"] --> P8
+    P8["Phase 8<br/>split expenses"] --> P9["Phase 9<br/>ORM depth"]
+    P9 --> P10["Phase 10<br/>DRF"]
+    P9 --> P14["Phase 14<br/>caching"]
+    P11["Phase 11<br/>containerisation"] --> P12["Phase 12<br/>postgres depth"]
+    P11 --> P14
+    P12 --> P13["Phase 13<br/>concurrency"]
+    P8 --> P13
+    P15["Phase 15<br/>django internals"]
+    P16["Phase 16<br/>security hardening"]
+
+    style P8 fill:#c0392b,color:#fff
+    style P10 fill:#2f5fe0,color:#fff
+    style P13 fill:#2f5fe0,color:#fff
+```
+
+**The one non-obvious edge is `P12 → P13`.** `select_for_update()` is a **no-op on SQLite**, which
+locks the whole database rather than individual rows. Running the concurrency phase first would
+teach the API without the behaviour, and the race test would pass for the wrong reason. Postgres has
+to land first, and compose is the cheapest way to get it — which is why containerisation, the phase
+that looks most deferrable, sits in the middle.
+
+### Phase 8 — Split expenses 🔜
+
+> **The domain change the rest of the half depends on.** An expense can be shared. Participants are
+> plain strings owned by you, **not** `User` rows — no invitations, no account linking, no second
+> tenancy model. An expense either splits evenly across participants, or itemises, with each line
+> item shared by its own subset.
+
+| # | Commit | Files | Architecture note |
+|---|---|---|---|
+| 8.1 | `feat(expenses): add participants` | `models.py`, `forms.py`, `views.py` | Owner-scoped, `unique(owner, name)`. Same scoping lesson as `Category`, third time |
+| 8.2 | `feat(expenses): split an expense evenly across participants` | `models.py`, `forms.py` | Plain `ManyToManyField`, auto through table. `ModelMultipleChoiceField` must be scoped or it leaks every participant |
+| 8.3 | `feat(expenses): add line items` | `models.py`, `forms.py`, `templates/` | `inlineformset_factory` — the first formset in the project |
+| 8.4 | `feat(expenses): share items across participants` | `models.py` | **Explicit through model** `ItemShare` carrying a weight. The half of M2M a tag list never teaches |
+| 8.5 | `test(expenses): cover the split invariants` | `tests/` | Items must sum to the expense total; shares must reconstitute each item |
+
+**Tag:** `phase-8-splitting`
+
+**The four lessons this phase exists for:**
+
+1. **Both halves of many-to-many, in one domain.** An even split needs no through model. A per-item
+   share carries data, so it needs an explicit one. The question "when do I need `through=`" answers
+   itself instead of needing a contrived example.
+2. **An invariant the database cannot express.** Line items must sum to the expense total. A
+   `CheckConstraint` sees one row and cannot reach across children, so this validation lives in the
+   form and a transaction, not the schema. Deciding *which* invariants a database can hold is the
+   real lesson.
+3. **`commit=False` and `save_m2m()`.** A many-to-many cannot be written before the parent row has a
+   primary key. The formset makes this unavoidable rather than academic.
+4. **Decimal remainders.** Splitting `100.00` three ways gives `33.33` three times and loses a paisa.
+   Someone absorbs it. Tests assert the parts always reconstitute the whole.
+
+**Deliberately out of scope:** debt simplification — collapsing "A owes B, B owes C" into minimal
+transfers. It is a graph problem and the point where this stops being bounded. Balances are shown raw.
+
+### Phase 9 — ORM depth ⬜
+
+| # | Commit | Architecture note |
+|---|---|---|
+| 9.1 | `perf(expenses): prefetch items, shares and participants` | **Two levels** of N+1, not one. `Prefetch` with a filtered inner queryset |
+| 9.2 | `feat(expenses): search across notes, items and participants` | `Q` objects. `.distinct()` — an M2M filter duplicates rows until you add it |
+| 9.3 | `feat(expenses): show per-participant balances` | `values().annotate(Sum())` across a three-table join |
+| 9.4 | `perf(expenses): annotate categories with their last spend` | `Subquery` / `OuterRef` |
+| 9.5 | `test(expenses): pin query counts` | `assertNumQueries`. Also covers `only()`/`defer()` and the deferred-field N+1 |
+
+**Tag:** `phase-9-orm` · Also: `F()` comparing two columns, `bulk_create` (and what it skips), `exists()` vs `count()`.
+
+### Phase 10 — Django REST Framework ⬜
+
+| # | Commit | Architecture note |
+|---|---|---|
+| 10.1 | `feat(api): add serializers and a router` | `ModelSerializer`, `validate_<field>` mirroring the existing `clean_<field>` |
+| 10.2 | `feat(api): accept a full expense with items and shares` | **Writable nested serializers** — the case people get wrong |
+| 10.3 | `fix(api): scope querysets, not just object permissions` | `has_object_permission` **never runs on list**. Relying on it alone ships a data leak |
+| 10.4 | `feat(api): add pagination, throttling and versioning` | Cursor vs offset pagination |
+| 10.5 | `perf(api): fix the serializer N+1` | Nested serializers re-query per row unless `get_queryset` prefetches |
+
+**Tag:** `phase-10-api` · Closes nothing, but it is the Tier-1 gap STUDY_MAP §5 flagged.
+
+### Phase 11 — Containerisation ⬜
+
+| # | Commit | Architecture note |
+|---|---|---|
+| 11.1 | `chore: add dockerfile and compose` | web, worker, beat, redis, postgres. Multi-stage, non-root |
+| 11.2 | `chore(config): split settings into base/dev/prod` | Closes issue 7 |
+| 11.3 | `chore: serve static files with whitenoise` | `STATIC_ROOT`, `collectstatic`, gunicorn replacing `runserver` |
+
+**Tag:** `phase-11-docker` · **Closes issues 7 and 14.** Also removes the manual Redis and worker
+startup documented in RUNNING_ASYNC.md — one command instead of three terminals.
+
+### Phase 12 — Postgres depth ⬜
+
+| # | Commit | Architecture note |
+|---|---|---|
+| 12.1 | `chore: move to postgres` | `DATABASE_URL` already supports it. Expect real behaviour differences to surface |
+| 12.2 | `fix(expenses): make category uniqueness case-insensitive` | `UniqueConstraint(Lower("name"), "user")` — **closes issue 11**, the DB finally agreeing with `clean_name` |
+| 12.3 | `perf(expenses): add composite and partial indexes` | `(user, spent_on)`. `EXPLAIN ANALYZE` before and after, recorded in the build log |
+| 12.4 | `feat(expenses): replace icontains search with full-text search` | `SearchVector` + GIN — **closes issue 17**, the unindexable leading-wildcard `LIKE` |
+
+**Tag:** `phase-12-postgres` · **Closes issues 11 and 17.**
+
+### Phase 13 — Concurrency and transactions ⬜
+
+| # | Commit | Architecture note |
+|---|---|---|
+| 13.1 | `feat(expenses): settle up with a participant` | The feature that needs the lock |
+| 13.2 | `fix(expenses): lock the balance while settling` | `select_for_update()`. Without it, two requests double-settle |
+| 13.3 | `fix(expenses): fire export tasks after commit` | `transaction.on_commit`. A task queued inside an open transaction can run before the row exists — **the classic Celery bug, in the setup phase 6 already built** |
+| 13.4 | `test(expenses): prove the race` | `TransactionTestCase` with concurrent writers |
+
+**Tag:** `phase-13-concurrency` · Also: savepoints, nested `atomic`, the `get_or_create` race.
+
+### Phase 14 — Caching ⬜
+
+| # | Commit | Architecture note |
+|---|---|---|
+| 14.1 | `chore(config): add redis cache backend` | A **different Redis db index** from the Celery broker |
+| 14.2 | `perf(expenses): cache the dashboard aggregation` | Low-level API, key includes user id **and** date range |
+| 14.3 | `fix(expenses): invalidate on write` | Any expense, item or share write busts that user's keys |
+| 14.4 | `test(expenses): prove cache_page leaks` | Build it, **demonstrate one user seeing another's totals**, then reject it for the low-level API |
+
+**Tag:** `phase-14-caching` · Also: stampede (`get_or_set` is not atomic), and clearing the cache between tests.
+
+### Phase 15 — Django internals ⬜
+
+| # | Commit | Architecture note |
+|---|---|---|
+| 15.1 | `feat(config): add request id middleware` | Traces one request across log lines. Pairs with the `LOGGING` dict from phase 7. Middleware **ordering** matters and this shows why |
+| 15.2 | `feat(expenses): add currency template filter` | First `templatetags/` package in the project |
+| 15.3 | `refactor: move nav counts to a context processor` | Stop passing the same value from six views |
+| 15.4 | `docs: signals, and why this project has none` | Implement one, then argue the case against. **Closes issue 18** via `assertContains` on rendered numbers |
+
+**Tag:** `phase-15-internals` · **Closes issue 18.**
+
+### Phase 16 — Security hardening ⬜
+
+| # | Commit | Architecture note |
+|---|---|---|
+| 16.1 | `feat(accounts): rate limit login and password reset` | **Closes issue 15** — the largest remaining auth gap |
+| 16.2 | `feat(accounts): verify email on signup` | **Closes issue 16** |
+| 16.3 | `fix(accounts): make account deletion work` | Ordered delete. `user.delete()` currently raises `ProtectedError` — **closes issue 10** |
+| 16.4 | `feat(expenses): expire generated exports` | Beat schedule deleting files older than N days — **closes issue 19** |
+
+**Tag:** `phase-16-hardening` · **Closes issues 10, 15, 16 and 19.**
 
 ---
 
