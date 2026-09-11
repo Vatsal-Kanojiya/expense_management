@@ -30,8 +30,8 @@ python manage.py runserver
 
 Then open http://127.0.0.1:8000/.
 
-> **Note:** the app's own login pages do not exist yet, so `LOGIN_URL` points at the Django admin
-> login. You must create a superuser to log in at all.
+> **Note:** sign up at `/accounts/signup/` for a normal account. A superuser is only needed for
+> the Django admin at `/admin/`.
 
 Optionally install the git hooks so linting runs before each commit:
 

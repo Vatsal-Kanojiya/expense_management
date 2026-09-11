@@ -301,6 +301,56 @@ cursor bug fails `TransactionTestCase` only.
 
 ---
 
+### Session 8 — Phase 7: production readiness → tag `phase-7-production`
+
+| Commit | Message |
+|---|---|
+| `65639bf` | `chore(config): harden production settings and add logging` |
+| `17134ea` | `feat: add error page templates` |
+| `c675726` | `ci: make the deploy check a gate` |
+
+**Every security setting is gated on `if not DEBUG`, and that gate is the phase's whole story.**
+Each one breaks local development: an SSL redirect makes `http://localhost` unreachable, and secure
+cookies are never sent over plain HTTP, so you cannot stay logged in. Gating them is correct. The
+cost is that the block is evaluated at *import* time, which has two consequences nobody expects
+until they bite.
+
+**Consequence one: the CI suite went red.** The test job runs with `DEBUG=False` so error templates
+and production behaviour are exercised. That switched on `SECURE_SSL_REDIRECT`, and every test
+client request became a `301` before it reached a view — 106 of 180 tests failing, none of them
+because of the code under test. The fix is `SECURE_SSL_REDIRECT: "False"` in the test job only; the
+separate `deploy-checks` job keeps the real setting honest. **There was no git remote, so CI had
+never run and never caught it.**
+
+**Consequence two: `override_settings` cannot test this.** By the time any test executes, the
+`if not DEBUG` block has already run or already been skipped. Flipping `DEBUG` in a decorator
+changes the flag and nothing else. The only honest assertion is a **subprocess** started without
+`DEBUG`, which is exactly what CI does. `DeploySettingsTests` does that, in both directions: the
+production config must pass `check --deploy`, and the development config must deliberately fail it.
+That subprocess must also *drop* the inherited `SECURE_SSL_REDIRECT=False`, or the test asserts the
+production config is clean while measuring the relaxed one.
+
+**The 500 page could not render, and the comment explaining why caused it.**
+`templates/500.html` is deliberately standalone — no parent template, no URL reversing, no context —
+because Django renders it with an empty context and no context processors, so extending
+`base.html` would let an error in the base template turn a handled 500 into an unhandled one. The
+file documented that rule in an HTML comment that spelled the tags out in their real syntax. **An
+HTML comment is not a template comment.** Django parsed those tags like any other, and the file
+raised `TemplateSyntaxError` on load. The 500 page would itself have 500'd, in production only.
+
+This is the **second** time this exact gap has drawn blood — session 6 hit the `{% comment %}`
+variant. The rule to carry forward: *Django's parser does not care what wrapper your text is in.*
+
+**The test that missed it** read `500.html` as a string and asserted `"{% extends"` was absent. It
+matched the file's own documentation and failed for the wrong reason, and it would have passed a
+genuinely broken file whose comment was phrased differently. It now asserts against the **compiled
+nodelist** and renders the template with an empty context — testing behaviour, not text.
+
+**`SILENCED_SYSTEM_CHECKS = ["security.W021"]`** is a deliberate answer, not a suppression. HSTS
+preload submits the domain to a list baked into browser binaries; it takes months to leave and
+breaks any subdomain that cannot serve HTTPS. Silencing it with a written reason is more honest
+than flipping a flag to quiet a checker.
+
 ### Session 6 — Phase 5: read layer → tag `phase-5-dashboard`
 
 | Commit | Message |
@@ -478,6 +528,17 @@ this is the file set that silently drifts and is worth being able to reconstruct
 | 2 | `AUTH_USER_MODEL` | *(implicit `auth.User`)* | `"accounts.User"` | Custom user model — must precede first migration |
 | 2 | `SECRET_KEY` | hardcoded literal | `env("SECRET_KEY")` | Secret out of source. **No default** → unset key crashes at startup rather than falling back |
 | 2 | `DEBUG` | `True` | `env("DEBUG")`, default `False` | Fails safe when unset; typed cast stops `"False"` being truthy |
+| 8 | `SECURE_HSTS_SECONDS` | — | `env`, default `3600` | HSTS. One hour, not a year: browsers cache it and a wrong value is close to irreversible |
+| 8 | `SECURE_HSTS_PRELOAD` | — | `env`, default `False` | Opt-in. Preload is a browser-baked list that is slow and painful to leave |
+| 8 | `SECURE_SSL_REDIRECT` | — | `env`, default `True` | Overridden to `False` in the CI **test** job only, or every test client request 301s |
+| 8 | `SESSION_COOKIE_SECURE` / `CSRF_COOKIE_SECURE` | — | `True` | Cookies never travel over plain HTTP |
+| 8 | `SESSION_COOKIE_HTTPONLY` | — | `True` | Limits what an XSS can steal. `CSRF_COOKIE_HTTPONLY` stays `False` for future AJAX |
+| 8 | `SESSION_COOKIE_SAMESITE` / `CSRF_COOKIE_SAMESITE` | — | `"Lax"` | Blocks cross-site POSTs while letting email links keep you signed in |
+| 8 | `SECURE_CONTENT_TYPE_NOSNIFF` | — | `True` | Stops MIME sniffing |
+| 8 | `SECURE_REFERRER_POLICY` | — | `"same-origin"` | Referrer not leaked to third parties |
+| 8 | `SECURE_PROXY_SSL_HEADER` | — | `env`-gated | Only when a trusted proxy strips the client-supplied header, or HTTPS is forgeable |
+| 8 | `SILENCED_SYSTEM_CHECKS` | — | `["security.W021"]` | Preload is a per-deployment decision, answered with a reason |
+| 8 | `LOGGING` | *(Django default)* | explicit dict | The default only logs to console when `DEBUG` is on; production exceptions were otherwise silent |
 | 2 | `ALLOWED_HOSTS` | `[]` | `env("ALLOWED_HOSTS")`, default `[]` | Config, not code |
 | 2 | `DATABASES` | inline SQLite dict | `env.db_url("DATABASE_URL", default=sqlite)` | Postgres later becomes a config change, not a code change |
 | 2 | *(new import)* | — | `import environ` + `read_env(BASE_DIR / ".env")` | Loads `.env` when present |
@@ -584,6 +645,10 @@ interview-gap list.
 | 2 | No `.gitignore`; venv/db/pycache tracked | `986a3fd` (session 2) |
 | 3 | No `requirements.txt` | `986a3fd` (session 2) |
 | 4 | `SECRET_KEY` hardcoded in source | `9a48cdb` (session 2) |
+| 13 | `check --deploy` reported 5 warnings; CI was `continue-on-error` | `65639bf` / `c675726` (session 8) |
+| 9 | README claimed the app had no login pages | session 8 (stale since `dadf826`) |
+| 22 | `templates/500.html` was unparseable — tags spelled out in an HTML comment | `17134ea` (session 8) |
+| 23 | CI test job ran with `DEBUG=False`, so the SSL redirect 301'd every request | `c675726` (session 8) |
 
 ### Open
 
@@ -601,5 +666,5 @@ interview-gap list.
 | 21 | `FileResponse` streams exports through Python | Fine in development, wasteful in production | `X-Accel-Redirect` (nginx) or a signed object-storage URL |
 | 10 | **Account deletion is broken** | `user.delete()` raises `ProtectedError` for any user with expenses. A "delete my account" feature would 500 today | Decide between: (a) an ordered delete — expenses, then categories, then user — in a `User.delete()` override or a service function; (b) `SET_NULL` on `Expense.category` with `null=True`; (c) keep `PROTECT` and expose only the ordered path. **(a) is the usual production answer** — it keeps `PROTECT` protecting against accidental category deletion while making account closure explicit |
 | 11 | Case-sensitivity mismatch on category names | `UniqueConstraint` is exact-match, `clean_name` is `__iexact`. The admin can create `Food` and `food` for one user; the app cannot | Make the DB agree with the form: `UniqueConstraint(Lower("name"), "user", name=...)`. Needs a migration |
-| 13 | `check --deploy` reports 5 warnings | HSTS, SSL redirect, secure session and CSRF cookies, weak dev `SECRET_KEY`. The CI job is `continue-on-error` until these are fixed | Phase 7 — then remove the flag so it becomes a real gate |
-| 14 | No settings split, no Docker | Fine at this size; both are phase 7 candidates | Phase 7 |
+| 14 | No settings split, no Docker | Fine at this size | Phase 11 (containerisation) |
+| 24 | **No git remote, so CI has never run** | Every workflow in `.github/` is unverified. Issue 23 sat undetected for exactly this reason | Push to a remote. Until then, run the CI env locally: `DEBUG=False SECURE_SSL_REDIRECT=False python manage.py test` |
