@@ -21,6 +21,9 @@ from django.urls import include, path
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("accounts/", include("accounts.urls")),
+    # Mounted above the app's own URLs so "/api/..." is never shadowed by a
+    # future expenses route.
+    path("api/", include("expenses.api.urls")),
     # include() keeps app URLs owned by the app. The root URLConf decides
     # the mount point; the app decides its own internal paths.
     path("", include("expenses.urls")),
