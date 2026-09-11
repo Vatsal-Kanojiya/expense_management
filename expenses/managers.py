@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django.db import models
-from django.db.models import Count, Sum
+from django.db.models import Count, F, Sum
 
 
 class ExpenseQuerySet(models.QuerySet):
@@ -62,6 +62,32 @@ class ExpenseQuerySet(models.QuerySet):
             self.values("category_id", "category__name")
             .annotate(total=Sum("amount"), count=Count("id"))
             .order_by("-total")
+        )
+
+    def unbalanced(self):
+        """Itemised expenses whose items do not sum to their amount.
+
+        The formset refuses these now, but rows written before phase 8 --
+        or by the admin, a data migration, or a shell session -- never met
+        that rule. An invariant a database cannot hold is an invariant that
+        needs auditing, which is the honest cost of moving it into the form.
+
+        ``F("amount")`` is what makes this a column-to-column comparison.
+        Without it, ``exclude(items_total=self.amount)`` would compare
+        against a Python attribute that does not exist on a queryset; the
+        value has to be named as a database reference so the database does
+        the comparing, row by row.
+        """
+        # Filtering on the annotation, not on the relation again.
+        # ``.filter(items__isnull=False)`` would look equivalent and is not:
+        # Django adds a second join for a filter that re-traverses a
+        # relation already used by annotate(), which both multiplies rows
+        # and stops the isnull test meaning what it reads as. Sum over no
+        # rows is NULL, so the annotation already answers "is it itemised".
+        return (
+            self.annotate(items_total=Sum("items__amount"))
+            .filter(items_total__isnull=False)
+            .exclude(items_total=F("amount"))
         )
 
     def biggest(self):

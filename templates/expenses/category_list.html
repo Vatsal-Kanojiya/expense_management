@@ -14,7 +14,8 @@
         <tr>
           <th>Name</th>
           <th class="num">Expenses</th>
-          <th>Created</th>
+          <th class="num">Total</th>
+          <th>Last spend</th>
           <th></th>
         </tr>
       </thead>
@@ -23,7 +24,12 @@
           <tr>
             <td>{{ category.name }}</td>
             <td class="num">{{ category.expense_count }}</td>
-            <td>{{ category.created_at|date:"j M Y" }}</td>
+            <td class="num">{{ category.total|default:"—" }}</td>
+            <td>
+              {% if category.last_spent_on %}
+                {{ category.last_amount }} on {{ category.last_spent_on|date:"j M Y" }}
+              {% else %}—{% endif %}
+            </td>
             <td>
               <a class="btn" href="{% url 'expenses:category_update' category.pk %}">Edit</a>
               <a class="btn" href="{% url 'expenses:category_delete' category.pk %}">Delete</a>
