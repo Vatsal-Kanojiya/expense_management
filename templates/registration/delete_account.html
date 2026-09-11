@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Delete account · Expense Tracker{% endblock %}
+
+{% block content %}
+  <h1>Delete your account</h1>
+
+  <div class="card" style="max-width:34rem">
+    <p>
+      This removes your account and everything in it:
+      <strong>{{ expense_count }}</strong> expense{{ expense_count|pluralize }},
+      <strong>{{ category_count }}</strong> categor{{ category_count|pluralize:"y,ies" }},
+      every person you split with, every settlement, and every export file.
+    </p>
+    <p class="muted">
+      There is no undo and no backup. Export your data first if you want to keep it.
+    </p>
+
+    <form method="post">
+      {% csrf_token %}
+      <label for="confirm">Type <strong>{{ user.get_username }}</strong> to confirm:</label>
+      <input type="text" name="confirm" id="confirm" autocomplete="off" required>
+      <p></p>
+      <button class="btn btn-danger" type="submit">Delete everything</button>
+      <a class="btn" href="{% url 'expenses:dashboard' %}">Cancel</a>
+    </form>
+  </div>
+{% endblock %}

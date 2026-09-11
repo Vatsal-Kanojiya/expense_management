@@ -131,3 +131,17 @@ def _email_export_ready(job: ExportJob, site_url: str) -> None:
         from_email=None,  # falls back to DEFAULT_FROM_EMAIL
         recipient_list=[job.user.email],
     )
+
+
+@shared_task
+def purge_exports(days=7):
+    """Beat's entry point into the retention command.
+
+    A thin wrapper rather than a second implementation, so the scheduled
+    path and `manage.py purge_exports` cannot drift apart. The command
+    stays runnable by hand, which is what you want at 2am when the
+    scheduler is the thing that is broken.
+    """
+    from django.core.management import call_command
+
+    call_command("purge_exports", days=days)

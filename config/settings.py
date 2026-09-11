@@ -405,3 +405,17 @@ CACHES = {
         default="locmemcache://expense-tracker",
     )
 }
+
+
+# Celery beat
+# The digest is cron's job, not beat's -- see BUILD_LOG section 5 for that
+# argument. Retention is here because it is genuinely periodic, has no
+# external dependency, and running it twice is harmless: a file already
+# gone stays gone.
+CELERY_BEAT_SCHEDULE = {
+    "purge-old-exports": {
+        "task": "expenses.tasks.purge_exports",
+        # Daily. Hourly would be wasted work on a table that changes slowly.
+        "schedule": 24 * 60 * 60,
+    },
+}
