@@ -173,19 +173,46 @@ class DashboardCacheTests(TestCase):
 
         self.assertEqual(response.context["summary"].total, Decimal("150.00"))
 
-    def test_a_write_that_bypasses_the_app_leaves_the_dashboard_stale(self):
-        """The honest limit of explicit invalidation, asserted not hidden.
+    def test_a_write_that_bypasses_the_app_still_invalidates(self):
+        """Known issue 26, closed by a signal rather than more call sites.
 
-        bump_version is called from the views and the API. A row written by
-        the admin, a shell session or a data migration reaches none of
-        them, and the dashboard keeps serving the old number until the
-        timeout. Known issue 26; phase 15 revisits whether a signal is the
-        right answer.
+        Phase 14 invalidated explicitly in the views and the API, and this
+        test asserted the opposite of what it asserts now: a row written
+        straight to the ORM -- as the admin, a shell session or a data
+        migration would -- left the dashboard serving the old number.
+
+        A post_save receiver closed it. The argument for using a signal
+        here, and against using one for anything else in this project, is
+        in expenses/signals.py.
         """
         self._expense("100.00")
         self.client.get(reverse("expenses:dashboard"))
 
         self._expense("50.00")  # straight to the ORM, as the admin would
+
+        response = self.client.get(reverse("expenses:dashboard"))
+        self.assertEqual(response.context["summary"].total, Decimal("150.00"))
+
+    def test_bulk_create_does_not_fire_the_signal(self):
+        """The limit of the signal approach, asserted rather than assumed.
+
+        bulk_create operates on rows, not instances, so there is no
+        instance to signal about. This is Django's documented behaviour and
+        not a bug, but it means a bulk write still needs an explicit bump.
+        """
+        self._expense("100.00")
+        self.client.get(reverse("expenses:dashboard"))
+
+        Expense.objects.bulk_create(
+            [
+                Expense(
+                    user=self.alice,
+                    category=self.category,
+                    amount=Decimal("50.00"),
+                    spent_on=date.today(),
+                )
+            ]
+        )
 
         response = self.client.get(reverse("expenses:dashboard"))
         self.assertEqual(response.context["summary"].total, Decimal("100.00"))

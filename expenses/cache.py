@@ -65,6 +65,15 @@ def summary_key(user_id, start, end):
     return f"expenses:summary:{user_id}:{version(user_id)}:{start:%Y%m%d}:{end:%Y%m%d}"
 
 
+def owed_count_key(user_id):
+    """Key for the nav badge.
+
+    Versioned like the summaries, so the same bump clears both. A badge
+    that disagrees with the page it links to is worse than no badge.
+    """
+    return f"expenses:owed-count:{user_id}:{version(user_id)}"
+
+
 def cached_summary(user, start, end, build):
     """Return a cached summary, building it on a miss.
 

@@ -1,3 +1,4 @@
+{% load money %}
 {% load static %}<!doctype html>
 <html lang="en">
 <head>
@@ -93,7 +94,7 @@
       <a href="{% url 'expenses:dashboard' %}">Overview</a>
       <a href="{% url 'expenses:expense_list' %}">Expenses</a>
       <a href="{% url 'expenses:category_list' %}">Categories</a>
-      <a href="{% url 'expenses:balances' %}">Balances</a>
+      <a href="{% url 'expenses:balances' %}">{{ nav_owed_count|owed_label }}</a>
       <a href="{% url 'expenses:participant_list' %}">People</a>
       <a href="{% url 'expenses:export_list' %}">Exports</a>
       <span class="spacer"></span>

@@ -91,6 +91,10 @@ MIDDLEWARE = [
     # Ordering is not cosmetic here: placed last it would still work and
     # would do all that work first.
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    # Before everything that can log, so the id is set by the time any
+    # other middleware, view or exception handler emits a line. After
+    # WhiteNoise, because a static file is not worth an id.
+    "config.middleware.RequestIDMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -114,6 +118,11 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                # Nav badges, previously passed by hand from the handful of
+                # views that happened to remember. A context processor runs
+                # for every template render, which is the point and also the
+                # cost -- see the docstring.
+                "expenses.context_processors.nav_summary",
             ],
         },
     },
@@ -302,9 +311,14 @@ LOGGING = {
     "version": 1,
     # Never True: it would kill Django's own error mail and security logging.
     "disable_existing_loggers": False,
+    "filters": {
+        "request_id": {"()": "config.middleware.RequestIDFilter"},
+    },
     "formatters": {
         "verbose": {
-            "format": "{levelname} {asctime} {name} {message}",
+            # The id sits early in the line so `grep <id> app.log` reads as
+            # a transcript of one request rather than a keyword search.
+            "format": "{levelname} {asctime} [{request_id}] {name} {message}",
             "style": "{",
         },
     },
@@ -312,6 +326,7 @@ LOGGING = {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "verbose",
+            "filters": ["request_id"],
         },
     },
     "root": {
