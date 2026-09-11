@@ -106,3 +106,71 @@ class ParticipantViewTests(TestCase):
 
         self.assertFalse(Participant.objects.filter(pk=self.rahul.pk).exists())
         self.assertEqual(expense.participants.count(), 0)
+
+
+class EvenSplitFormTests(TestCase):
+    """The scoped-queryset trap, one field along from the category dropdown."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user(
+            "alice", email="alice@example.com", password="pw12345!"
+        )
+        cls.bob = User.objects.create_user("bob", email="bob@example.com", password="pw12345!")
+        cls.category = Category.objects.create(user=cls.alice, name="Food")
+        cls.mine = Participant.objects.create(user=cls.alice, name="Rahul")
+        cls.theirs = Participant.objects.create(user=cls.bob, name="Stranger")
+
+    def setUp(self):
+        self.client.force_login(self.alice)
+
+    def test_the_checkbox_list_shows_only_your_people(self):
+        response = self.client.get(reverse("expenses:expense_create"))
+
+        self.assertContains(response, "Rahul")
+        self.assertNotContains(response, "Stranger")
+
+    def test_a_crafted_post_cannot_attach_someone_elses_person(self):
+        # The display fix and the validation fix are the same line: the field
+        # re-queries its queryset when cleaning, so an out-of-scope pk is
+        # simply not a valid choice.
+        response = self.client.post(
+            reverse("expenses:expense_create"),
+            {
+                "category": self.category.pk,
+                "amount": "300.00",
+                "spent_on": "2026-01-15",
+                "note": "",
+                "participants": [self.theirs.pk],
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Expense.objects.count(), 0)
+
+    def test_an_expense_can_be_split_with_your_own_people(self):
+        self.client.post(
+            reverse("expenses:expense_create"),
+            {
+                "category": self.category.pk,
+                "amount": "300.00",
+                "spent_on": "2026-01-15",
+                "note": "",
+                "participants": [self.mine.pk],
+            },
+        )
+
+        self.assertEqual(Expense.objects.get().participants.get(), self.mine)
+
+    def test_an_expense_with_nobody_is_yours_alone(self):
+        self.client.post(
+            reverse("expenses:expense_create"),
+            {
+                "category": self.category.pk,
+                "amount": "300.00",
+                "spent_on": "2026-01-15",
+                "note": "",
+            },
+        )
+
+        self.assertFalse(Expense.objects.get().participants.exists())
