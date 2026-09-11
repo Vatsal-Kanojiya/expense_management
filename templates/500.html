@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Something went wrong · Expense Tracker</title>
+  <style>
+    body { margin:0; background:#f7f7f8; color:#1b1b1f; font:15px/1.5 system-ui,sans-serif; }
+    @media (prefers-color-scheme: dark) { body { background:#16161a; color:#ececf1; } }
+    main { max-width:32rem; margin:4rem auto; padding:0 1.25rem; }
+    a { color:#2f5fe0; }
+  </style>
+</head>
+<body>
+  <!--
+    Deliberately standalone: this file extends nothing, reverses no URLs and
+    reads no context. Django renders it with an empty context and no context
+    processors, so extending base.html would let an error in the base
+    template turn a 500 into a 500-while-rendering-the-500.
+
+    Note that this comment must not name those tags in their real syntax.
+    An HTML comment is not a template comment: Django parses tags inside it
+    like any other, so spelling them out here made this very file
+    unparseable and the 500 page itself raise.
+  -->
+  <main>
+    <h1>Something went wrong</h1>
+    <p>An error occurred on our side. It has been logged, and we're looking at it.</p>
+    <p><a href="/">Back to your overview</a></p>
+  </main>
+</body>
+</html>

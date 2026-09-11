@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Forbidden · Expense Tracker{% endblock %}
+
+{% block content %}
+  <h1>Forbidden</h1>
+  <div class="card" style="max-width:32rem">
+    <p>You do not have permission to view this page.</p>
+    {% comment %}
+      No detail beyond this. For 404 in particular, saying "this expense
+      belongs to another user" would leak exactly what the scoped
+      querysets exist to hide.
+    {% endcomment %}
+    <a class="btn btn-primary" href="/">Back to your overview</a>
+  </div>
+{% endblock %}
