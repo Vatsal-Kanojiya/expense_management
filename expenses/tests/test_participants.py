@@ -10,6 +10,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from expenses.models import Category, Expense, ExpenseItem, ItemShare, Participant
+from expenses.tests.helpers import item_formset
 
 User = get_user_model()
 
@@ -142,6 +143,7 @@ class EvenSplitFormTests(TestCase):
                 "spent_on": "2026-01-15",
                 "note": "",
                 "participants": [self.theirs.pk],
+                **item_formset(),
             },
         )
 
@@ -157,6 +159,7 @@ class EvenSplitFormTests(TestCase):
                 "spent_on": "2026-01-15",
                 "note": "",
                 "participants": [self.mine.pk],
+                **item_formset(),
             },
         )
 
@@ -170,6 +173,7 @@ class EvenSplitFormTests(TestCase):
                 "amount": "300.00",
                 "spent_on": "2026-01-15",
                 "note": "",
+                **item_formset(),
             },
         )
 

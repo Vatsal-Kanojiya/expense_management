@@ -17,8 +17,8 @@ from django.views.generic import (
 )
 
 from .filters import DateRangeForm, ExpenseFilterForm
-from .forms import CategoryForm, ExpenseForm, ParticipantForm
-from .mixins import OwnerFormMixin, OwnerScopedMixin
+from .forms import CategoryForm, ExpenseForm, ExpenseItemFormSet, ParticipantForm
+from .mixins import ItemFormSetMixin, OwnerFormMixin, OwnerScopedMixin
 from .models import Category, Expense, ExportJob, Participant
 from .summaries import previous_period, summarise
 from .tasks import build_expense_export
@@ -197,19 +197,25 @@ class ExpenseListView(OwnerScopedMixin, ListView):
         return context
 
 
-class ExpenseCreateView(OwnerScopedMixin, OwnerFormMixin, CreateView):
+class ExpenseCreateView(OwnerScopedMixin, ItemFormSetMixin, OwnerFormMixin, CreateView):
     model = Expense
     form_class = ExpenseForm
+    formset_class = ExpenseItemFormSet
     success_url = reverse_lazy("expenses:expense_list")
 
     def form_valid(self, form):
+        # ItemFormSetMixin sits between this and OwnerFormMixin in the MRO,
+        # so the message is queued before the transaction that writes the
+        # items. Django only flushes messages when the response is rendered,
+        # so a rollback below still discards it.
         messages.success(self.request, "Expense added.")
         return super().form_valid(form)
 
 
-class ExpenseUpdateView(OwnerScopedMixin, OwnerFormMixin, UpdateView):
+class ExpenseUpdateView(OwnerScopedMixin, ItemFormSetMixin, OwnerFormMixin, UpdateView):
     model = Expense
     form_class = ExpenseForm
+    formset_class = ExpenseItemFormSet
     success_url = reverse_lazy("expenses:expense_list")
 
     def form_valid(self, form):

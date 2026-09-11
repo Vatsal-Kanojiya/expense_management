@@ -1,24 +1,57 @@
 {% extends "base.html" %}
 {% block title %}
-  {% if form.instance.pk %}Edit expense{% else %}Add expense{% endif %} · Expense Tracker
+  {% if form.instance.pk %}Edit expense{% else %}New expense{% endif %} · Expense Tracker
 {% endblock %}
 
 {% block content %}
-  <h1>{% if form.instance.pk %}Edit expense{% else %}Add expense{% endif %}</h1>
+  <h1>{% if form.instance.pk %}Edit expense{% else %}New expense{% endif %}</h1>
 
-  <div class="card">
-    {% if not form.fields.category.queryset.exists %}
-      <p class="helptext">
-        You have no categories yet, and an expense needs one.
-        <a href="{% url 'expenses:category_create' %}">Create a category</a> first.
-      </p>
-    {% endif %}
+  <form method="post" novalidate>
+    {% csrf_token %}
 
-    <form method="post" novalidate>
-      {% csrf_token %}
+    <div class="card">
       {{ form.as_p }}
-      <button class="btn btn-primary" type="submit">Save</button>
-      <a class="btn" href="{% url 'expenses:expense_list' %}">Cancel</a>
-    </form>
-  </div>
+    </div>
+
+    <div class="card">
+      <h2>Line items</h2>
+      <p class="muted">
+        Optional. Add them when different people had different things, and the lines must add up
+        to the expense amount. Leave this empty to split the whole amount evenly instead.
+      </p>
+
+      {# Without the management form Django cannot tell how many forms came back, and raises. #}
+      {{ formset.management_form }}
+
+      {% if formset.non_form_errors %}
+        <ul class="errorlist">
+          {% for error in formset.non_form_errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th class="num">Amount</th>
+            <th>Remove</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item_form in formset %}
+            <tr>
+              {# Carries the primary key of an existing row. Drop it and every edit becomes an insert. #}
+              {{ item_form.id }}
+              <td>{{ item_form.name }}{{ item_form.name.errors }}</td>
+              <td class="num">{{ item_form.amount }}{{ item_form.amount.errors }}</td>
+              <td>{% if item_form.instance.pk %}{{ item_form.DELETE }}{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn" href="{% url 'expenses:expense_list' %}">Cancel</a>
+  </form>
 {% endblock %}

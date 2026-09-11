@@ -17,6 +17,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from expenses.models import Category, Expense
+from expenses.tests.helpers import item_formset
 
 User = get_user_model()
 
@@ -97,6 +98,7 @@ class OwnershipBoundaryTests(TestCase):
                 "amount": "1.00",
                 "spent_on": "2026-09-02",
                 "note": "hijacked",
+                **item_formset(),
             },
         )
 
@@ -142,6 +144,7 @@ class OwnershipBoundaryTests(TestCase):
                 "amount": "5.00",
                 "spent_on": "2026-09-02",
                 "note": "sneaky",
+                **item_formset(),
             },
         )
 
@@ -167,6 +170,7 @@ class OwnershipBoundaryTests(TestCase):
                 "amount": "10.00",
                 "spent_on": "2026-09-01",
                 "note": "Alice lunch",
+                **item_formset(),
             },
         )
 
