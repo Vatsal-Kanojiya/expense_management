@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Remove person · Expense Tracker{% endblock %}
+
+{% block content %}
+  <h1>Remove person</h1>
+
+  <div class="card">
+    <p>
+      Remove <strong>{{ object.name }}</strong>?
+      {% with count=object.item_shares.count %}
+        {% if count %}
+          They are on {{ count }} line item{{ count|pluralize }}, so removal will be refused.
+          <code>ItemShare.participant</code> uses <code>on_delete=PROTECT</code> so an item is
+          never left charged to nobody.
+        {% endif %}
+      {% endwith %}
+    </p>
+    {% with shared=object.shared_expenses.count %}
+      {% if shared %}
+        <p class="muted">
+          They are also on {{ shared }} evenly-split expense{{ shared|pluralize }}. Those rows live
+          in a join table Django generates, which hard-codes <code>CASCADE</code> and will drop
+          them silently.
+        </p>
+      {% endif %}
+    {% endwith %}
+
+    <form method="post">
+      {% csrf_token %}
+      <button class="btn btn-danger" type="submit">Remove</button>
+      <a class="btn" href="{% url 'expenses:participant_list' %}">Cancel</a>
+    </form>
+  </div>
+{% endblock %}
