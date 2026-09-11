@@ -14,9 +14,15 @@ jobs:
     env:
       # CI supplies its own throwaway config. SECRET_KEY has no default in
       # settings.py by design, so it must be set here or startup fails.
-      SECRET_KEY: ci-only-not-a-real-secret
+      SECRET_KEY: ci-only-not-a-real-secret-9f3b7c21ae64d8905e1fa7c3b0d2e846b5470c19d3f8a2e
       DEBUG: "False"
       ALLOWED_HOSTS: localhost,127.0.0.1
+      # Tests run with DEBUG off so error templates and production
+      # behaviour are exercised, but the SSL redirect that DEBUG=False
+      # normally enables would turn every test client request into a
+      # 301 before it ever reached a view. The deploy-checks job below
+      # keeps the real setting honest.
+      SECURE_SSL_REDIRECT: "False"
 
     steps:
       - uses: actions/checkout@v5
@@ -56,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      SECRET_KEY: ci-only-not-a-real-secret
+      SECRET_KEY: ci-only-not-a-real-secret-9f3b7c21ae64d8905e1fa7c3b0d2e846b5470c19d3f8a2e
       DEBUG: "False"
       ALLOWED_HOSTS: example.com
 
@@ -74,8 +80,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Production readiness audit
-        # Currently expected to report warnings; see BUILD_LOG known issues.
-        # continue-on-error keeps it advisory until phase 7 fixes them, at
-        # which point this flag should be removed so it becomes a gate.
-        continue-on-error: true
-        run: python manage.py check --deploy
+        # No longer advisory. Phase 7 fixed every warning, so --fail-level
+        # WARNING makes a regression fail the build instead of scrolling
+        # past in the log.
+        run: python manage.py check --deploy --fail-level WARNING
