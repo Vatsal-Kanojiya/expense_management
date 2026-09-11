@@ -16,6 +16,18 @@ urlpatterns = [
     path("exports/", views.ExportListView.as_view(), name="export_list"),
     path("exports/new/", views.ExportCreateView.as_view(), name="export_create"),
     path("exports/<int:pk>/download/", views.ExportDownloadView.as_view(), name="export_download"),
+    path("people/", views.ParticipantListView.as_view(), name="participant_list"),
+    path("people/new/", views.ParticipantCreateView.as_view(), name="participant_create"),
+    path(
+        "people/<int:pk>/edit/",
+        views.ParticipantUpdateView.as_view(),
+        name="participant_update",
+    ),
+    path(
+        "people/<int:pk>/delete/",
+        views.ParticipantDeleteView.as_view(),
+        name="participant_delete",
+    ),
     path("categories/", views.CategoryListView.as_view(), name="category_list"),
     path("categories/new/", views.CategoryCreateView.as_view(), name="category_create"),
     path("categories/<int:pk>/edit/", views.CategoryUpdateView.as_view(), name="category_update"),

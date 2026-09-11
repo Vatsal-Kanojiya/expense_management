@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}People · Expense Tracker{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>People</h1>
+    <span class="spacer"></span>
+    <a class="btn btn-primary" href="{% url 'expenses:participant_create' %}">Add someone</a>
+  </div>
+
+  {% if participants %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th class="num">Split evenly</th>
+          <th class="num">On items</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for participant in participants %}
+          <tr>
+            <td>{{ participant.name }}</td>
+            <td class="num">{{ participant.shared_count }}</td>
+            <td class="num">{{ participant.item_count }}</td>
+            <td>
+              <a class="btn" href="{% url 'expenses:participant_update' participant.pk %}">Edit</a>
+              <a class="btn" href="{% url 'expenses:participant_delete' participant.pk %}">Remove</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="card empty">
+      Nobody here yet. <a href="{% url 'expenses:participant_create' %}">Add someone</a> to start
+      splitting expenses.
+    </div>
+  {% endif %}
+{% endblock %}

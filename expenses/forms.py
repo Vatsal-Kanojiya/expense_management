@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Category, Expense
+from .models import Category, Expense, Participant
 
 
 class CategoryForm(forms.ModelForm):
@@ -32,6 +32,37 @@ class CategoryForm(forms.ModelForm):
             duplicates = duplicates.exclude(pk=self.instance.pk)
         if duplicates.exists():
             raise forms.ValidationError("You already have a category with this name.")
+
+        return name
+
+
+class ParticipantForm(forms.ModelForm):
+    """Someone you split bills with.
+
+    Same shape as CategoryForm, and deliberately so: this is the third model
+    in the project whose uniqueness is per-user, and the third time `user` is
+    kept out of the form so ownership cannot be reassigned by a crafted POST.
+    """
+
+    class Meta:
+        model = Participant
+        fields = ["name"]
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+    def clean_name(self):
+        name = self.cleaned_data["name"].strip()
+
+        # As with categories: the DB holds UniqueConstraint(user, name), but a
+        # ModelForm cannot check a constraint touching a field the form
+        # excludes. Without this a duplicate is an IntegrityError 500.
+        duplicates = Participant.objects.filter(user=self.user, name__iexact=name)
+        if self.instance.pk:
+            duplicates = duplicates.exclude(pk=self.instance.pk)
+        if duplicates.exists():
+            raise forms.ValidationError("You already have someone with this name.")
 
         return name
 
