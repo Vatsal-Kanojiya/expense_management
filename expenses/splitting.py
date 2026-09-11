@@ -55,4 +55,7 @@ def allocate(total: Decimal, weights: list[int]) -> list[Decimal]:
     for index in ranked[:leftover]:
         shares[index] += 1
 
-    return [Decimal(share) / 100 for share in shares]
+    # Quantised, not just divided. Decimal(15000) / 100 is Decimal("150"),
+    # which is numerically right and renders as "150" where every other
+    # amount on the page shows two decimal places.
+    return [(Decimal(share) / 100).quantize(CENT) for share in shares]

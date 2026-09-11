@@ -1,0 +1,98 @@
+"""What each person owes you.
+
+One convention decides every number here: **the owner always counts as one
+share of anything that is shared at all.** "Split evenly with Rahul" on a
+300 bill means two shares, not one, so Rahul owes 150. The same holds per
+line item: the people ticked on an item share it *with you*.
+
+An expense is read one of three ways, and nothing stores which:
+
+* it has line items, so each item is split among its own sharers;
+* it has no items but has participants, so the whole amount splits evenly;
+* it has neither, so it is yours alone and contributes nothing.
+
+Items win over participants when both are present. Itemising is the more
+specific statement, and letting both apply would charge people twice.
+"""
+
+from collections import defaultdict
+from decimal import Decimal
+
+from django.db.models import Prefetch
+
+from .models import Expense, ExpenseItem
+from .splitting import allocate
+
+
+def balances(user, start=None, end=None):
+    """Return ``[(participant, amount_owed)]``, largest first.
+
+    Participants who owe nothing are omitted: a list of zeroes is noise on a
+    page whose question is "who owes me".
+    """
+    owed = defaultdict(lambda: Decimal("0"))
+
+    for expense in _expenses(user, start, end):
+        items = list(expense.items.all())
+
+        if items:
+            for item in items:
+                _charge_item(owed, item)
+        else:
+            _charge_evenly(owed, expense)
+
+    ranked = sorted(owed.items(), key=lambda pair: (-pair[1], pair[0].name))
+    return [(participant, amount) for participant, amount in ranked if amount]
+
+
+def _expenses(user, start, end):
+    """Every expense, with its items, shares and people already loaded.
+
+    Written with prefetch from the start rather than added later. Reading a
+    balance touches four tables, so the lazy version is two levels of N+1:
+    one query per expense for its items, then one per item for its shares.
+    Phase 9 pins the count with assertNumQueries so it cannot regress.
+    """
+    queryset = Expense.objects.for_user(user).prefetch_related(
+        "participants",
+        Prefetch(
+            "items",
+            queryset=ExpenseItem.objects.prefetch_related("shares__participant"),
+        ),
+    )
+
+    if start is not None:
+        queryset = queryset.filter(spent_on__gte=start)
+    if end is not None:
+        queryset = queryset.filter(spent_on__lte=end)
+
+    return queryset
+
+
+def _charge_item(owed, item):
+    shares = list(item.shares.all())
+
+    # Nobody ticked: the line is yours.
+    if not shares:
+        return
+
+    # The owner's share goes first and is discarded. Including it in the
+    # allocation is what makes the split come out of the right denominator,
+    # and dropping it afterwards is what stops you owing yourself money.
+    weights = [1] + [share.weight for share in shares]
+    portions = allocate(item.amount, weights)
+
+    for share, portion in zip(shares, portions[1:], strict=True):
+        owed[share.participant] += portion
+
+
+def _charge_evenly(owed, expense):
+    people = list(expense.participants.all())
+
+    if not people:
+        return
+
+    portions = allocate(expense.amount, [1] * (len(people) + 1))
+
+    for participant, portion in zip(people, portions[1:], strict=True):
+        owed[participant] += portion

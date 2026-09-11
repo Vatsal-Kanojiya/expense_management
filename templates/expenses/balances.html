@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Balances · Expense Tracker{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Who owes you</h1>
+    <span class="spacer"></span>
+  </div>
+
+  <div class="card">
+    <form method="get" class="filters">
+      {{ form.as_p }}
+      <button class="btn" type="submit">Apply</button>
+    </form>
+  </div>
+
+  {% if balances %}
+    <table>
+      <thead>
+        <tr><th>Person</th><th class="num">Owes you</th></tr>
+      </thead>
+      <tbody>
+        {% for participant, amount in balances %}
+          <tr>
+            <td>{{ participant.name }}</td>
+            <td class="num">{{ amount }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr><th>Total</th><th class="num">{{ total }}</th></tr>
+      </tfoot>
+    </table>
+    <p class="muted">
+      Your own share is already excluded. Anything shared counts you as one share too, so a
+      300 bill split with one person leaves them owing 150.
+    </p>
+  {% else %}
+    <div class="card empty">
+      Nothing owed in this date range. Split an expense with someone to see it here.
+    </div>
+  {% endif %}
+{% endblock %}

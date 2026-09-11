@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from expenses.models import Category, Expense, ExpenseItem
+from expenses.models import Category, Expense, ExpenseItem, ItemShare, Participant
 from expenses.tests.helpers import item_formset
 
 User = get_user_model()
@@ -166,3 +166,96 @@ class ItemFormSetTests(TestCase):
         self.assertEqual(Expense.objects.count(), 1)
         self.assertEqual(response.status_code, 302)
         self.assertEqual(sum(i.amount for i in Expense.objects.get().items.all()), Decimal("0.30"))
+
+
+class ItemShareTests(TestCase):
+    """Editing a through model through a plain multiple-choice field."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user(
+            "alice", email="alice@example.com", password="pw12345!"
+        )
+        cls.bob = User.objects.create_user("bob", email="bob@example.com", password="pw12345!")
+        cls.category = Category.objects.create(user=cls.alice, name="Food")
+        cls.rahul = Participant.objects.create(user=cls.alice, name="Rahul")
+        cls.stranger = Participant.objects.create(user=cls.bob, name="Stranger")
+
+    def setUp(self):
+        self.client.force_login(self.alice)
+
+    def _post(self, shared_with, url=None, initial=0, item_pk=None):
+        data = {
+            "category": self.category.pk,
+            "amount": "600.00",
+            "spent_on": "2026-01-15",
+            "note": "",
+            "items-TOTAL_FORMS": "1",
+            "items-INITIAL_FORMS": str(initial),
+            "items-MIN_NUM_FORMS": "0",
+            "items-MAX_NUM_FORMS": "1000",
+            "items-0-name": "Pizza",
+            "items-0-amount": "600.00",
+            "items-0-shared_with": shared_with,
+        }
+        if item_pk:
+            data["items-0-id"] = str(item_pk)
+        return self.client.post(url or reverse("expenses:expense_create"), data)
+
+    def test_ticking_someone_creates_a_share(self):
+        self._post([self.rahul.pk])
+
+        share = ItemShare.objects.get()
+        self.assertEqual(share.participant, self.rahul)
+        self.assertEqual(share.weight, 1)
+
+    def test_the_checkbox_list_is_scoped_to_your_people(self):
+        response = self.client.get(reverse("expenses:expense_create"))
+
+        self.assertNotContains(response, "Stranger")
+
+    def test_a_crafted_post_cannot_tick_someone_elses_person(self):
+        response = self._post([self.stranger.pk])
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(ItemShare.objects.count(), 0)
+
+    def test_unticking_removes_the_share(self):
+        self._post([self.rahul.pk])
+        expense = Expense.objects.get()
+        item = expense.items.get()
+
+        self._post(
+            [],
+            url=reverse("expenses:expense_update", args=[expense.pk]),
+            initial=1,
+            item_pk=item.pk,
+        )
+
+        self.assertEqual(ItemShare.objects.count(), 0)
+
+    def test_resaving_keeps_the_same_share_row(self):
+        # Reconciliation is a diff, not delete-then-recreate, so the primary
+        # key survives and so would a weight the UI does not set.
+        self._post([self.rahul.pk])
+        expense = Expense.objects.get()
+        item = expense.items.get()
+        original = ItemShare.objects.get().pk
+
+        self._post(
+            [self.rahul.pk],
+            url=reverse("expenses:expense_update", args=[expense.pk]),
+            initial=1,
+            item_pk=item.pk,
+        )
+
+        self.assertEqual(ItemShare.objects.get().pk, original)
+
+    def test_existing_shares_are_preselected_when_editing(self):
+        self._post([self.rahul.pk])
+        expense = Expense.objects.get()
+
+        response = self.client.get(reverse("expenses:expense_update", args=[expense.pk]))
+
+        # The attribute order Django renders: value, id, then checked.
+        self.assertContains(response, 'id="id_items-0-shared_with_0" checked')

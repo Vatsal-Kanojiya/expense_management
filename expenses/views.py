@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
@@ -16,6 +18,7 @@ from django.views.generic import (
     UpdateView,
 )
 
+from .balances import balances
 from .filters import DateRangeForm, ExpenseFilterForm
 from .forms import CategoryForm, ExpenseForm, ExpenseItemFormSet, ParticipantForm
 from .mixins import ItemFormSetMixin, OwnerFormMixin, OwnerScopedMixin
@@ -103,6 +106,34 @@ class CategoryDeleteView(OwnerScopedMixin, DeleteView):
 
         messages.success(self.request, f"Category “{self.object.name}” deleted.")
         return response
+
+
+class BalanceView(LoginRequiredMixin, TemplateView):
+    """Who owes you, over a date range.
+
+    A TemplateView for the same reason as the dashboard: the page is derived
+    numbers, not a list of rows. Scoping happens inside balances(), which is
+    called with request.user, so there is no queryset for OwnerScopedMixin
+    to narrow.
+    """
+
+    template_name = "expenses/balances.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        form = DateRangeForm(self.request.GET or None)
+        start, end = form.range_or_default()
+        owed = balances(self.request.user, start, end)
+
+        context.update(
+            form=form,
+            start=start,
+            end=end,
+            balances=owed,
+            total=sum((amount for _, amount in owed), Decimal("0")),
+        )
+        return context
 
 
 class ParticipantListView(OwnerScopedMixin, ListView):

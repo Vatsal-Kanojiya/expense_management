@@ -3,7 +3,7 @@ from decimal import Decimal
 from django import forms
 from django.forms import BaseInlineFormSet, inlineformset_factory
 
-from .models import Category, Expense, ExpenseItem, Participant
+from .models import Category, Expense, ExpenseItem, ItemShare, Participant
 
 
 class CategoryForm(forms.ModelForm):
@@ -121,6 +121,49 @@ class ExpenseForm(forms.ModelForm):
         return amount
 
 
+class ExpenseItemForm(forms.ModelForm):
+    """One line, plus who shared it.
+
+    ``shared_with`` is not a model field. It stands in for ItemShare rows,
+    which is the ordinary way to edit a through model from a form: expose
+    the relationship as a multiple-choice field and reconcile the rows on
+    save. Editing the through model directly would mean a formset inside a
+    formset, which is a lot of machinery for a checkbox list.
+
+    Every share written here has weight 1, an equal split of that line. The
+    weight column exists for unequal shares, which no UI exposes yet.
+
+    "In addition to you" is the convention throughout: the owner always
+    counts as one share of anything that is shared at all.
+    """
+
+    shared_with = forms.ModelMultipleChoiceField(
+        queryset=Participant.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Shared with (besides you)",
+    )
+
+    class Meta:
+        model = ExpenseItem
+        fields = ["name", "amount"]
+        widgets = {
+            "name": forms.TextInput(attrs={"placeholder": "What was it?"}),
+            "amount": forms.NumberInput(attrs={"step": "0.01", "placeholder": "0.00"}),
+        }
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # The same scoping rule as every other choice field in this project.
+        self.fields["shared_with"].queryset = Participant.objects.filter(user=user)
+
+        if self.instance.pk:
+            self.fields["shared_with"].initial = list(
+                self.instance.shares.values_list("participant_id", flat=True)
+            )
+
+
 class BaseExpenseItemFormSet(BaseInlineFormSet):
     """Line items, and the invariant the database cannot hold.
 
@@ -170,16 +213,41 @@ class BaseExpenseItemFormSet(BaseInlineFormSet):
                 code="items_do_not_sum",
             )
 
+    def save(self, commit=True):
+        items = super().save(commit=commit)
+
+        if commit:
+            for form in self.forms:
+                if not form.cleaned_data or form.cleaned_data.get("DELETE"):
+                    continue
+                if form.instance.pk:
+                    self._sync_shares(form.instance, form.cleaned_data.get("shared_with", []))
+
+        return items
+
+    @staticmethod
+    def _sync_shares(item, participants):
+        """Reconcile ItemShare rows to match the checkboxes.
+
+        Deliberately a diff, not delete-then-recreate. Recreating would churn
+        primary keys on every save and throw away the weight column, which
+        nothing in the UI sets yet but the schema supports.
+        """
+        wanted = {participant.pk for participant in participants}
+        existing = set(item.shares.values_list("participant_id", flat=True))
+
+        item.shares.filter(participant_id__in=existing - wanted).delete()
+        ItemShare.objects.bulk_create(
+            [ItemShare(item=item, participant_id=pk) for pk in wanted - existing]
+        )
+
 
 ExpenseItemFormSet = inlineformset_factory(
     Expense,
     ExpenseItem,
+    form=ExpenseItemForm,
     formset=BaseExpenseItemFormSet,
     fields=["name", "amount"],
-    widgets={
-        "name": forms.TextInput(attrs={"placeholder": "What was it?"}),
-        "amount": forms.NumberInput(attrs={"step": "0.01", "placeholder": "0.00"}),
-    },
     extra=3,
     can_delete=True,
 )

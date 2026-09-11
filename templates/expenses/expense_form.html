@@ -34,6 +34,7 @@
           <tr>
             <th>Item</th>
             <th class="num">Amount</th>
+            <th>Shared with (besides you)</th>
             <th>Remove</th>
           </tr>
         </thead>
@@ -44,6 +45,10 @@
               {{ item_form.id }}
               <td>{{ item_form.name }}{{ item_form.name.errors }}</td>
               <td class="num">{{ item_form.amount }}{{ item_form.amount.errors }}</td>
+              <td>
+                {# Leave every box clear and the line is yours alone. #}
+                {{ item_form.shared_with }}{{ item_form.shared_with.errors }}
+              </td>
               <td>{% if item_form.instance.pk %}{{ item_form.DELETE }}{% endif %}</td>
             </tr>
           {% endfor %}
