@@ -4,7 +4,16 @@ A small Django application for tracking personal spending by category, built as 
 reference project — deliberately including the parts a batteries-included framework usually hides:
 user-scoped data access, database-level constraints, background jobs and scheduling.
 
-**Stack:** Django 5.2 · Python 3.10 · SQLite (dev) / Postgres-ready via `DATABASE_URL`
+**Stack:** Django 5.2 · Python 3.10 · Postgres (SQLite for a zero-setup run) · Celery + Redis ·
+Django REST Framework · Docker Compose
+
+**Features:** user-scoped expense tracking with categories · split bills across participants, evenly
+or per line item · balances and settling up · dashboard aggregation · CSV export by email ·
+monthly digest · JSON API
+
+Sixteen build phases, each ending in a git tag. `docs/COMMIT_PLAN.md` is the build order,
+`docs/BUILD_LOG.md` records what each phase actually cost, and `docs/DECISIONS.md` lists every
+judgement call with the alternative that was rejected.
 
 ---
 
@@ -29,6 +38,15 @@ python manage.py runserver
 ```
 
 Then open http://127.0.0.1:8000/.
+
+### Or the whole stack at once
+
+```bash
+docker compose up --build
+```
+
+Brings up web, Celery worker, beat, Redis and Postgres together, which is the only configuration
+where row locking, the cache and the scheduler all behave as they do in production.
 
 > **Note:** sign up at `/accounts/signup/` for a normal account. A superuser is only needed for
 > the Django admin at `/admin/`.
