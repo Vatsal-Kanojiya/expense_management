@@ -301,6 +301,76 @@ cursor bug fails `TransactionTestCase` only.
 
 ---
 
+### Session 11 — Phase 10: REST API → tag `phase-10-api`
+
+| Commit | Message |
+|---|---|
+| `0443045` | `feat(api): expose expenses over a versioned JSON API` |
+
+**`has_object_permission` never runs on list.** This is the finding worth carrying into an
+interview, and the one DRF's tutorials make it easy to miss.
+
+| Action | Calls `get_object()` | Object permission consulted |
+|---|---|---|
+| `retrieve`, `update`, `destroy` | yes | **yes** |
+| `list` | **no** | **no** |
+| `create` | no | no |
+
+A ViewSet whose only protection is a `permission_classes` entry returns **every user's rows** from
+its collection endpoint while correctly refusing them one at a time. The boundary is
+`get_queryset()`, exactly as it is for the server-rendered views; `IsOwner` is defence in depth.
+`test_the_list_endpoint_is_scoped` exists to fail loudly if that is ever reversed.
+
+**404 rather than 403** for someone else's row, for the same reason as the web views: the row is
+absent from the queryset before permission code runs, and a 403 would confirm it exists.
+
+**The scoping trap, fifth time.** `PrimaryKeyRelatedField` defaults to every row in the table just
+as `ModelChoiceField` does — and here there is **no dropdown to notice it in**. A crafted payload
+files an expense against another user's category. `ScopedPrimaryKeyRelatedField` filters on the
+request user.
+
+**Writable nested serializers are hand-written, and DRF is right to refuse them.** It cannot guess
+the ordering, the ownership, or what "update" means for a list of children.
+
+Two decisions inside that:
+
+* **Items are replaced, not diffed.** A line has no client-supplied stable identity — two lines can
+  legitimately share a name and an amount — so matching incoming rows to stored ones would need an
+  id the caller does not have. `ItemShare` cascades from the item, so the through rows go with them.
+* **Absent and empty must not collapse.** `None` means "not mentioned", `[]` means "remove them
+  all". If they were the same, every `PATCH` of a note would silently delete the line items. That is
+  the classic nested-write data loss, and it has a test.
+
+**The cross-row invariant had to be restated.** The formset's `clean()` does nothing for the API.
+An invariant the database cannot hold must be re-implemented at *every* entry point — which is the
+honest cost of moving a rule out of the schema, and exactly why `check_splits` was written in
+phase 9. In the serializer it lives in `validate()` rather than `validate_items()`, because the rule
+needs the amount as well as the items and a field validator only sees its own field.
+
+**Cursor pagination, and how it dictates the ordering.** Offset paging re-reads rows when something
+is inserted mid-page, so a client can see a row twice or skip it. A cursor encodes where the last
+page stopped, which requires an ordering field that is **unique and does not change**:
+
+| Field | Unique | Stable | Usable |
+|---|---|---|---|
+| `spent_on` | no | no, it is the field users correct | ✗ |
+| `id` | yes | yes | ✓ |
+
+So the API orders by `-id` even though the web list orders by date. DRF's default ordering is
+`-created`, a field this project does not have — a **500 on the first request**, not a warning.
+
+**Nested serializers are an N+1 machine.** Each expense serialises its items, each item its shares.
+The prefetch on the ViewSet is not an optimisation, it is the difference between one page and a few
+hundred queries. `assertNumQueries` pins it.
+
+**Session auth, deliberately.** Tokens are what a mobile or script client wants, and a JWT nobody
+has thought about expiring is worse than no token at all. Throttling is on (`1000/hour` user,
+`60/hour` anon) but **does not close known issue 15** — that is Django's login view, not DRF's.
+
+**Suite:** 283 tests, green under both `DEBUG=True` and the CI environment.
+
+---
+
 ### Session 10 — Phase 9: ORM depth → tag `phase-9-orm`
 
 | Commit | Message |
