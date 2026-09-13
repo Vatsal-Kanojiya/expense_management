@@ -178,3 +178,9 @@ Tracked in full in [docs/BUILD_LOG.md](docs/BUILD_LOG.md). The two that matter m
 | [docs/DJANGO_CHEATSHEET.md](docs/DJANGO_CHEATSHEET.md) | Commands with the reasoning behind them |
 | [docs/STUDY_MAP.md](docs/STUDY_MAP.md) | Topics ranked by depth required, and why |
 | [docs/RUNNING_ASYNC.md](docs/RUNNING_ASYNC.md) | Running the worker, the digest, cron and systemd |
+
+---
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
