@@ -59,7 +59,7 @@ git log phase-1-foundation..phase-2-auth --oneline
 
 Status: ✅ done · 🔜 next · ⬜ planned
 
-### Phase 0 — Project scaffold ✅ *(commits `60fb810`, `89c3a82`)*
+### Phase 0 — Project scaffold ✅ *(commits `925f501`, `b3cf8d5`)*
 
 | # | Commit | Files | Architecture note |
 |---|---|---|---|
@@ -87,8 +87,8 @@ Status: ✅ done · 🔜 next · ⬜ planned
 ### Phase 2 — Authentication ✅ *(tag `phase-2-auth`, built after phases 3–4.5)*
 
 > **Outcome:** the bet held. Landing this phase changed `LOGIN_URL` and one test assertion, and
-> touched **no view code in `expenses/`**. As built it is five commits — `eb84d02`, `dadf826`,
-> `9b78c59`, `d853ab0`, `149aa25` — with a model change (unique email) first, because password
+> touched **no view code in `expenses/`**. As built it is five commits — `4a05ec4`, `43eb608`,
+> `e640e21`, `ecef23a`, `c63bdfd` — with a model change (unique email) first, because password
 > reset looks users up by email and `AbstractUser` leaves it blank and non-unique.
 
 | # | Commit | Files | Architecture note |
@@ -108,7 +108,7 @@ Status: ✅ done · 🔜 next · ⬜ planned
 > **As built**, 3.1 was folded into 3.2 — a urlconf pointing at views that don't exist yet won't
 > import, so it can't stand as its own working commit. Scoping (3.4) was written *into* each slice
 > rather than bolted on afterwards; the separate commit became the mixin extraction instead. Three
-> commits: `03b3cff`, `f67f2ee`, `d28d166`.
+> commits: `ddf74ad`, `2a41c15`, `57b91d2`.
 
 Category before Expense — `Expense.category` is a FK, so you need categories to exist before the
 expense form is usable.
@@ -130,7 +130,7 @@ expense form is usable.
 
 > **As built:** a fourth file, `test_forms.py`, was added — the forms carry real logic (duplicate
 > checks, dropdown scoping) that belongs neither with models nor views. 59 tests across 3 commits:
-> `ad1273e`, `3f0eb14`, `3393334`.
+> `ad9e729`, `e6da1e1`, `c95e20a`.
 
 | # | Commit | Files | Architecture note |
 |---|---|---|---|
@@ -145,7 +145,7 @@ expense form is usable.
 
 ### Phase 5 — Read layer ✅ *(tag `phase-5-dashboard`)*
 
-> **As built:** two commits, `34c5a4b` and `5005cba`. The aggregation was extracted to
+> **As built:** two commits, `06ae873` and `c41b0ee`. The aggregation was extracted to
 > `managers.py` + `summaries.py` up front rather than lifted out of the view later, because phase 6
 > needs it from a Celery task. Dashboard took a **date range** defaulting to the current month
 > rather than a month picker, so one query shape serves both the UI and the digest.
@@ -162,7 +162,7 @@ expense form is usable.
 
 ### Phase 6 — Async and scheduled work ✅ *(tag `phase-6-async`)*
 
-> **As built:** three commits — `a970a57`, `cda81e5`, `92cb1e5`. Verified against a real Redis and a
+> **As built:** three commits — `a78713d`, `15a9d2a`, `5eedafc`. Verified against a real Redis and a
 > real worker rather than eager mode alone. The digest bug (`iterator()` + commit-in-loop) is the
 > clearest example in this project of why `TransactionTestCase` exists.
 
@@ -181,7 +181,7 @@ The phase this whole project exists to demonstrate. See BUILD_LOG §5 for the Ce
 
 ### Phase 7 — Production readiness ✅ *(tag `phase-7-production`)*
 
-> **As built:** three commits — `65639bf`, `17134ea`, `c675726`. The README landed earlier, so 7.4
+> **As built:** three commits — `aa4fa4d`, `61f9fc1`, `80e0fb0`. The README landed earlier, so 7.4
 > became a correction instead. Two bugs surfaced that neither the plan nor the tests predicted: the
 > `if not DEBUG` gate runs at *import* time, which broke 106 CI tests via the SSL redirect and made
 > `override_settings` useless for testing the block; and `500.html` was unparseable because the
