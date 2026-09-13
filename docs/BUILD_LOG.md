@@ -443,6 +443,43 @@ cursor bug fails `TransactionTestCase` only.
 
 ---
 
+### Session 18 — Published to GitHub
+
+Two things happened that are worth more than the push itself.
+
+**Every commit was reauthored.** All 68 carried the *work* identity (`vatsal.k@360ithub.com`), which
+would have published a work address 68 times on a public personal repository. `git filter-repo`
+rewrote author and committer to the GitHub noreply address, which also means the commits now count
+toward the right contribution graph.
+
+The cost was the one the plan predicted: **every hash changed**, and 34 of them are cited across
+BUILD_LOG and COMMIT_PLAN. `filter-repo` writes an old-to-new commit map, so the references were
+rewritten from it automatically and each was verified to resolve to a real commit again. All 17
+phase tags moved with the rewrite. The personal identity is set with `git config --local`, so the
+global config still points at the work account for every other repository on the machine.
+
+**CI ran for the first time and failed immediately.** `ModuleNotFoundError: No module named 'celery'`
+— it had been missing from `requirements.txt` since session 7.
+
+> This is exactly the bug class issue 24 predicted. Everything worked locally for **ten sessions**
+> because the virtualenv had celery installed directly, and nothing ever built the environment from
+> the requirements file alone. With no remote, CI could not catch it. *A dependency file is only
+> tested by a machine that has never seen your laptop.*
+
+Verified by building a throwaway venv from `requirements.txt` alone and replaying all four CI steps
+against it, rather than trusting the local environment again.
+
+**A second, smaller lesson from that verification:** the first check reported success falsely.
+`cmd | tail -1` returns *tail's* exit status, not the command's, so a failing deploy audit looked
+like a pass. Checking the exit code directly showed it failing — on a short `SECRET_KEY` in the test
+invocation, not on the application.
+
+**Deliberately not done:** `.venv/` and the original development `SECRET_KEY` remain in history
+(issue 5). The hashes had already moved once, which made stripping them nearly free, and the call
+was to leave them. The key is a rotated `django-insecure-` value.
+
+---
+
 ### Sessions 12-17 — Phases 11 to 16
 
 Six phases in one working block. Each is tagged; `git log --oneline phase-10-api..phase-16-hardening`
@@ -1196,6 +1233,8 @@ interview-gap list.
 | 17 | `note__icontains` search will not scale | migration `0005` (session 13) — GIN over `to_tsvector`, Postgres only |
 | 26 | Cache invalidation missed writes that bypassed the app | `post_save` receiver (session 16). Opened and closed within two phases |
 | 18 | No test read rendered HTML beyond template markers | session 16 — `rupees` filter tests assert formatted output, nav badge asserted in context |
+| 24 | No git remote, so CI had never run | session 18 — pushed to GitHub; the very first run caught issue 27 |
+| 27 | `celery` was missing from `requirements.txt` | session 18 — found by that first CI run |
 | 15 | No rate limiting on login or password reset | session 17 — cache-backed limiter keyed on (address, identifier) |
 | 16 | No email verification on signup | session 17 — inactive until a signed link is followed |
 | 10 | Account deletion raised `ProtectedError` | session 17 — ordered delete in `accounts/deletion.py` |
@@ -1214,4 +1253,3 @@ interview-gap list.
 | 20 | No worker supervision, monitoring or dead-letter handling | A crashed worker stays down; after `max_retries` a task is simply lost with nothing visible | systemd unit or container for the worker; Flower or event export for monitoring. See RUNNING_ASYNC.md |
 | 21 | `FileResponse` streams exports through Python | Fine in development, wasteful in production | `X-Accel-Redirect` (nginx) or a signed object-storage URL |
 | 25 | Participant deletion is refused once they are on a line item | `ItemShare.participant` is `PROTECT`, so removing someone from your list fails while any item still charges them. The view explains it rather than 500ing, but there is no way to re-share those items in bulk | Same shape as issue 10: an ordered delete, or a bulk re-share action. Deliberately left visible rather than papered over with `CASCADE`, which would leave items charged to nobody |
-| 24 | **No git remote, so CI has never run** | Every workflow in `.github/` is unverified. Issue 23 sat undetected for exactly this reason | Push to a remote. Until then, run the CI env locally: `DEBUG=False SECURE_SSL_REDIRECT=False python manage.py test` |

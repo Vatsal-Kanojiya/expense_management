@@ -4,6 +4,13 @@
 
 Django==5.2.17
 django-environ==0.12.0
+
+# Missing from this file for ten sessions. Everything worked locally
+# because the venv had it installed directly, and nothing ever built the
+# environment from this file alone -- there was no remote, so CI never
+# ran. Its first run failed on `No module named 'celery'`, which is
+# precisely the class of bug known issue 24 predicted.
+celery==5.5.3
 djangorestframework==3.16.1
 whitenoise==6.11.0
 gunicorn==23.0.0
