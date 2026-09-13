@@ -20,7 +20,7 @@
 ## 1. Current state at a glance
 
 **Session:** 17 — **all sixteen phases complete**
-**Last commit:** `94cd2c4` — *docs: mark all sixteen phases complete*
+**Last commit:** `4fc796f` — *docs: mark all sixteen phases complete*
 **Phase tags:** 17, `phase-1-foundation` … `phase-16-hardening` (`git tag | sort -V`)
 **Suite:** 357 tests, 95% coverage — green on SQLite, Postgres 16, the CI environment and real Redis
 
@@ -307,9 +307,9 @@ Three commits, one idea each.
 
 | Commit | Message | What changed |
 |---|---|---|
-| `986a3fd` | `chore: add gitignore and requirements, untrack venv and db` | `.gitignore`, `requirements.txt`; untracked 5982 venv files + `db.sqlite3` + all `__pycache__` (index only, disk untouched) |
-| `1293192` | `feat(accounts): add custom user model` | New `accounts` app: `User(AbstractUser)`, `UserAdmin` subclass, `AUTH_USER_MODEL`, DB rebuilt |
-| `9a48cdb` | `chore(config): move secrets and environment config out of source` | `django-environ`; `SECRET_KEY`/`DEBUG`/`ALLOWED_HOSTS`/`DATABASE_URL` from env; `.env.example` |
+| `f180f13` | `chore: add gitignore and requirements, untrack venv and db` | `.gitignore`, `requirements.txt`; untracked 5982 venv files + `db.sqlite3` + all `__pycache__` (index only, disk untouched) |
+| `448faea` | `feat(accounts): add custom user model` | New `accounts` app: `User(AbstractUser)`, `UserAdmin` subclass, `AUTH_USER_MODEL`, DB rebuilt |
+| `b78bf8f` | `chore(config): move secrets and environment config out of source` | `django-environ`; `SECRET_KEY`/`DEBUG`/`ALLOWED_HOSTS`/`DATABASE_URL` from env; `.env.example` |
 
 **The payoff moment:** switching `AUTH_USER_MODEL` required **zero changes** to
 `expenses/models.py` *and* zero changes to `expenses/migrations/0001_initial.py` — the model already
@@ -337,9 +337,9 @@ dependency · why `UserAdmin` must be subclassed (plain `ModelAdmin` stores clea
 
 | Commit | Message | What changed |
 |---|---|---|
-| `03b3cff` | `feat(expenses): add user-scoped category CRUD` | urlconf, base template, `CategoryForm`, 4 category views, 3 templates |
-| `f67f2ee` | `feat(expenses): add user-scoped expense CRUD` | `ExpenseForm`, 4 expense views, 3 templates, pagination |
-| `d28d166` | `refactor(expenses): extract owner-scoping mixins` | `mixins.py`; `views.py` 147 → 101 lines |
+| `ddf74ad` | `feat(expenses): add user-scoped category CRUD` | urlconf, base template, `CategoryForm`, 4 category views, 3 templates |
+| `2a41c15` | `feat(expenses): add user-scoped expense CRUD` | `ExpenseForm`, 4 expense views, 3 templates, pagination |
+| `57b91d2` | `refactor(expenses): extract owner-scoping mixins` | `mixins.py`; `views.py` 147 → 101 lines |
 
 **Plan deviation:** commit 3.1 ("app urlconf and base template") was folded into the Category slice.
 A urlconf pointing at views that don't exist yet won't import, so it can't be its own working
@@ -383,9 +383,9 @@ rejected as a field error · negative amount rejected · duplicate name rejected
 
 | Commit | Message |
 |---|---|
-| `a970a57` | `chore: add celery with a redis broker` |
-| `cda81e5` | `feat(expenses): add async CSV export` |
-| `92cb1e5` | `feat(expenses): add monthly digest command with idempotency` |
+| `a78713d` | `chore: add celery with a redis broker` |
+| `15a9d2a` | `feat(expenses): add async CSV export` |
+| `5eedafc` | `feat(expenses): add monthly digest command with idempotency` |
 
 **The whole point of the phase, in one table:**
 
@@ -605,7 +605,7 @@ drawn blood here. The test caught it, which is the system working.
 
 | Commit | Message |
 |---|---|
-| `0443045` | `feat(api): expose expenses over a versioned JSON API` |
+| `ecc10d7` | `feat(api): expose expenses over a versioned JSON API` |
 
 **`has_object_permission` never runs on list.** This is the finding worth carrying into an
 interview, and the one DRF's tutorials make it easy to miss.
@@ -675,8 +675,8 @@ has thought about expiring is worse than no token at all. Throttling is on (`100
 
 | Commit | Message |
 |---|---|
-| `70a8389` | `perf(expenses): prefetch splits and search across relations` |
-| `f043804` | `feat(expenses): annotate categories with their last spend and audit splits` |
+| `9f64811` | `perf(expenses): prefetch splits and search across relations` |
+| `4f05400` | `feat(expenses): annotate categories with their last spend and audit splits` |
 
 **One join, three different bugs.** Searching across items and participants crosses a
 multi-valued relation, and that single fact breaks three things in three different ways. This is
@@ -738,12 +738,12 @@ enforced at one entry point needs a way to audit the rows at rest.
 
 | Commit | Message |
 |---|---|
-| `fa01f02` | `feat(expenses): add participants, line items and item shares` |
-| `5e45bcb` | `feat(expenses): split money without losing any` |
-| `a6dccc2` | `feat(expenses): add participant CRUD` |
-| `f66fd21` | `feat(expenses): split an expense evenly across participants` |
-| `7b49dad` | `feat(expenses): add line items to an expense` |
-| `2b95d12` | `feat(expenses): share line items and show who owes you` |
+| `c45b671` | `feat(expenses): add participants, line items and item shares` |
+| `03cb2c2` | `feat(expenses): split money without losing any` |
+| `c4b59f5` | `feat(expenses): add participant CRUD` |
+| `2f880b4` | `feat(expenses): split an expense evenly across participants` |
+| `c4ca793` | `feat(expenses): add line items to an expense` |
+| `d893191` | `feat(expenses): share line items and show who owes you` |
 
 **Both halves of many-to-many, in one domain.** This is the phase's central lesson and the reason
 splitting replaced the tags-and-budgets plan: tags would only ever have taught the easy half.
@@ -820,9 +820,9 @@ transfers. It is a graph problem and the point where this design would stop bein
 
 | Commit | Message |
 |---|---|
-| `65639bf` | `chore(config): harden production settings and add logging` |
-| `17134ea` | `feat: add error page templates` |
-| `c675726` | `ci: make the deploy check a gate` |
+| `aa4fa4d` | `chore(config): harden production settings and add logging` |
+| `61f9fc1` | `feat: add error page templates` |
+| `80e0fb0` | `ci: make the deploy check a gate` |
 
 **Every security setting is gated on `if not DEBUG`, and that gate is the phase's whole story.**
 Each one breaks local development: an SSL redirect makes `http://localhost` unreachable, and secure
@@ -870,8 +870,8 @@ than flipping a flag to quiet a checker.
 
 | Commit | Message |
 |---|---|
-| `34c5a4b` | `feat(expenses): add reusable aggregation layer` |
-| `5005cba` | `feat(expenses): add dashboard and expense filtering` |
+| `06ae873` | `feat(expenses): add reusable aggregation layer` |
+| `c41b0ee` | `feat(expenses): add dashboard and expense filtering` |
 
 **The architectural decision of this phase:** the aggregation lives on a custom `QuerySet` plus a
 plain `summaries.py` module — **not in the view**. Phase 6's digest runs inside a Celery task where
@@ -919,11 +919,11 @@ deterministic dates · frozen dataclasses as view-model.
 
 | Commit | Message |
 |---|---|
-| `eb84d02` | `feat(accounts): make user email required and unique` |
-| `dadf826` | `feat(accounts): add login and logout` |
-| `9b78c59` | `feat(accounts): add signup` |
-| `d853ab0` | `feat(accounts): add password change and reset flows` |
-| `149aa25` | `test(accounts): cover authentication flows` |
+| `4a05ec4` | `feat(accounts): make user email required and unique` |
+| `43eb608` | `feat(accounts): add login and logout` |
+| `e640e21` | `feat(accounts): add signup` |
+| `ecef23a` | `feat(accounts): add password change and reset flows` |
+| `c63bdfd` | `test(accounts): cover authentication flows` |
 
 **The deferral bet paid off.** Phase 2 landed after phase 3 and 4. The only change outside
 `accounts/` and `templates/registration/` was `LOGIN_URL`, plus one test asserting the new redirect
@@ -982,9 +982,9 @@ email backends and `mail.outbox` · `LOGIN_URL` / `LOGIN_REDIRECT_URL` / `LOGOUT
 
 | Commit | Message | Tests |
 |---|---|---|
-| `ad1273e` | `test(expenses): cover model constraints` | 14 |
-| `3f0eb14` | `test(expenses): cover forms and CRUD views` | 32 |
-| `3393334` | `test(expenses): cover ownership boundaries` | 13 |
+| `ad9e729` | `test(expenses): cover model constraints` | 14 |
+| `e6da1e1` | `test(expenses): cover forms and CRUD views` | 32 |
+| `c95e20a` | `test(expenses): cover ownership boundaries` | 13 |
 
 `expenses/tests.py` became the package `expenses/tests/`. Split by *what fails when it breaks*:
 
@@ -1076,7 +1076,7 @@ this is the file set that silently drifts and is worth being able to reconstruct
 | 7 | `CELERY_TASK_ALWAYS_EAGER` | — | `env.bool`, default `False` | Lets the suite run with no broker. Never true in production |
 | 7 | `MEDIA_URL` / `MEDIA_ROOT` | — | `media/` | Generated exports |
 
-> The old `SECRET_KEY` is in git history (commit `60fb810`) and is permanently compromised. A fresh
+> The old `SECRET_KEY` is in git history (commit `925f501`) and is permanently compromised. A fresh
 > key was generated rather than reused. Lesson: once a secret is committed, rotating is the only
 > fix — removing it from the working tree does nothing.
 
@@ -1185,12 +1185,12 @@ interview-gap list.
 
 | # | Issue | Resolved in |
 |---|---|---|
-| 1 | No custom user model | `1293192` (session 2) |
-| 9 | `LOGIN_URL` pointed at the admin login | `dadf826` (session 5) |
-| 2 | No `.gitignore`; venv/db/pycache tracked | `986a3fd` (session 2) |
-| 3 | No `requirements.txt` | `986a3fd` (session 2) |
-| 4 | `SECRET_KEY` hardcoded in source | `9a48cdb` (session 2) |
-| 13 | `check --deploy` reported 5 warnings; CI was `continue-on-error` | `65639bf` / `c675726` (session 8) |
+| 1 | No custom user model | `448faea` (session 2) |
+| 9 | `LOGIN_URL` pointed at the admin login | `43eb608` (session 5) |
+| 2 | No `.gitignore`; venv/db/pycache tracked | `f180f13` (session 2) |
+| 3 | No `requirements.txt` | `f180f13` (session 2) |
+| 4 | `SECRET_KEY` hardcoded in source | `b78bf8f` (session 2) |
+| 13 | `check --deploy` reported 5 warnings; CI was `continue-on-error` | `aa4fa4d` / `80e0fb0` (session 8) |
 | 14 | No Docker | session 12 — `Dockerfile` + `compose.yaml` |
 | 11 | Case-sensitivity mismatch on category names | migration `0004` (session 13) — `UniqueConstraint(Lower("name"), "user")` |
 | 17 | `note__icontains` search will not scale | migration `0005` (session 13) — GIN over `to_tsvector`, Postgres only |
@@ -1201,15 +1201,15 @@ interview-gap list.
 | 10 | Account deletion raised `ProtectedError` | session 17 — ordered delete in `accounts/deletion.py` |
 | 19 | Generated exports were never deleted | session 17 — `purge_exports` command plus a beat schedule |
 | 7 | Settings not split base/dev/prod | **Closed as won't-do** (session 12). Env injection already varies every setting across local, CI and container. See DECISIONS D9 |
-| 9 | README claimed the app had no login pages | session 8 (stale since `dadf826`) |
-| 22 | `templates/500.html` was unparseable — tags spelled out in an HTML comment | `17134ea` (session 8) |
-| 23 | CI test job ran with `DEBUG=False`, so the SSL redirect 301'd every request | `c675726` (session 8) |
+| 9 | README claimed the app had no login pages | session 8 (stale since `43eb608`) |
+| 22 | `templates/500.html` was unparseable — tags spelled out in an HTML comment | `61f9fc1` (session 8) |
+| 23 | CI test job ran with `DEBUG=False`, so the SSL redirect 301'd every request | `80e0fb0` (session 8) |
 
 ### Open
 
 | # | Issue | Impact | Fix |
 |---|---|---|---|
-| 5 | `.venv/` remains in git *history* (commit `60fb810`) | Repo is heavier than it should be; the old `SECRET_KEY` is permanently in history | Only fixable by rewriting history (`git filter-repo`). **Not worth it here** — no remote, no real secret at risk since the key was rotated. Worth knowing the cost for a real project |
+| 5 | `.venv/` remains in git *history* (commit `925f501`) | Repo is heavier than it should be; the old `SECRET_KEY` is permanently in history | Only fixable by rewriting history (`git filter-repo`). **Not worth it here** — no remote, no real secret at risk since the key was rotated. Worth knowing the cost for a real project |
 | 6 | No superuser (DB was rebuilt) | Only blocks `/admin/`. The app has its own signup and login, so this no longer blocks using it | `python manage.py createsuperuser` |
 | 20 | No worker supervision, monitoring or dead-letter handling | A crashed worker stays down; after `max_retries` a task is simply lost with nothing visible | systemd unit or container for the worker; Flower or event export for monitoring. See RUNNING_ASYNC.md |
 | 21 | `FileResponse` streams exports through Python | Fine in development, wasteful in production | `X-Accel-Redirect` (nginx) or a signed object-storage URL |
