@@ -315,3 +315,72 @@ expense forever, to solve a problem that happens once per account.
 
 **The kept test `test_the_plain_delete_still_raises`** documents why this
 module exists. Without it, someone would eventually delete it as redundant.
+
+## Session 20 — paid-by, explicit self, per-expense split breakdown
+
+### D19. Self is a `Participant(is_self=True)` row, not a `BooleanField` on `Expense`
+
+**Decided:** auto-create one `Participant(is_self=True, name="You")` per user.
+This row appears in the "Paid by" dropdown and the "Split among" checkboxes
+alongside every other participant. The balance engine treats it uniformly.
+
+**Alternative (recommended in issue #31):** a `BooleanField(default=True)` on
+`Expense`, toggling whether the owner is counted as one implicit share. The
+`+1` in `balances.py` becomes conditional on the flag.
+
+**Why the reversal:** the `BooleanField` solves only one of two problems —
+whether self is in the split. It does not solve "who paid", because the payer
+must be selectable from a set of people, and a boolean has no identity. Making
+self a `Participant` unifies payer and consumer into one model: one dropdown,
+one set of validation rules, one balance engine, zero special cases in
+`_charge_item` and `_charge_evenly`.
+
+**The three trade-offs issue #31 flagged, and how each is handled:**
+
+| Concern | Solution |
+|---|---|
+| Self leaks into the People list | Filter `is_self=True` out of `ParticipantListView.get_queryset()` |
+| Self collides with the `UniqueConstraint(Lower(name), user)` | The name "You" is reserved at the model level; `clean_name` rejects it for regular participants |
+| Self appears in the balances table as "someone who owes you" | The balance engine now tracks `(debtor, creditor)` pairs uniformly — self owing a participant is as natural as the reverse |
+
+**Reverse it if:** the number of special-case filters for `is_self` exceeds
+three or four. At that point the boolean is cheaper.
+
+### D20. `Expense.paid_by` is a FK to `Participant`, default = self-participant
+
+**Decided:** `Expense.paid_by = ForeignKey(Participant, null=True,
+on_delete=PROTECT, related_name="paid_expenses")`. Null during migration only;
+data migration populates it to the self-participant for all existing rows.
+Default on the form (not the model) is the self-participant.
+
+**Alternatives considered:**
+
+| Option | Rejected because |
+|---|---|
+| No `paid_by` field — owner is always the payer | Cannot record that a friend paid |
+| `paid_by` as a `CharField` (free text) | Cannot join to participants for balance computation |
+| `paid_by` as FK to `User` | Not all payers are registered users. A `Participant` is a name owned by a user, which is exactly the right granularity |
+
+**`on_delete=PROTECT`:** a participant who paid for an expense cannot be
+deleted. This matches the existing `PROTECT` on `ItemShare.participant` — you
+cannot delete someone who is on a bill.
+
+### D21. Split breakdown is a tab on the expense form, not a separate page
+
+**Decided:** the expense create/edit view gets a new tab (alongside the
+existing line items card) showing who consumed what, who paid, and who owes
+whom. The tab auto-appears when the expense is balanced (`is_balanced()` is
+true). No new URL.
+
+**Alternatives considered:**
+
+| Option | Rejected because |
+|---|---|
+| A separate detail page (`/expenses/<pk>/`) | The user explicitly requested no new pages. The expense form already has all the context |
+| Inline expansion in the expense list | Too much data for a table row; would clutter the list with 4-column sub-tables |
+| Both (summary in list + detail page) | Over-engineered for the current need |
+
+**Why a tab and not a static section:** the breakdown is derived from line
+items and participants, which are being edited on the same page. A tab that
+reacts to the current form state (valid vs invalid, balanced vs unbalanced)
+gives immediate feedback without navigating away.
