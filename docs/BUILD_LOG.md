@@ -19,10 +19,33 @@
 
 ## 1. Current state at a glance
 
-**Session:** 21 — **sixteen phases tagged; phase 17 (paid-by, explicit splits, misc, split tab) built, not yet tagged**
-**Last commit:** `bafcc68` — *docs: log session 21 review fixes and supersede T3 design*
-**Phase tags:** 17, `phase-1-foundation` … `phase-16-hardening` (`git tag | sort -V`)
-**Suite:** 419 tests, 95% coverage at phase 16, not re-measured since — green on SQLite, Postgres 16, the CI environment and real Redis
+> ## ▶ Resume here
+>
+> **The expense tracker is frozen as of session 22.** It covers the concepts it was built for. From
+> here, only bugs that lose data or break a working flow get fixed. Polish goes on the backlog and
+> stays there. See DECISIONS D27.
+>
+> **The next step is project 2 of 11, built solo from memory.** Use this log as the spec: pick a
+> different domain, rebuild the same concepts yourself, and open these notes only when stuck.
+>
+> **Loose ends, in the order worth doing them:**
+>
+> 1. **Push.** `master` is 15 commits ahead of `origin`. The GitHub tokens used before were meant
+>    to be revoked, so a push needs fresh credentials for the personal account
+>    `Vatsal-Kanojiya/expense_management`. **Never push with the global git identity or the
+>    default SSH key — both belong to the office account.** This repo pins the personal identity
+>    with `git config --local`.
+> 2. **Click through phase 17, then tag it.** `git tag -a phase-17-explicit-splits 0e1e602 -m
+>    "Phase 17: paid-by, explicit splits"`. The session 22 fix belongs to this phase, so tag at or
+>    after `0e1e602`, not at `bafcc68` as COMMIT_PLAN originally said.
+> 3. **Issue 34 is the only open item that can break something.** The API lets the self participant
+>    be listed, renamed and deleted. Under D26 that is a fix, not polish, if it is ever picked up.
+
+**Session:** 22 — sixteen phases tagged; phase 17 built and fixed, **awaiting owner click-through before tagging**
+**Last code commit:** `0e1e602` — *fix(expenses): keep line items when the expense form has an error*
+**Phase tags:** 16, `phase-1-foundation` … `phase-16-hardening` (`git tag | sort -V`)
+**Suite:** 427 tests, 95% coverage (re-measured session 22) — green on SQLite. Postgres, CI and Redis were last verified at phase 16
+**Remote:** `github.com/Vatsal-Kanojiya/expense_management` — **15 commits unpushed**
 
 | Dimension | State |
 |---|---|
@@ -31,7 +54,7 @@
 | Async | Celery worker + beat, Redis broker, separate result backend |
 | Cache | Redis, version-stamped per-user keys (LocMem fallback) |
 | Deploy | Multi-stage image, compose stack of five services, gunicorn, WhiteNoise |
-| Open issues | 7 — 5 deliberate, plus the self-participant redesign (34) and the parked form layout (35) — see §6 |
+| Open issues | 7 — 5 deliberate, plus the self participant in the API (34) and the parked form layout (35) — see §6 |
 
 > **Phases ran out of order on purpose, and the bet paid off.** Auth was deferred past CRUD so it
 > could be studied properly. That was safe because phase 3's views were written fully user-scoped
@@ -226,7 +249,22 @@ erDiagram
 | Auth | Ordered account deletion | `accounts/deletion.py` | ✅ done | 17 |
 | Infra | Export retention + beat schedule | `expenses/management/commands/` | ✅ done | 17 |
 | Test | Hardening: throttle, verify, delete, purge | `accounts/tests/test_hardening.py` | ✅ 18 tests | 17 |
-| Docs | Decisions log | `docs/DECISIONS.md` | ✅ 18 entries | 8-17 |
+| Docs | Decisions log | `docs/DECISIONS.md` | ✅ 27 entries | 8-22 |
+| Form | Dynamic line items (add/remove rows in JS) | `expenses/static/expenses/item-formset.js` | ✅ done | 19 |
+| Form | Sum rule becomes a warning, not a gate | `expenses/mixins.py` | ✅ done | 19 |
+| Docs | Handoff plan for a cheaper model | `docs/HANDOFF_PLAN.md` | ✅ T1-T9 | 20 |
+| Form | Autofocus on create forms | `expenses/forms.py` | ✅ done | 21 |
+| Form | ISO date inputs | `expenses/forms.py` | ✅ done | 21 |
+| Model | `Expense.paid_by` + explicit self participant | `expenses/models.py` | ✅ done | 21 |
+| Model | Misc amount split by consumption | `expenses/models.py`, `balances.py` | ✅ done | 21 |
+| Form | Line-item picker scoped to expense participants | `expenses/mixins.py` | ✅ done | 21 |
+| Template | Searchable chip-select widget | `expenses/widgets.py`, `chip-select.js` | ✅ done | 21 |
+| View | Per-expense Split tab | `templates/expenses/expense_form.html` | ✅ done | 21 |
+| Model | Signed settlements | `expenses/models.py` | ✅ done | 21 |
+| API | `paid_by` scoped to the request user | `expenses/api/serializers.py` | ✅ fixed | 21 |
+| View | **Line items survive a form error** | `expenses/mixins.py` | ✅ fixed | 22 |
+| Template | Red asterisk on required fields | `templates/base.html` | ✅ done | 22 |
+| Test | Form state and required markers | `expenses/tests/test_form_state.py` | ✅ 8 tests | 22 |
 
 Legend: ✅ done · 🔜 next · ⬜ not started · 🅿️ deliberately parked · ❌ problem
 
@@ -445,6 +483,67 @@ cursor bug fails `TransactionTestCase` only.
 `ContentFile` · `queryset.iterator()` and cursor lifetime · `TestCase` vs `TransactionTestCase` ·
 `BaseCommand`, `add_arguments`, `CommandError`, `self.style` · `call_command` in tests ·
 `IntegrityError` as a concurrency primitive · `FileResponse` · `MEDIA_ROOT`.
+
+---
+
+### Session 22 — Form state loss fixed, and the project frozen
+
+| Commit | Message |
+|---|---|
+| `31e1589` | `docs: spec the form state loss and required markers for handoff` |
+| `0e1e602` | `fix(expenses): keep line items when the expense form has an error` |
+
+**The bug.** Fill in line items, tick who shared each, leave `note` blank, submit. The error came back
+and **every line item was gone**. The POST carried all of it; the server threw it away.
+
+**Why, and why it is a Django lesson rather than a typo.** A `CreateView` has two exits after
+validation, and they do not share code:
+
+| Parent form | Django calls | Formset in the context was |
+|---|---|---|
+| valid | `form_valid()` | bound to the POST — built there by `ItemFormSetMixin` |
+| **invalid** | **`form_invalid()`** | **unbound — `get_context_data` fell back to a fresh one** |
+
+`ItemFormSetMixin` only built a bound formset on the valid path. The invalid path went straight to
+`get_context_data`, whose `setdefault` fallback built an empty formset. **The comment beside that
+fallback claimed `form_invalid` passed a bound one**, which is how the bug survived review from
+phase 8 until now.
+
+The fix is a `form_invalid` that re-binds the formset to `request.POST` and calls `is_valid()` on it,
+so errors in the items show in the same response as the parent's instead of after a second submit.
+It uses `form.instance`, not `self.object`, so the sum check sees the amount that was posted.
+
+> **No persistence was needed, and adding some would have been wrong.** Session storage,
+> `localStorage` or a draft table would each be a second copy of state that already exists in the
+> POST, and a second copy can disagree with what was submitted. *Re-render from the request.*
+
+**Verified three ways.** Four of the eight new tests fail on the previous code. The full suite passes.
+And a real browser was driven through the exact failing path: after a blank-note submit, the line
+item and its ticked participant were still on the page.
+
+**Required fields now show a red asterisk**, with one CSS rule and no Python. Django already renders
+the HTML `required` attribute on every required input — including its own `AuthenticationForm` — and
+omits it on optional ones, so `p:has(> :is(input, select, textarea)[required]) > label::after` marks
+every `as_p` form at once. Formset rows correctly omit the attribute, since a blank spare row must be
+submittable, so the Item and Amount column headers are marked by hand. `misc_note` is unstarred on
+purpose: it is required only when a misc amount is entered, and a permanent star would be false.
+
+**Process lesson.** The first response to this bug was a handoff spec rather than a fix, following the
+rule that implementation goes to a cheaper model. For a bug that loses data that was the wrong call
+and cost the owner time. D26 narrows the rule: working functionality gets fixed directly.
+
+**Two tooling slips worth remembering.**
+
+- `pkill -f "runserver 127.0.0.1:8765"` killed the shell running it, because `-f` matches full command
+  lines and the shell's own command line contained that string. Kill by port or PID instead.
+- A browser script clicked `form button[type=submit]` and logged the user out — the nav's log-out form
+  is the first form on every page. Scope selectors to the form you mean.
+
+**The decision that matters more than the fix.** The owner had spent the whole day polishing the app
+instead of learning. Chip pickers, date widgets and autofocus carry almost no Django interview value,
+and polish on a learning project has no natural end. The project is frozen — D27.
+
+**Suite:** 427 tests, 95% coverage.
 
 ---
 
@@ -1352,6 +1451,8 @@ interview-gap list.
 | Netting a two-way ledger with one signed column | Frappe's Payment Entry carries an explicit party type and direction | S21 `settlements.py` |
 | `has_changed()` decides whether a blank extra form is validated | Frappe child rows are either present or deleted; there is no unchanged extra row | S21 `ExpenseItemForm` |
 | Form-level `required` over a model `blank=False` | Frappe's `reqd` is a field property, so there is one place to set it | S19 — old rows cannot satisfy a new rule |
+| `form_valid` and `form_invalid` are separate exits that share no code | Frappe re-renders the whole doc from client state on a validation error, so nothing is lost and the distinction never surfaces | S22 — lost every line item |
+| CSS `:has()` keyed on the rendered `required` attribute | Frappe marks `reqd` fields itself in its form renderer | S22 `base.html` |
 
 ---
 

@@ -446,3 +446,44 @@ opt-out keeps pure reimbursements expressible.
 
 **Known weakness:** the self participant is still an ordinary row in the API — listable, renamable,
 deletable. Parked as issue 34 pending a redesign of the self-participant model.
+
+## Session 22 — form state, and freezing the project
+
+### D26. Bugs that break working functionality are fixed directly, not handed off
+
+**Decided:** the rule that implementation goes to a cheaper model (see HANDOFF_PLAN) applies to new
+features and polish only. A bug that loses data or breaks a flow that used to work is fixed, verified
+and committed in the same session.
+
+**What prompted it:** the line-item state loss was first answered with a handoff spec, T8, instead of a
+fix. The owner had already spent the day on the app and needed it working. The spec was accurate and
+still the wrong response.
+
+**Why the split is sound:** a handoff saves tokens on work whose shape is open — new screens, new
+widgets — where a written plan prevents a cheap model from producing bulk. A diagnosed bug has no open
+shape. Once the root cause is known the fix is a few lines, and routing it through a spec, a second
+model and a review costs more than it saves.
+
+**Reverse it if:** a bug's fix turns out to be large or to need design decisions. Then it is a feature
+in disguise, and the handoff path fits again.
+
+### D27. The expense tracker is frozen
+
+**Decided:** no further features or polish. Only bugs that lose data or break a working flow are
+fixed. Issues 28 to 35 and anything like them stay on the backlog.
+
+**Alternative:** keep refining — finish the parked layout work (issue 35), the self-participant API gap
+(issue 34), and whatever the next click-through turns up.
+
+**Why:** the project exists to teach Django through sixteen phases, and it has. Session 22 made the cost
+of continuing concrete: a full day went on chip pickers, date widgets and autofocus, which carry almost
+no Django interview value. Polish on a learning project has no natural end, and the goal this project
+serves — hands-on Django, after a January 2026 interview lost for lack of it — is better met by
+project 2 built solo than by a more polished project 1.
+
+**What is not lost:** the phase 17 domain work was real modelling — who paid, explicit self
+participation, a misc amount split by consumption, signed settlements. Those are worth keeping and
+worth being able to explain.
+
+**Reverse it if:** this project is ever turned into a real product. Then the backlog becomes the
+roadmap. Until then, it is a reference, not a work in progress.
