@@ -58,6 +58,14 @@ class Expense(models.Model):
     spent_on = models.DateField()
     note = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Who paid this bill. Defaults to the user themselves (the self-participant).
+    paid_by = models.ForeignKey(
+        "Participant",
+        on_delete=models.PROTECT,
+        related_name="paid_expenses",
+        null=True,
+        blank=True,
+    )
 
     # An even split. Forward string reference because Participant is defined
     # below; Django resolves these when the app registry loads.
@@ -103,6 +111,11 @@ class Expense(models.Model):
     def __str__(self):
         return f"{self.amount} on {self.spent_on}"
 
+    def save(self, *args, **kwargs):
+        if not self.paid_by_id and self.user_id:
+            self.paid_by = Participant.get_or_create_self(self.user)
+        super().save(*args, **kwargs)
+
     def items_total(self):
         """Sum of the line items, or None when there are none.
 
@@ -141,11 +154,14 @@ class Expense(models.Model):
         ExpenseListView this is two levels of N+1 per row, which is exactly
         why the query count is pinned in the tests.
         """
-        names = {participant.name for participant in self.participants.all()}
+        names = {
+            participant.name for participant in self.participants.all() if not participant.is_self
+        }
 
         for item in self.items.all():
             for share in item.shares.all():
-                names.add(share.participant.name)
+                if not share.participant.is_self:
+                    names.add(share.participant.name)
 
         return sorted(names)
 
@@ -242,6 +258,7 @@ class Participant(models.Model):
         related_name="participants",
     )
     name = models.CharField(max_length=60)
+    is_self = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -258,6 +275,19 @@ class Participant(models.Model):
 
     def __str__(self):
         return self.name
+
+    @classmethod
+    def get_or_create_self(cls, user):
+        """Return the Participant representing the user themselves in splits.
+
+        Explicit business logic, not a signal (see signals.py rationale).
+        """
+        participant, _ = cls.objects.get_or_create(
+            user=user,
+            is_self=True,
+            defaults={"name": "You"},
+        )
+        return participant
 
 
 class ExpenseItem(models.Model):

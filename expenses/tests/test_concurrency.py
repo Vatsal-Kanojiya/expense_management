@@ -35,11 +35,12 @@ def _fixture():
     """One user who is owed 150 by one participant."""
     alice = User.objects.create_user("alice", email="alice@example.com", password="pw12345!")
     category = Category.objects.create(user=alice, name="Food")
+    self_p = Participant.get_or_create_self(alice)
     rahul = Participant.objects.create(user=alice, name="Rahul")
     expense = Expense.objects.create(
         user=alice, category=category, amount=Decimal("300.00"), spent_on=date.today()
     )
-    expense.participants.add(rahul)
+    expense.participants.add(self_p, rahul)
     return alice, rahul
 
 
@@ -73,7 +74,8 @@ class SettleUpTests(TestCase):
             amount=Decimal("100.00"),
             spent_on=date.today(),
         )
-        expense.participants.add(self.rahul)
+        self_p = Participant.get_or_create_self(self.alice)
+        expense.participants.add(self_p, self.rahul)
 
         self.assertEqual(outstanding(self.alice, self.rahul), Decimal("50.00"))
 

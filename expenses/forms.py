@@ -63,6 +63,9 @@ class ParticipantForm(forms.ModelForm):
     def clean_name(self):
         name = self.cleaned_data["name"].strip()
 
+        if name.lower() == "you":
+            raise forms.ValidationError("'You' is reserved for your own share.")
+
         # As with categories: the DB holds UniqueConstraint(user, name), but a
         # ModelForm cannot check a constraint touching a field the form
         # excludes. Without this a duplicate is an IntegrityError 500.
@@ -80,7 +83,7 @@ class ExpenseForm(forms.ModelForm):
 
     class Meta:
         model = Expense
-        fields = ["category", "amount", "spent_on", "note", "participants"]
+        fields = ["category", "amount", "spent_on", "note", "paid_by", "participants"]
         widgets = {
             "spent_on": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "note": forms.TextInput(attrs={"placeholder": "What was this for?"}),
@@ -89,8 +92,12 @@ class ExpenseForm(forms.ModelForm):
             # state at a glance, which is what this field is actually for.
             "participants": forms.CheckboxSelectMultiple,
         }
-        labels = {"participants": "Split evenly with"}
+        labels = {
+            "paid_by": "Paid by",
+            "participants": "Split evenly with",
+        }
         help_texts = {
+            "paid_by": "Who paid this bill.",
             "participants": "Leave empty if this expense is only yours.",
         }
 
@@ -120,6 +127,14 @@ class ExpenseForm(forms.ModelForm):
         self.fields["category"].queryset = Category.objects.filter(user=user)
         self.fields["category"].empty_label = "Select a category"
 
+        # Payer defaults to the user themselves, but can be any participant.
+        self_participant = Participant.get_or_create_self(user) if user else None
+        self.fields["paid_by"].queryset = Participant.objects.filter(user=user)
+        self.fields["paid_by"].empty_label = None
+        self.fields["paid_by"].required = False
+        if not self.instance.pk and self_participant:
+            self.fields["paid_by"].initial = self_participant
+
         # Exactly the same trap, one field along. ModelMultipleChoiceField
         # also defaults to every row in the table, so an unscoped queryset
         # lists every other user's people and lets a crafted POST attach
@@ -127,6 +142,14 @@ class ExpenseForm(forms.ModelForm):
         # scoping the queryset is the only thing that closes it, because
         # the field re-queries it when cleaning.
         self.fields["participants"].queryset = Participant.objects.filter(user=user)
+        if not self.instance.pk and self_participant:
+            self.fields["participants"].initial = [self_participant]
+
+    def clean_paid_by(self):
+        paid_by = self.cleaned_data.get("paid_by")
+        if not paid_by and self.user:
+            return Participant.get_or_create_self(self.user)
+        return paid_by
 
     def clean_amount(self):
         amount = self.cleaned_data["amount"]

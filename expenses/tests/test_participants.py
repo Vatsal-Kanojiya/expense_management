@@ -71,6 +71,21 @@ class ParticipantViewTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertTrue(Participant.objects.filter(pk=theirs.pk).exists())
 
+    def test_people_list_hides_self_participant(self):
+        self_p = Participant.get_or_create_self(self.alice)
+        response = self.client.get(reverse("expenses:participant_list"))
+        self.assertContains(response, "Rahul")
+        self.assertNotContains(response, f">{self_p.name}<")
+
+    def test_self_participant_cannot_be_edited_or_deleted(self):
+        self_p = Participant.get_or_create_self(self.alice)
+        res_edit = self.client.get(reverse("expenses:participant_update", args=[self_p.pk]))
+        self.assertEqual(res_edit.status_code, 404)
+
+        res_del = self.client.post(reverse("expenses:participant_delete", args=[self_p.pk]))
+        self.assertEqual(res_del.status_code, 404)
+        self.assertTrue(Participant.objects.filter(pk=self_p.pk).exists())
+
     def test_anonymous_users_are_redirected(self):
         self.client.logout()
 
