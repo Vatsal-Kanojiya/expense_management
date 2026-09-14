@@ -230,16 +230,28 @@ class ExpenseItemForm(forms.ModelForm):
             "amount": forms.NumberInput(attrs={"step": "0.01", "placeholder": "0.00"}),
         }
 
-    def __init__(self, *args, user=None, **kwargs):
+    def __init__(self, *args, user=None, participant_queryset=None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # The same scoping rule as every other choice field in this project.
-        self.fields["shared_with"].queryset = Participant.objects.filter(user=user)
+        if participant_queryset is not None:
+            qs = participant_queryset
+        elif self.instance.pk and self.instance.expense_id:
+            qs = self.instance.expense.participants.all()
+        elif user is not None:
+            qs = Participant.objects.filter(user=user)
+        else:
+            qs = Participant.objects.none()
 
         if self.instance.pk:
-            self.fields["shared_with"].initial = list(
-                self.instance.shares.values_list("participant_id", flat=True)
-            )
+            saved_share_ids = list(self.instance.shares.values_list("participant_id", flat=True))
+            if saved_share_ids:
+                saved_qs = Participant.objects.filter(pk__in=saved_share_ids)
+                if user is not None:
+                    saved_qs = saved_qs.filter(user=user)
+                qs = (qs | saved_qs).distinct()
+            self.fields["shared_with"].initial = saved_share_ids
+
+        self.fields["shared_with"].queryset = qs
 
 
 class BaseExpenseItemFormSet(BaseInlineFormSet):
@@ -267,6 +279,10 @@ class BaseExpenseItemFormSet(BaseInlineFormSet):
     #: reports back to the person after saving.
     sum_mismatch = None
 
+    def __init__(self, *args, participant_queryset=None, **kwargs):
+        self.participant_queryset = participant_queryset
+        super().__init__(*args, **kwargs)
+
     def clean(self):
         super().clean()
 
@@ -274,6 +290,49 @@ class BaseExpenseItemFormSet(BaseInlineFormSet):
         # a second error about them would only add noise.
         if any(self.errors):
             return
+
+        # Line items can only charge expense participants (or existing saved shares on that item).
+        if self.participant_queryset is not None:
+            allowed_pks = set(self.participant_queryset.values_list("pk", flat=True))
+        elif (
+            self.is_bound
+            and self.data
+            and (
+                "participants" in self.data
+                or "participants" in getattr(self.data, "keys", lambda: [])()
+            )
+        ):
+            if hasattr(self.data, "getlist"):
+                p_ids = self.data.getlist("participants")
+            else:
+                p_ids = self.data.get("participants", [])
+                if isinstance(p_ids, (int, str)):
+                    p_ids = [p_ids]
+            allowed_pks = {int(pk) for pk in p_ids if str(pk).isdigit()}
+        elif self.instance and self.instance.pk:
+            allowed_pks = set(self.instance.participants.values_list("pk", flat=True))
+        else:
+            allowed_pks = set()
+
+        for form in self.forms:
+            if not form.cleaned_data or form.cleaned_data.get("DELETE"):
+                continue
+            shared_with = form.cleaned_data.get("shared_with", [])
+            saved_pks = (
+                set(form.instance.shares.values_list("participant_id", flat=True))
+                if form.instance.pk
+                else set()
+            )
+            for participant in shared_with:
+                if participant.pk not in allowed_pks and participant.pk not in saved_pks:
+                    form.add_error(
+                        "shared_with",
+                        f"{participant.name} is not participating in this expense.",
+                    )
+                    raise forms.ValidationError(
+                        "Line items can only charge participants on the expense: "
+                        f"{participant.name}."
+                    )
 
         items = [
             form.cleaned_data

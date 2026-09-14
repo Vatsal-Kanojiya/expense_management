@@ -222,12 +222,15 @@ class ItemShareTests(TestCase):
     def setUp(self):
         self.client.force_login(self.alice)
 
-    def _post(self, shared_with, url=None, initial=0, item_pk=None):
+    def _post(self, shared_with, url=None, initial=0, item_pk=None, participants=None):
+        if participants is None:
+            participants = shared_with or [self.rahul.pk]
         data = {
             "category": self.category.pk,
             "amount": "600.00",
             "spent_on": "2026-01-15",
             "note": "Dinner",
+            "participants": participants,
             "items-TOTAL_FORMS": "1",
             "items-INITIAL_FORMS": str(initial),
             "items-MIN_NUM_FORMS": "0",
@@ -246,6 +249,65 @@ class ItemShareTests(TestCase):
         share = ItemShare.objects.get()
         self.assertEqual(share.participant, self.rahul)
         self.assertEqual(share.weight, 1)
+
+    def test_a_line_can_only_charge_an_expense_participant(self):
+        priya = Participant.objects.create(user=self.alice, name="Priya")
+        response = self._post(
+            shared_with=[priya.pk],
+            participants=[self.rahul.pk],
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Expense.objects.count(), 0)
+        self.assertContains(response, "Priya")
+
+    def test_an_existing_share_outside_the_participants_is_preserved(self):
+        priya = Participant.objects.create(user=self.alice, name="Priya")
+        expense = Expense.objects.create(
+            user=self.alice,
+            category=self.category,
+            amount=Decimal("600.00"),
+            spent_on="2026-01-15",
+        )
+        expense.participants.add(self.rahul)
+        item = ExpenseItem.objects.create(expense=expense, name="Pizza", amount=Decimal("600.00"))
+        share = ItemShare.objects.create(item=item, participant=priya)
+
+        # GET edit view: Priya is offered in the line item options
+        response = self.client.get(reverse("expenses:expense_update", args=[expense.pk]))
+        self.assertContains(response, "Priya")
+        self.assertContains(response, "Rahul")
+
+        # POST edit view: resaving with Priya preserved succeeds
+        response = self._post(
+            shared_with=[priya.pk],
+            url=reverse("expenses:expense_update", args=[expense.pk]),
+            initial=1,
+            item_pk=item.pk,
+            participants=[self.rahul.pk],
+        )
+        self.assertEqual(response.status_code, 302)
+        share.refresh_from_db()
+        self.assertEqual(share.participant, priya)
+
+    def test_the_picker_offers_only_the_expense_participants(self):
+        priya = Participant.objects.create(user=self.alice, name="Priya")
+        amit = Participant.objects.create(user=self.alice, name="Amit")
+        expense = Expense.objects.create(
+            user=self.alice,
+            category=self.category,
+            amount=Decimal("600.00"),
+            spent_on="2026-01-15",
+        )
+        expense.participants.add(self.rahul, priya)
+
+        response = self.client.get(reverse("expenses:expense_update", args=[expense.pk]))
+
+        formset = response.context["formset"]
+        picker_qs = formset.forms[0].fields["shared_with"].queryset
+        self.assertIn(self.rahul, picker_qs)
+        self.assertIn(priya, picker_qs)
+        self.assertNotIn(amit, picker_qs)
 
     def test_the_checkbox_list_is_scoped_to_your_people(self):
         response = self.client.get(reverse("expenses:expense_create"))

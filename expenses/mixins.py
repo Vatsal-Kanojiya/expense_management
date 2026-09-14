@@ -2,6 +2,8 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 
+from expenses.models import Participant
+
 
 class OwnerScopedMixin(LoginRequiredMixin):
     """Require login and restrict the view's queryset to the user's own rows.
@@ -63,14 +65,33 @@ class ItemFormSetMixin:
     formset_prefix = "items"
 
     def build_formset(self, instance=None, data=None):
+        if data is not None:
+            if hasattr(data, "getlist"):
+                participant_ids = data.getlist("participants")
+            else:
+                participant_ids = data.get("participants", [])
+                if isinstance(participant_ids, (int, str)):
+                    participant_ids = [participant_ids]
+            participant_queryset = Participant.objects.filter(
+                user=self.request.user, pk__in=participant_ids
+            )
+        elif instance is not None and instance.pk:
+            participant_queryset = instance.participants.all()
+        else:
+            participant_queryset = Participant.objects.filter(user=self.request.user)
+
         return self.formset_class(
             data=data,
             instance=instance,
             prefix=self.formset_prefix,
-            # Reaches every child form. Without it the "shared with" checkboxes
-            # would list every user's people -- the same leak as an unscoped
-            # ModelChoiceField, multiplied by the number of rows.
-            form_kwargs={"user": self.request.user},
+            # Reaches every child form. Scoped to the expense's participants
+            # (or user's people on unbound create) so checkboxes do not list
+            # the entire address book.
+            form_kwargs={
+                "user": self.request.user,
+                "participant_queryset": participant_queryset,
+            },
+            participant_queryset=participant_queryset,
         )
 
     def get_context_data(self, **kwargs):
