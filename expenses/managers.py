@@ -1,7 +1,8 @@
 from decimal import Decimal
 
 from django.db import models
-from django.db.models import Count, F, Sum
+from django.db.models import Count, DecimalField, F, Sum, Value
+from django.db.models.functions import Abs, Coalesce
 
 
 class ExpenseQuerySet(models.QuerySet):
@@ -65,12 +66,11 @@ class ExpenseQuerySet(models.QuerySet):
         )
 
     def unbalanced(self):
-        """Itemised expenses whose items do not sum to their amount.
+        """Itemised expenses whose items and misc do not sum to their amount within tolerance.
 
-        The formset refuses these now, but rows written before phase 8 --
-        or by the admin, a data migration, or a shell session -- never met
-        that rule. An invariant a database cannot hold is an invariant that
-        needs auditing, which is the honest cost of moving it into the form.
+        Rows written before phase 8 -- or by the admin, a data migration, or a shell
+        session -- never met that rule. An invariant a database cannot hold is an
+        invariant that needs auditing, which is the honest cost of moving it into the form.
 
         ``F("amount")`` is what makes this a column-to-column comparison.
         Without it, ``exclude(items_total=self.amount)`` would compare
@@ -78,16 +78,23 @@ class ExpenseQuerySet(models.QuerySet):
         value has to be named as a database reference so the database does
         the comparing, row by row.
         """
+        from .models import ROUNDING_TOLERANCE
+
         # Filtering on the annotation, not on the relation again.
         # ``.filter(items__isnull=False)`` would look equivalent and is not:
         # Django adds a second join for a filter that re-traverses a
         # relation already used by annotate(), which both multiplies rows
         # and stops the isnull test meaning what it reads as. Sum over no
         # rows is NULL, so the annotation already answers "is it itemised".
+        diff_expr = Abs(
+            F("amount") - F("items_total") - Coalesce(F("misc_amount"), Value(Decimal("0"))),
+            output_field=DecimalField(max_digits=12, decimal_places=2),
+        )
         return (
             self.annotate(items_total=Sum("items__amount"))
             .filter(items_total__isnull=False)
-            .exclude(items_total=F("amount"))
+            .annotate(diff=diff_expr)
+            .filter(diff__gte=ROUNDING_TOLERANCE)
         )
 
     def biggest(self):

@@ -44,7 +44,7 @@ These are not suggestions. A change that breaks one of these is wrong even if it
 
 ## 1. Task list
 
-Seven tasks. T1 and T2 are deliberately trivial: they exist to confirm the workflow before
+Six tasks. T1 and T2 are deliberately trivial: they exist to confirm the workflow before
 anything risky. Do not skip ahead.
 
 ---
@@ -412,32 +412,6 @@ justified here and adds a surface that has to be ownership-scoped.
 
 ---
 
-### T7 — Recover the wasted space on the expense form (issue 30, part three)
-
-**Problem.** `{{ form.as_p }}` gives every field its own full-width row, so the form is a tall
-column of mostly empty space.
-
-**Change.** Replace `{{ form.as_p }}` in `templates/expenses/expense_form.html` with an explicit
-layout: a CSS grid that puts category, amount, date and GST on shared rows, with note, the self
-checkbox and participants full width. Add the grid rules to the `<style>` block in
-`templates/base.html` alongside the existing ones.
-
-**Render each field through a single reusable partial**, `templates/expenses/_field.html`, taking
-the bound field and rendering label, widget, errors and help text. Do not hand-write four copies of
-that markup.
-
-**It must still work at phone width.** Collapse to one column below roughly 40rem.
-
-**Acceptance.** The existing view tests must still pass unchanged — they assert the form renders and
-submits. Add `test_every_expense_form_field_is_rendered` to `expenses/tests/test_views.py`,
-asserting each field name appears in the response. A hand-written layout silently dropping a field
-is the failure mode this guards.
-
-**Do not.** Do not introduce a CSS framework (G1). Do not move the styles into a separate file; this
-project keeps them inline in `base.html` on purpose.
-
----
-
 ## 2. Definition of done
 
 A task is done when all five hold:
@@ -457,3 +431,8 @@ Do not attempt these. They are known, deliberate, and documented in `docs/BUILD_
 - Issues 20 and 21 — worker supervision and export streaming. Both are deployment concerns.
 - Issue 25 — bulk re-share on participant deletion. Not part of this batch.
 - Anything touching Celery, Redis, Docker, or CI.
+- **Layout and space optimisation of the expense form (issue 30, part three).** Parked by the owner.
+  It is presentation, not function, and the owner may replace the server-rendered UI with a
+  separate frontend such as React. Do not replace `{{ form.as_p }}`, do not add grid CSS, do not
+  create a field partial. If a task above seems to need a layout change to work, it does not —
+  stop and report instead.

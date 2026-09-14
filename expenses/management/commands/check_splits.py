@@ -10,6 +10,8 @@ This command is the other half of that trade. A rule enforced only at one
 entry point needs a way to check the rows at rest.
 """
 
+from decimal import Decimal
+
 from django.core.management.base import BaseCommand
 
 from expenses.models import Expense
@@ -29,12 +31,14 @@ class Command(BaseCommand):
         broken = Expense.objects.unbalanced().select_related("user", "category")
 
         for expense in broken:
+            misc_amount = expense.misc_amount or Decimal("0")
             self.stdout.write(
                 self.style.WARNING(
                     f"#{expense.pk} {expense.user} {expense.spent_on} "
                     # Quantised: SQLite hands back a Decimal with no scale,
                     # so an unformatted Sum prints "600" beside "900.00".
                     f"{expense.category.name}: items total {expense.items_total:.2f}, "
+                    f"misc is {misc_amount:.2f}, "
                     f"expense is {expense.amount:.2f}"
                 )
             )

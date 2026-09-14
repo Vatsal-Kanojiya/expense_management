@@ -215,3 +215,33 @@ class ExpenseFormTests(TestCase):
         form = ExpenseForm(data=self._data(), user=self.alice)
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.cleaned_data["paid_by"], self_p)
+
+    def test_misc_amount_needs_a_note(self):
+        form = ExpenseForm(
+            data=self._data(misc_amount="50.00", misc_note=""),
+            user=self.alice,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("misc_note", form.errors)
+
+    def test_misc_amount_must_be_positive(self):
+        form_zero = ExpenseForm(
+            data=self._data(misc_amount="0.00", misc_note="Zero"),
+            user=self.alice,
+        )
+        self.assertFalse(form_zero.is_valid())
+        self.assertIn("misc_amount", form_zero.errors)
+
+        form_neg = ExpenseForm(
+            data=self._data(misc_amount="-5.00", misc_note="Negative"),
+            user=self.alice,
+        )
+        self.assertFalse(form_neg.is_valid())
+        self.assertIn("misc_amount", form_neg.errors)
+
+    def test_misc_note_without_amount_is_allowed(self):
+        form = ExpenseForm(
+            data=self._data(misc_amount="", misc_note="Just a note"),
+            user=self.alice,
+        )
+        self.assertTrue(form.is_valid(), form.errors)

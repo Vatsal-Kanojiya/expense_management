@@ -4,7 +4,15 @@ from django import forms
 from django.forms import BaseInlineFormSet, inlineformset_factory
 from django.utils import timezone
 
-from .models import Category, Expense, ExpenseItem, ItemShare, Participant
+from .models import (
+    ROUNDING_TOLERANCE,
+    Category,
+    Expense,
+    ExpenseItem,
+    ItemShare,
+    Participant,
+    unaccounted,
+)
 
 
 class CategoryForm(forms.ModelForm):
@@ -83,10 +91,21 @@ class ExpenseForm(forms.ModelForm):
 
     class Meta:
         model = Expense
-        fields = ["category", "amount", "spent_on", "note", "paid_by", "participants"]
+        fields = [
+            "category",
+            "amount",
+            "spent_on",
+            "note",
+            "paid_by",
+            "participants",
+            "misc_amount",
+            "misc_note",
+        ]
         widgets = {
             "spent_on": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "note": forms.TextInput(attrs={"placeholder": "What was this for?"}),
+            "misc_amount": forms.NumberInput(attrs={"step": "0.01", "placeholder": "0.00"}),
+            "misc_note": forms.TextInput(attrs={"placeholder": "e.g. GST, tip, service charge"}),
             # A multi-select box hides how many are chosen and needs a modifier
             # key to pick more than one. Checkboxes show the whole set and its
             # state at a glance, which is what this field is actually for.
@@ -95,10 +114,13 @@ class ExpenseForm(forms.ModelForm):
         labels = {
             "paid_by": "Paid by",
             "participants": "Split evenly with",
+            "misc_amount": "Tax, tip or other",
+            "misc_note": "What was it?",
         }
         help_texts = {
             "paid_by": "Who paid this bill.",
             "participants": "Leave empty if this expense is only yours.",
+            "misc_amount": "Leftover, tax, or tip included in the total bill.",
         }
 
     def __init__(self, *args, user=None, **kwargs):
@@ -161,6 +183,20 @@ class ExpenseForm(forms.ModelForm):
             raise forms.ValidationError("Amount must be greater than zero.")
 
         return amount
+
+    def clean_misc_amount(self):
+        amount = self.cleaned_data.get("misc_amount")
+        if amount is not None and amount <= 0:
+            raise forms.ValidationError("Misc amount must be greater than zero.")
+        return amount
+
+    def clean(self):
+        cleaned_data = super().clean()
+        misc_amount = cleaned_data.get("misc_amount")
+        misc_note = (cleaned_data.get("misc_note") or "").strip()
+        if misc_amount and not misc_note:
+            self.add_error("misc_note", "Please describe what this misc amount is for.")
+        return cleaned_data
 
 
 class ExpenseItemForm(forms.ModelForm):
@@ -245,6 +281,11 @@ class BaseExpenseItemFormSet(BaseInlineFormSet):
             if form.cleaned_data and not form.cleaned_data.get("DELETE")
         ]
 
+        if getattr(self.instance, "misc_amount", None) and not items:
+            raise forms.ValidationError(
+                "A misc amount can only be added to an itemised expense with line items."
+            )
+
         # Itemising is optional. An expense with no items is either yours
         # alone or an even split, both of which are valid.
         if not items:
@@ -257,7 +298,8 @@ class BaseExpenseItemFormSet(BaseInlineFormSet):
         if expected is None:
             return
 
-        if total != expected:
+        diff = unaccounted(expected, total, getattr(self.instance, "misc_amount", None))
+        if abs(diff) >= ROUNDING_TOLERANCE:
             # Recorded, not raised. Refusing the whole submission over this
             # threw away everything else the person had typed, and a refresh
             # lost it for good -- a steep price for one wrong figure. The
@@ -265,7 +307,7 @@ class BaseExpenseItemFormSet(BaseInlineFormSet):
             # `balances` skips the expense until it is fixed, so nothing
             # half-entered is ever counted as a whole split. The view reads
             # this attribute to warn.
-            self.sum_mismatch = (total, expected)
+            self.sum_mismatch = (diff, expected)
 
     def save(self, commit=True):
         items = super().save(commit=commit)

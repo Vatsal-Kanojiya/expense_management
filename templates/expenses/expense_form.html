@@ -46,6 +46,8 @@
         </tbody>
       </table>
 
+      <div id="expense-unaccounted" class="muted" style="margin-top: 0.5rem;" hidden></div>
+
       {% comment %}
       The pattern Django documents for dynamic formsets: render one extra form
       with a placeholder index, then clone it and substitute the real index
@@ -66,4 +68,5 @@
 
 {% block scripts %}
   <script src="{% static 'expenses/item-formset.js' %}" defer></script>
+  <script src="{% static 'expenses/expense-totals.js' %}" defer></script>
 {% endblock %}
