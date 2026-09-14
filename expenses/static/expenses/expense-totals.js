@@ -6,8 +6,11 @@
 (function () {
   "use strict";
 
-  var form = document.querySelector("form");
+  // Start from the indicator and walk up to its own form. The first <form>
+  // on the page is the logout button in the header, which has no amount
+  // fields, so querySelector("form") silently disabled this whole script.
   var indicator = document.getElementById("expense-unaccounted");
+  var form = indicator && indicator.closest("form");
 
   if (!form || !indicator) {
     return;

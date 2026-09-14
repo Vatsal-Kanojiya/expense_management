@@ -209,15 +209,16 @@ class ExpenseItemForm(forms.ModelForm):
     Every share written here has weight 1, an equal split of that line. The
     weight column exists for unequal shares, which no UI exposes yet.
 
-    "In addition to you" is the convention throughout: the owner always
-    counts as one share of anything that is shared at all.
+    The owner is an explicit choice here, through their own participant row,
+    and a new line starts with it selected -- the same default the expense's
+    even split uses. A line with nobody selected is the owner's alone.
     """
 
     shared_with = forms.ModelMultipleChoiceField(
         queryset=Participant.objects.none(),
         required=False,
         widget=ChipSelectMultiple,
-        label="Shared with (besides you)",
+        label="Shared with",
     )
 
     class Meta:
@@ -255,6 +256,26 @@ class ExpenseItemForm(forms.ModelForm):
         self.fields["shared_with"].choices = [
             (p.pk, self.fields["shared_with"].label_from_instance(p)) for p in qs
         ]
+
+        # A new line starts with the owner selected. Without it, ticking only
+        # Rahul charges Rahul the whole line, because the owner is no longer
+        # an implied share.
+        if not self.instance.pk:
+            me = next((p for p in qs if p.is_self), None)
+            if me is not None:
+                self.fields["shared_with"].initial = [me.pk]
+
+    def has_changed(self):
+        """A new line is its name and amount, not its pre-selected sharers.
+
+        The owner is pre-selected on every blank row, so a row whose only
+        difference from its initial state is the sharers -- a removed row the
+        script blanked, or one where the person just unticked themselves --
+        would otherwise count as filled in and fail on its empty name.
+        """
+        if self.instance.pk:
+            return super().has_changed()
+        return any(name in self.changed_data for name in ("name", "amount"))
 
 
 class BaseExpenseItemFormSet(BaseInlineFormSet):
@@ -342,6 +363,24 @@ class BaseExpenseItemFormSet(BaseInlineFormSet):
                         "Line items can only charge participants on the expense: "
                         f"{participant.name}."
                     )
+
+        # With the owner out of the split, "nobody ticked means it is mine"
+        # stops being true, and such a line would be quietly charged to the
+        # owner anyway. Refuse it instead. Only when the expense names people
+        # and the owner is not one of them; the everyday case is untouched.
+        if allowed_pks:
+            owner_in = Participant.objects.filter(pk__in=allowed_pks, is_self=True).exists()
+            if not owner_in:
+                for form in self.forms:
+                    if not form.cleaned_data or form.cleaned_data.get("DELETE"):
+                        continue
+                    if not form.cleaned_data.get("shared_with"):
+                        form.add_error(
+                            "shared_with",
+                            "You're not part of this expense, so choose who had this item.",
+                        )
+                if any(self.errors):
+                    return
 
         items = [
             form.cleaned_data

@@ -4,7 +4,7 @@
 
 {% block content %}
   <div class="toolbar">
-    <h1>Who owes you</h1>
+    <h1>Balances</h1>
     <span class="spacer"></span>
   </div>
 
@@ -15,37 +15,67 @@
     </form>
   </div>
 
-  {% if balances %}
-    <table>
-      <thead>
-        <tr><th>Person</th><th class="num">Owes you</th><th></th></tr>
-      </thead>
-      <tbody>
-        {% for participant, amount in balances %}
-          <tr>
-            <td>{{ participant.name }}</td>
-            <td class="num">{{ amount|rupees }}</td>
-            <td>
-              {# POST, not a link: this one writes money. #}
-              <form method="post" action="{% url 'expenses:settle_up' participant.pk %}">
-                {% csrf_token %}
-                <button class="btn" type="submit">Settle up</button>
-              </form>
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-      <tfoot>
-        <tr><th>Total</th><th class="num">{{ total|rupees }}</th><th></th></tr>
-      </tfoot>
-    </table>
+  {% if balances or you_owe %}
+    {% if balances %}
+      <h2>Owes you</h2>
+      <table>
+        <thead>
+          <tr><th>Person</th><th class="num">Owes you</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for participant, amount in balances %}
+            <tr>
+              <td>{{ participant.name }}</td>
+              <td class="num">{{ amount|rupees }}</td>
+              <td>
+                {# POST, not a link: this one writes money. #}
+                <form method="post" action="{% url 'expenses:settle_up' participant.pk %}">
+                  {% csrf_token %}
+                  <button class="btn" type="submit">Settle up</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr><th>Total</th><th class="num">{{ total|rupees }}</th><th></th></tr>
+        </tfoot>
+      </table>
+    {% endif %}
+
+    {% if you_owe %}
+      <h2>You owe</h2>
+      <table>
+        <thead>
+          <tr><th>Person</th><th class="num">You owe</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for participant, amount in you_owe %}
+            <tr>
+              <td>{{ participant.name }}</td>
+              <td class="num">{{ amount|rupees }}</td>
+              <td>
+                <form method="post" action="{% url 'expenses:settle_up' participant.pk %}">
+                  {% csrf_token %}
+                  <button class="btn" type="submit">Mark as paid</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr><th>Total</th><th class="num">{{ you_owe_total|rupees }}</th><th></th></tr>
+        </tfoot>
+      </table>
+    {% endif %}
+
     <p class="muted">
-      Your own share is already excluded. Anything shared counts you as one share too, so a
-      300 bill split with one person leaves them owing 150.
+      Each person shows one netted amount. If Rahul owes you 350 and you owe him 150, he appears
+      once, owing you 200.
     </p>
   {% else %}
     <div class="card empty">
-      Nothing owed in this date range. Split an expense with someone to see it here.
+      Nothing owed either way in this date range. Split an expense with someone to see it here.
     </div>
   {% endif %}
 {% endblock %}

@@ -218,6 +218,7 @@ class ItemShareTests(TestCase):
         cls.category = Category.objects.create(user=cls.alice, name="Food")
         cls.rahul = Participant.objects.create(user=cls.alice, name="Rahul")
         cls.stranger = Participant.objects.create(user=cls.bob, name="Stranger")
+        cls.me = Participant.get_or_create_self(cls.alice)
 
     def setUp(self):
         self.client.force_login(self.alice)
@@ -325,11 +326,14 @@ class ItemShareTests(TestCase):
         expense = Expense.objects.get()
         item = expense.items.get()
 
+        # The owner stays on the expense: an unticked line is only allowed,
+        # and only means "mine", when the owner is part of the split.
         self._post(
             [],
             url=reverse("expenses:expense_update", args=[expense.pk]),
             initial=1,
             item_pk=item.pk,
+            participants=[self.me.pk, self.rahul.pk],
         )
 
         self.assertEqual(ItemShare.objects.count(), 0)

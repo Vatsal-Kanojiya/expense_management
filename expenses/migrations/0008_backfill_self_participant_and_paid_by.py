@@ -2,6 +2,20 @@ from django.conf import settings
 from django.db import migrations
 
 
+def _self_name(Participant, user):
+    # A copy of models.self_name_for, frozen here on purpose: a migration
+    # must not import code that can change after it runs. The original
+    # version created a row named "You" and crashed on any user who already
+    # had a contact by that name, because names are unique per user.
+    base = f"{(user.first_name or user.username).strip()} (self)"
+    taken = {n.lower() for n in Participant.objects.filter(user_id=user.id).values_list("name", flat=True)}
+    candidate, n = base, 2
+    while candidate.lower() in taken:
+        candidate = f"{base} {n}"
+        n += 1
+    return candidate[:60]
+
+
 def backfill_self_participants(apps, schema_editor):
     User = apps.get_model(settings.AUTH_USER_MODEL)
     Participant = apps.get_model("expenses", "Participant")
@@ -9,11 +23,11 @@ def backfill_self_participants(apps, schema_editor):
     ItemShare = apps.get_model("expenses", "ItemShare")
 
     for user in User.objects.all():
-        self_p, _ = Participant.objects.get_or_create(
-            user_id=user.id,
-            is_self=True,
-            defaults={"name": "You"},
-        )
+        self_p = Participant.objects.filter(user_id=user.id, is_self=True).first()
+        if self_p is None:
+            self_p = Participant.objects.create(
+                user_id=user.id, is_self=True, name=_self_name(Participant, user)
+            )
         Expense.objects.filter(user_id=user.id, paid_by__isnull=True).update(paid_by=self_p)
 
         for expense in Expense.objects.filter(user_id=user.id):

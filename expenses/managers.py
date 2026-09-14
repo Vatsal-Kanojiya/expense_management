@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django.db import models
 from django.db.models import Count, DecimalField, F, Sum, Value
-from django.db.models.functions import Abs, Coalesce
+from django.db.models.functions import Abs, Coalesce, Round
 
 
 class ExpenseQuerySet(models.QuerySet):
@@ -86,8 +86,17 @@ class ExpenseQuerySet(models.QuerySet):
         # relation already used by annotate(), which both multiplies rows
         # and stops the isnull test meaning what it reads as. Sum over no
         # rows is NULL, so the annotation already answers "is it itemised".
-        diff_expr = Abs(
-            F("amount") - F("items_total") - Coalesce(F("misc_amount"), Value(Decimal("0"))),
+        # Round before comparing. SQLite does this arithmetic in floating
+        # point, so a gap of exactly 1.00 can come back as 0.9999999 and slip
+        # under the tolerance -- while Python's exact Decimal says 1.00 and
+        # balances() skips the expense. Rounding to the paisa makes the two
+        # agree. Postgres is exact and unaffected.
+        diff_expr = Round(
+            Abs(
+                F("amount") - F("items_total") - Coalesce(F("misc_amount"), Value(Decimal("0"))),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            ),
+            2,
             output_field=DecimalField(max_digits=12, decimal_places=2),
         )
         return (

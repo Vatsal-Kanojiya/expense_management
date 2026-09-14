@@ -22,7 +22,10 @@ from .models import Participant, Settlement
 
 
 def outstanding(user, participant):
-    """What this participant still owes, after repayments."""
+    """Net balance with this participant after settlements.
+
+    Positive: they still owe you. Negative: you still owe them.
+    """
     owed = dict(balances(user)).get(participant, Decimal("0"))
     repaid = Settlement.objects.filter(user=user, participant=participant).aggregate(
         total=Sum("amount")
@@ -33,9 +36,11 @@ def outstanding(user, participant):
 
 @transaction.atomic
 def settle_up(user, participant_id, note=""):
-    """Record that a participant has repaid everything outstanding.
+    """Record that the balance with a participant has been paid off.
 
-    Returns the Settlement written, or None when nothing was owed.
+    Works in both directions. A positive outstanding amount is recorded as
+    them paying you; a negative one as you paying them. Returns the
+    Settlement written, or None when the two of you are already even.
 
     ``select_for_update`` on the participant row is what makes this safe.
     The row itself is not modified; it is being used as the lock, because
@@ -56,7 +61,7 @@ def settle_up(user, participant_id, note=""):
 
     amount = outstanding(user, participant)
 
-    if amount <= 0:
+    if amount == 0:
         return None
 
     return Settlement.objects.create(user=user, participant=participant, amount=amount, note=note)

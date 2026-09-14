@@ -303,12 +303,34 @@ class Participant(models.Model):
 
         Explicit business logic, not a signal (see signals.py rationale).
         """
-        participant, _ = cls.objects.get_or_create(
-            user=user,
-            is_self=True,
-            defaults={"name": "You"},
-        )
+        participant = cls.objects.filter(user=user, is_self=True).first()
+        if participant is None:
+            participant = cls.objects.create(user=user, is_self=True, name=self_name_for(user))
         return participant
+
+
+def self_name_for(user):
+    """A name for the user's own participant row that cannot collide.
+
+    Names are unique per user, ignoring case, so a fixed label such as "You"
+    fails the moment someone has already saved a friend under it -- and in a
+    migration that failure stops the whole upgrade. "Vatsal (self)" reads
+    better and almost never collides; the numeric suffix covers the case
+    where it does.
+
+    Migration 0008 and 0010 carry their own copy of this logic, because a
+    migration must not import code that can change after it is written.
+    """
+    base = f"{(user.first_name or user.username).strip()} (self)"
+    taken = {
+        name.lower()
+        for name in Participant.objects.filter(user=user).values_list("name", flat=True)
+    }
+    candidate, n = base, 2
+    while candidate.lower() in taken:
+        candidate = f"{base} {n}"
+        n += 1
+    return candidate[:60]
 
 
 class ExpenseItem(models.Model):
@@ -422,9 +444,13 @@ class Settlement(models.Model):
         ordering = ["-settled_at", "-id"]
         indexes = [models.Index(fields=["user", "participant"])]
         constraints = [
+            # Signed, so one column records money in both directions:
+            # positive is the participant paying you back, negative is you
+            # paying them. Balances net per person, and a single signed sum
+            # is what keeps "outstanding" one subtraction for both cases.
             models.CheckConstraint(
-                condition=models.Q(amount__gt=0),
-                name="settlement_amount_positive",
+                condition=~models.Q(amount=0),
+                name="settlement_amount_not_zero",
             )
         ]
 

@@ -95,6 +95,16 @@ class ExpenseSerializer(serializers.ModelSerializer):
     participants = ScopedPrimaryKeyRelatedField(
         queryset=Participant.objects.all(), many=True, required=False
     )
+    # The sixth appearance of the scoping lesson, and the one that was missed:
+    # a plain PrimaryKeyRelatedField here accepted another user's participant
+    # as the payer, and that name then surfaced on this user's balances.
+    paid_by = ScopedPrimaryKeyRelatedField(
+        queryset=Participant.objects.all(), required=False, allow_null=True
+    )
+    # The web form pre-selects the user's own participant; an API client has
+    # no form, so without this default a request listing only Rahul would
+    # charge Rahul the whole bill. Send false for a pure reimbursement.
+    include_self = serializers.BooleanField(write_only=True, required=False, default=True)
     items = ExpenseItemSerializer(many=True, required=False)
 
     class Meta:
@@ -109,6 +119,7 @@ class ExpenseSerializer(serializers.ModelSerializer):
             "participants",
             "misc_amount",
             "misc_note",
+            "include_self",
             "items",
             "created_at",
         ]
@@ -137,10 +148,29 @@ class ExpenseSerializer(serializers.ModelSerializer):
     # database cannot hold has to be restated at every entry point, and that
     # cost is exactly why this one stopped being a gate.
 
+    def _with_self(self, participants, items, include_self):
+        """Add the requesting user's own participant where a split names others."""
+        if not include_self:
+            return participants, items
+
+        me = Participant.get_or_create_self(self.context["request"].user)
+
+        if participants and me not in participants:
+            participants = [*participants, me]
+
+        for item in items or []:
+            shares = item.get("shares") or []
+            if shares and all(share["participant"] != me for share in shares):
+                item["shares"] = [*shares, {"participant": me, "weight": 1}]
+
+        return participants, items
+
     @transaction.atomic
     def create(self, validated_data):
+        include_self = validated_data.pop("include_self", True)
         items = validated_data.pop("items", [])
         participants = validated_data.pop("participants", [])
+        participants, items = self._with_self(participants, items, include_self)
 
         expense = Expense.objects.create(**validated_data)
         expense.participants.set(participants)
@@ -150,8 +180,12 @@ class ExpenseSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
+        include_self = validated_data.pop("include_self", True)
         items = validated_data.pop("items", None)
         participants = validated_data.pop("participants", None)
+        # Only what the request mentions is touched: None stays None, so a
+        # PATCH of the note does not quietly add anyone to anything.
+        participants, items = self._with_self(participants, items, include_self)
 
         for field, value in validated_data.items():
             setattr(instance, field, value)
