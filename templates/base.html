@@ -65,6 +65,15 @@
     }
     form p { margin: 0 0 1rem; }
     label { display: block; font-weight: 500; margin-bottom: 0.25rem; }
+    /* Required fields. Django already renders the required attribute on every
+       required input and omits it on optional ones, so this one rule marks
+       every as_p form, including Django's own auth forms. The empty alt text
+       stops screen readers saying "star" on top of announcing "required". */
+    p:has(> :is(input, select, textarea)[required]) > label::after {
+      content: " *" / "";
+      color: var(--danger);
+    }
+    .required-mark { color: var(--danger); }
     input, select, textarea {
       width: 100%; padding: 0.5rem; border: 1px solid var(--border);
       border-radius: 6px; background: var(--bg); color: var(--text); font: inherit;

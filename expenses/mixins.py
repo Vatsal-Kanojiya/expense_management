@@ -96,11 +96,30 @@ class ItemFormSetMixin:
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # setdefault, not assignment: form_invalid re-renders with a bound
-        # formset that already carries its errors, and overwriting it here
-        # would silently discard them.
+        # setdefault, not assignment. Both error paths pass a formset bound to
+        # the POST -- form_valid when the formset fails, form_invalid when the
+        # parent form does -- and overwriting it here would throw away every
+        # line item the person typed. Only a plain GET should reach the
+        # fallback below.
         context.setdefault("formset", self.build_formset(instance=self.object))
         return context
+
+    def form_invalid(self, form):
+        """Re-render the parent's errors without losing the line items.
+
+        Django calls this, not form_valid, when the parent form fails -- a
+        blank note, say. Without this override get_context_data built a fresh
+        unbound formset and every line item and ticked person disappeared,
+        although the POST carried all of them.
+
+        The formset is validated too, so a mistake in the items shows in the
+        same response as the parent's error instead of after a second submit.
+        form.instance rather than self.object, so the sum check compares the
+        posted amount, not the one last saved.
+        """
+        formset = self.build_formset(instance=form.instance, data=self.request.POST)
+        formset.is_valid()
+        return self.render_to_response(self.get_context_data(form=form, formset=formset))
 
     def form_valid(self, form):
         formset = self.build_formset(instance=form.instance, data=self.request.POST)
