@@ -361,6 +361,27 @@ startup documented in RUNNING_ASYNC.md — one command instead of three terminal
 
 **Tag:** `phase-16-hardening` · **Closes issues 10, 15, 16 and 19.**
 
+### Phase 17 — Paid-by and explicit splits ⬜ *(planned — see session 20)*
+
+> **Prerequisite:** none beyond master. This phase touches `Participant`, `Expense`, `balances.py`,
+> forms, templates, and tests. It does **not** touch settlements, exports, or async — those are
+> separate phases.
+
+| # | Commit | Files | Architecture note |
+|---|---|---|---|
+| 17.1 | `feat(expenses): add is_self to Participant` | `models.py`, migration | `BooleanField(default=False)`. Reserves the name "You" |
+| 17.2 | `feat(expenses): auto-create self-participant` | data migration | One `Participant(name="You", is_self=True)` per existing user |
+| 17.3 | `feat(expenses): add paid_by to Expense` | `models.py`, migration | `ForeignKey(Participant, null=True, on_delete=PROTECT)` |
+| 17.4 | `feat(expenses): backfill paid_by and participants` | data migration | Existing expenses get `paid_by=self_participant`. Self added to `participants` M2M and `ItemShare` where applicable |
+| 17.5 | `refactor(expenses): remove implicit owner share from balance engine` | `balances.py` | `_charge_item` and `_charge_evenly` no longer hardcode a leading `1`. Consumption is explicit participants only |
+| 17.6 | `feat(expenses): update forms for paid_by and explicit self` | `forms.py` | "Paid by" dropdown (default=self). "Split among" checkboxes include self. People list hides `is_self` |
+| 17.7 | `feat(expenses): add split breakdown tab to expense form` | template, JS | Tab appears when `is_balanced()`. Shows who consumed, who paid, who owes whom |
+| 17.8 | `feat(api): add paid_by to expense serializer` | `api/serializers.py` | `ScopedPrimaryKeyRelatedField` scoped to user's participants |
+| 17.9 | `test(expenses): rewrite balance and split tests` | `tests/` | All balance tests updated for explicit self. New tests for paid-by, self-exclusion, third-party payer |
+| 17.10 | `docs: record session 20 decisions and phase 17` | `docs/` | BUILD_LOG session 20, DECISIONS D19–D21, COMMIT_PLAN phase 17 |
+
+**Tag:** `phase-17-explicit-splits` · **Closes issue 31.** Settlement direction (`inbound`/`outbound`) and the ledger system are deferred to a future phase.
+
 ---
 
 ## 3. Practice branches — re-implementing a phase by hand

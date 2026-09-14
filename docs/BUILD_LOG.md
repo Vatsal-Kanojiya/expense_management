@@ -19,10 +19,10 @@
 
 ## 1. Current state at a glance
 
-**Session:** 17 — **all sixteen phases complete**
-**Last commit:** `4fc796f` — *docs: mark all sixteen phases complete*
+**Session:** 19 — **all sixteen phases complete**; now on UI feedback, uncommitted
+**Last commit:** `5556c1f` — *fix: add celery to requirements.txt*
 **Phase tags:** 17, `phase-1-foundation` … `phase-16-hardening` (`git tag | sort -V`)
-**Suite:** 357 tests, 95% coverage — green on SQLite, Postgres 16, the CI environment and real Redis
+**Suite:** 361 tests, 95% coverage — green on SQLite, Postgres 16, the CI environment and real Redis
 
 | Dimension | State |
 |---|---|
@@ -31,7 +31,7 @@
 | Async | Celery worker + beat, Redis broker, separate result backend |
 | Cache | Redis, version-stamped per-user keys (LocMem fallback) |
 | Deploy | Multi-stage image, compose stack of five services, gunicorn, WhiteNoise |
-| Open issues | 6, all deliberate — see §6 |
+| Open issues | 10 — 5 deliberate, 5 raised by the session 19 UI review — see §6 |
 
 > **Phases ran out of order on purpose, and the bet paid off.** Auth was deferred past CRUD so it
 > could be studied properly. That was safe because phase 3's views were written fully user-scoped
@@ -75,7 +75,7 @@ erDiagram
         int id PK
         int user_id FK "CASCADE"
         int category_id FK "PROTECT"
-        decimal amount "must be > 0; items must sum to this (form-enforced)"
+        decimal amount "must be > 0; items should sum to this, reported not enforced"
         date spent_on "indexed (user, spent_on) and (user, category, spent_on)"
         string note "GIN full-text index on Postgres"
         datetime created_at
@@ -440,6 +440,112 @@ cursor bug fails `TransactionTestCase` only.
 `ContentFile` · `queryset.iterator()` and cursor lifetime · `TestCase` vs `TransactionTestCase` ·
 `BaseCommand`, `add_arguments`, `CommandError`, `self.style` · `call_command` in tests ·
 `IntegrityError` as a concurrency primitive · `FileResponse` · `MEDIA_ROOT`.
+
+---
+
+### Session 20 — Design: paid-by, explicit self, per-expense split breakdown
+
+A design session. No code changes. Three interconnected problems reviewed, decisions taken, plan
+logged. Addresses known issue #31 directly and lays the groundwork for a future ledger system.
+
+**Problem statement.** The system makes three assumptions that limit it:
+
+1. The logged-in user always pays. There is no way to record that a friend paid for a shared meal.
+2. The logged-in user is always an implicit share. "Split with Rahul" means *you + Rahul*, but the
+   user never opts in — they are forced into every split.
+3. Balances are one-directional. The system only answers "who owes **you**". If Rahul paid for
+   lunch, there is no way to see that **you** owe Rahul.
+
+**Decisions taken** (see DECISIONS.md D19–D21):
+
+| # | Decision | Shape |
+|---|---|---|
+| D19 | Self is modelled as a `Participant(is_self=True)`, not a `BooleanField` on `Expense` | One dropdown, one model, uniform balance engine. Reverses the recommendation logged in issue #31 |
+| D20 | `Expense.paid_by` is a FK to `Participant`, defaulting to the self-participant | Payer can be any person including self. `on_delete=PROTECT` — cannot delete someone who paid |
+| D21 | Split breakdown lives in a tab on the expense form, not a separate page | Tab auto-appears when line items are valid (amounts sum correctly). No new URL |
+
+**Design choices confirmed with the user:**
+
+- **Default payer = self** (logged-in user), changeable to any participant.
+- **Nobody is implicitly included in a split.** Self must be explicitly selected in "Split among"
+  to be counted as a consumer. The payer is also not automatically counted — if Rahul paid but
+  didn't eat, he is not charged.
+- **Global balances and settlement system deferred.** For now, per-expense split breakdown only.
+  The user wants a future **ledger** system: per-expense entries showing debts in both directions,
+  with opening/closing balances deriving the net payable. That is a separate phase.
+- **Per-expense tab** appears only when the expense is balanced (items sum to total). Shows who
+  consumed what, who paid, and who owes whom.
+
+**Schema changes planned** (not yet executed):
+
+| Model | Change |
+|---|---|
+| `Participant` | Add `is_self = BooleanField(default=False)`. One auto-created per user, hidden from People list |
+| `Expense` | Add `paid_by = ForeignKey(Participant, null=True, on_delete=PROTECT)`. Data migration sets existing expenses to the self-participant |
+| `Settlement` | Add `direction` field (`inbound` / `outbound`). Deferred until ledger phase |
+
+**Balance engine impact:** `balances.py` currently hardcodes `[1] + [share.weight ...]` in
+`_charge_item` and `[1] * (len(people) + 1)` in `_charge_evenly`. Both will lose the leading `1`
+and compute shares from explicit participants only. Consumption is determined by who is in
+`participants` (even split) or `ItemShare` (itemised). The payer receives what everyone else owes.
+
+**Data migration strategy:**
+1. Create a `Participant(name="You", is_self=True)` for each user.
+2. Set `paid_by` to the self-participant for all existing expenses.
+3. Add the self-participant to `participants` M2M for every expense that has participants
+   (preserves the implicit +1 behaviour for old data).
+4. Create `ItemShare(participant=self_participant, weight=1)` for every `ExpenseItem` that has
+   at least one existing share.
+
+Tests: no changes this session. Suite remains at 361, all passing.
+
+---
+
+### Session 19 — UI feedback: dynamic line items, and the sum rule stops being a gate
+
+A UI review produced four items. Two were built, four were parked as issues 28–31.
+
+**Line items can be added and removed.** The formset rendered a fixed `extra=3` and offered no way
+to ask for a fourth, so the count was a guess charged to everyone who itemised fewer. It is now
+`extra=1` plus a button. `expenses/static/expenses/item-formset.js` clones the formset's
+`empty_form`, substitutes the real index for `__prefix__` and raises `TOTAL_FORMS`.
+
+This is **the project's first JavaScript and first static asset**. It is 90 lines, no dependency, no
+build step, and it lives in the app's own `static/` directory so `AppDirectoriesFinder` picks it up
+and no settings change was needed. The row markup moved into `_item_row.html` so the rendered rows
+and the cloned one cannot drift apart.
+
+> The removal half is where formsets are actually interesting. A **saved** row cannot be torn out of
+> the document: Django deletes it only if its `DELETE` flag comes back ticked and its hidden `id`
+> field is posted, so the row is hidden, not removed. An **unsaved** row is blanked instead, because
+> removing it would leave a hole in the index sequence and closing that hole means rewriting the
+> name, id and label of every field on every surviving row. A formset skips an extra form that comes
+> back unchanged, so an empty row is no row. Neither case needs renumbering.
+
+**The sum invariant stopped being a gate.** `items must sum to amount` refused the whole submission,
+which threw away every other field the person had filled in — and a refresh lost it. The rule is
+still checked, but a breach is recorded on `sum_mismatch`, the expense saves, and the view warns.
+
+What replaces the refusal is that nothing consumes an unbalanced expense: `Expense.is_balanced()` is
+the predicate and `balances()` skips such an expense rather than charging its items and leaving part
+of the bill owed by nobody. `check_splits` already existed to report them.
+
+> The API's `validate()` was removed for the same reason it had been written. A rule the database
+> cannot hold must be restated at every entry point — so when the rule stops being a gate in one
+> place it has to stop being one in the other, or the two entry points disagree about what an
+> expense is. That is worse than either rule alone.
+
+**Required fields are now category, amount and note.** `note` is required on the form while the
+column stays `blank=True`: rows predating the rule have empty notes and no migration can invent text
+for them, so the demand is made where it applies, to new input only. `spent_on` now defaults to
+today rather than being one more thing to fill in.
+
+Tests: 357 → 361, all passing. Five asserted the old refusal and were rewritten to assert the new
+behaviour; ten more posted `note: ""` and now post a note.
+
+**Caught by the project's own test suite:** `test_no_multiline_hash_comments` rejected the first
+draft of the new templates. Django's `{# #}` only strips a comment that fits on one line, so the
+multi-line ones would have rendered as visible text on the page.
 
 ---
 
@@ -1129,6 +1235,7 @@ this is the file set that silently drifts and is worth being able to reconstruct
 |---|---|---|
 | `expenses/apps.py` | — | none (stock `ExpensesConfig`) |
 | `config/asgi.py`, `config/wsgi.py`, `manage.py` | — | none |
+| `expenses/static/expenses/` | 19 | New. The project's first static asset. Placed in the **app's** static directory, not the empty project-level `static/`, because `AppDirectoriesFinder` is on by default and finds it — the project-level one would have needed `STATICFILES_DIRS` added to settings. No settings change |
 
 ---
 
@@ -1203,6 +1310,10 @@ interview-gap list.
 | Rate limiting: what the key should be | Frappe ships a rate limiter configured by site | S17 `ratelimit.py` |
 | Reusing the password-reset token generator | Frappe's key-based tokens are a single built-in mechanism | S17 `verification.py` |
 | `PROTECT` blocks cascade deletes in the same plan | Frappe link validation is per-link, so ordered deletion is rarely needed | S17 `deletion.py` |
+| Formsets: `empty_form`, `__prefix__` and `TOTAL_FORMS` | Frappe's child tables add and remove rows for you; nothing is hand-wired | S19 `item-formset.js` |
+| Deleting a formset row: `DELETE` flag for saved rows, blanking for unsaved | Frappe removes a grid row and reconciles server-side | S19 — renumbering avoided entirely |
+| A validation rule can be a *fact* rather than a *gate* | Frappe validations abort the save; there is no idiom for "record it, don't act on it" | S19 `is_balanced` |
+| Form-level `required` over a model `blank=False` | Frappe's `reqd` is a field property, so there is one place to set it | S19 — old rows cannot satisfy a new rule |
 
 ---
 
@@ -1217,6 +1328,12 @@ interview-gap list.
 ---
 
 ## 6. Known issues
+
+> Issues 28–32 came out of the session 19 UI review and are specced for implementation by a
+> cheaper model in `docs/HANDOFF_PLAN.md` — seven ordered tasks with acceptance tests, ground
+> rules and an explicit out-of-scope list. GST was settled as **inclusive**, which makes it a
+> reporting field that never touches the split.
+
 
 ### Resolved
 
@@ -1253,3 +1370,8 @@ interview-gap list.
 | 20 | No worker supervision, monitoring or dead-letter handling | A crashed worker stays down; after `max_retries` a task is simply lost with nothing visible | systemd unit or container for the worker; Flower or event export for monitoring. See RUNNING_ASYNC.md |
 | 21 | `FileResponse` streams exports through Python | Fine in development, wasteful in production | `X-Accel-Redirect` (nginx) or a signed object-storage URL |
 | 25 | Participant deletion is refused once they are on a line item | `ItemShare.participant` is `PROTECT`, so removing someone from your list fails while any item still charges them. The view explains it rather than 500ing, but there is no way to re-share those items in bulk | Same shape as issue 10: an ordered delete, or a bulk re-share action. Deliberately left visible rather than papered over with `CASCADE`, which would leave items charged to nobody |
+| 28 | Date fields offer no calendar picker in practice | Every date on the site is typed by hand: `spent_on` on the expense form, and `start`/`end` on the export filter. Slow, and easy to get wrong | The widgets already declare `type="date"` (`expenses/forms.py`, `expenses/filters.py`, `templates/expenses/export_list.html`), so the attribute is not the gap — this needs reproducing in the actual browser first. The localized-format theory was checked in session 19 and is wrong — the field renders as `value="2026-09-14"`, which is exactly what a native date input wants. So the control is present and the complaint is about how it looks or behaves in this browser, not about markup. Reproduce it before changing anything; a small date-picker library is the fallback if the native control is genuinely not good enough |
+| 29 | No field is focused when a create form opens | On New category, New person and New expense the caret starts nowhere, so every entry costs a mouse trip before the first keystroke | `autofocus` on the first editable field. Set it on the widget rather than in the template so it follows the form wherever it renders, and only on create, not edit — auto-focusing a pre-filled field on edit fights the person who came to change field three |
+| 30 | Participant pickers are checkbox lists of the whole address book | `CheckboxSelectMultiple` renders every participant the user owns, at both levels: once for `Expense.participants` and again for `shared_with` on every line-item row. At 100 people a five-line expense renders 600 checkboxes. Pagination is the wrong answer for a picker; search is | Three separable changes, in increasing cost. **(a)** Narrow the line-item queryset to the participants chosen on the expense, not the whole address book — in a real expense that is 2–4 names, so most of the size problem disappears with no JavaScript. Note this *tightens* current semantics: `Expense.shared_with()` deliberately unions both sets, so today a line may charge someone absent from the expense. Tightening makes that union redundant and needs a formset-level validation rule plus a data check for existing rows. **(b)** A searchable chip-style multiselect as one custom Django `Widget` subclass with its own `template_name` and `Media`, used by both fields, degrading to a plain multi-select without JS. Participants per user are in the dozens, so the list ships inline and filters client-side — no autocomplete endpoint, no Select2, no jQuery. **(c)** Replace `{{ form.as_p }}` with a two-column grid so category/amount/date share rows, which also narrows the line-item table once chips replace checkbox stacks. This would be the project's first JavaScript and first static asset — see DECISIONS before starting |
+| 31 | The payer is implicit and cannot be taken out of a split | Ownership is hardcoded as an unwritten share: `balances.py` builds `[1] + [share.weight ...]` in `_charge_item` and `[1] * (len(people) + 1)` in `_charge_evenly`, then discards the first portion so you never owe yourself. The UI says "besides you" and never shows you. Two consequences: nothing on the form tells a newcomer they are already in the split, and a pure reimbursement — you booked the taxi but did not ride in it — cannot be expressed at all, because the denominator always includes you | **In progress (session 20).** Design reversed the `BooleanField` recommendation: self is modelled as `Participant(is_self=True)`, which unifies the payer dropdown and the consumer checkboxes into one model. `Expense.paid_by` FK to `Participant` defaults to the self-participant. See DECISIONS D19–D20 and session 20 in §2. Schema, balance engine rewrite, and tests are planned but not yet executed |
+| 32 | No GST is recorded, so tax cannot be reported or apportioned | An expense stores one `amount` and nothing about the tax inside it. There is no way to answer "how much GST did I pay this year", and no basis for charging a participant their share of it | Add a GST amount alongside `amount`, then split it by consumption rather than by head — `allocate()` already does exactly this, and consumption amounts expressed in paise are the integer weights it takes, so no new maths is needed. **Settle one question before writing any of it: is `amount` GST-inclusive or exclusive?** In India a bill total normally includes it, and that single choice decides the rest. If items are stored tax-inclusive then GST needs no apportionment at all — it already rides inside each line, and the field exists purely for reporting. If items are stored pre-tax then the field is load-bearing and `is_balanced` has to become `items_total + gst == amount`, which means issue 32 changes the rule session 19 just rewrote. Also worth deciding, and both are cheap to get wrong later: whether GST belongs per line item rather than per expense, since rates differ by category and a single bill can carry several; and whether to store a rate or an amount, given that a rate cannot represent a mixed-rate bill. Splitting CGST/SGST from IGST is real accounting but almost certainly past what a personal tracker needs |
