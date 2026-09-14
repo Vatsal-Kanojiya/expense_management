@@ -196,9 +196,9 @@ class NestedAtomicTests(TestCase):
 
         with self.assertRaises(TransactionManagementError), transaction.atomic():
             try:
-                # Violates settlement_amount_positive.
+                # Violates settlement_amount_not_zero.
                 Settlement.objects.create(
-                    user=self.alice, participant=self.rahul, amount=Decimal("-1.00")
+                    user=self.alice, participant=self.rahul, amount=Decimal("0.00")
                 )
             except IntegrityError:
                 pass
@@ -211,7 +211,7 @@ class NestedAtomicTests(TestCase):
         with transaction.atomic():
             with self.assertRaises(IntegrityError), transaction.atomic():
                 Settlement.objects.create(
-                    user=self.alice, participant=self.rahul, amount=Decimal("-1.00")
+                    user=self.alice, participant=self.rahul, amount=Decimal("0.00")
                 )
 
             # The savepoint rolled back; the outer transaction is healthy.

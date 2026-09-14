@@ -127,21 +127,24 @@ def split_expense(expense):
 def balances(user, start=None, end=None):
     """Return ``[(participant, amount_owed)]``, largest first.
 
-    Participants who owe nothing are omitted: a list of zeroes is noise on a
-    page whose question is "who owes me".
+    Amounts are signed and netted per person: positive means they owe you,
+    negative means you owe them, because a friend can be the payer. People
+    who are exactly even are omitted.
     """
     owed = defaultdict(lambda: Decimal("0"))
-    self_participant = Participant.get_or_create_self(user)
 
     for expense in _expenses(user, start, end):
         rows = split_expense(expense)
         if rows is None:
             continue
 
-        payer = expense.paid_by or self_participant
+        # No payer recorded means the owner paid. Reading it this way keeps
+        # this function a pure read: it used to create the self participant
+        # on every call, a database write hidden inside a page view.
+        payer = expense.paid_by
         owner_row = next((r for r in rows if r.participant is None), None)
 
-        if payer.is_self:
+        if payer is None or payer.is_self:
             for row in rows:
                 if row.participant is not None:
                     owed[row.participant] += row.total
@@ -176,7 +179,9 @@ def outstanding_balances(user, start=None, end=None):
         for participant, amount in balances(user, start, end)
     ]
 
-    return [(participant, amount) for participant, amount in net if amount > 0]
+    # Both signs survive. Positive: they owe you. Negative: you owe them.
+    # Dropping the negatives is what used to make a debt to a friend vanish.
+    return [(participant, amount) for participant, amount in net if amount]
 
 
 def _expenses(user, start, end):

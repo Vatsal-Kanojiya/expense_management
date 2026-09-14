@@ -49,7 +49,7 @@
             <tr>
               <th>Item</th>
               <th class="num">Amount</th>
-              <th>Shared with (besides you)</th>
+              <th>Shared with</th>
               <th>Remove</th>
             </tr>
           </thead>
@@ -90,7 +90,7 @@
           <tr>
             <th>Person</th>
             <th class="num">Items</th>
-            {% if form.instance.misc_amount %}
+            {% if split_has_misc %}
               <th class="num">Misc</th>
             {% endif %}
             <th class="num">Total</th>
@@ -107,7 +107,7 @@
                 {% endif %}
               </td>
               <td class="num">{{ row.items|rupees }}</td>
-              {% if form.instance.misc_amount %}
+              {% if split_has_misc %}
                 <td class="num">{{ row.misc|rupees }}</td>
               {% endif %}
               <td class="num"><strong>{{ row.total|rupees }}</strong></td>
@@ -118,7 +118,7 @@
           <tr>
             <th>Total</th>
             <th class="num">{{ split_items_total|rupees }}</th>
-            {% if form.instance.misc_amount %}
+            {% if split_has_misc %}
               <th class="num">{{ split_misc_total|rupees }}</th>
             {% endif %}
             <th class="num"><strong>{{ split_grand_total|rupees }}</strong></th>

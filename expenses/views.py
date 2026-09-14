@@ -162,18 +162,27 @@ class BalanceView(LoginRequiredMixin, TemplateView):
         gross = balances(self.request.user, start, end)
         net = outstanding_balances(self.request.user, start, end)
 
+        # Netted per person, so one list holds both directions. Split it here
+        # rather than in the template: the template should not be deciding
+        # what a minus sign means.
+        owes_you = [(p, amount) for p, amount in net if amount > 0]
+        you_owe = [(p, -amount) for p, amount in net if amount < 0]
+
         # Populate the nav badge while the number is in hand. The context
         # processor only ever reads this, so if nobody visits this page the
-        # badge is simply absent rather than expensive.
-        cache.set(owed_count_key(self.request.user.pk), len(net), 300)
+        # badge is simply absent rather than expensive. It counts people who
+        # owe you, which is what the badge has always meant.
+        cache.set(owed_count_key(self.request.user.pk), len(owes_you), 300)
 
         context.update(
             form=form,
             start=start,
             end=end,
-            balances=net,
+            balances=owes_you,
+            you_owe=you_owe,
             gross=dict(gross),
-            total=sum((amount for _, amount in net), Decimal("0")),
+            total=sum((amount for _, amount in owes_you), Decimal("0")),
+            you_owe_total=sum((amount for _, amount in you_owe), Decimal("0")),
         )
         return context
 
@@ -196,9 +205,11 @@ class SettleUpView(LoginRequiredMixin, View):
         if settlement is None:
             messages.info(request, "Nothing outstanding.")
         else:
-            messages.success(
-                request, f"Recorded {settlement.amount} back from {settlement.participant}."
-            )
+            if settlement.amount > 0:
+                text = f"Recorded {settlement.amount} back from {settlement.participant}."
+            else:
+                text = f"Recorded {-settlement.amount} paid to {settlement.participant}."
+            messages.success(request, text)
 
         return redirect("expenses:balances")
 
@@ -366,6 +377,10 @@ class ExpenseUpdateView(OwnerScopedMixin, ItemFormSetMixin, OwnerFormMixin, Upda
             context["split"] = rows
             context["split_items_total"] = sum((r.items for r in rows), Decimal("0"))
             context["split_misc_total"] = sum((r.misc for r in rows), Decimal("0"))
+            # From the saved copy, like the rows. After a rejected edit the
+            # form's instance carries the typed values, so asking it whether
+            # there is misc would hide a column the rows still include.
+            context["split_has_misc"] = bool(fresh_expense.misc_amount)
             context["split_grand_total"] = sum((r.total for r in rows), Decimal("0"))
         else:
             context["split"] = None

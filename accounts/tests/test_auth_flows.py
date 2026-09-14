@@ -154,7 +154,9 @@ class SignUpTests(TestCase):
 
         self.client.post(reverse("accounts:signup"), self._data())
         user = User.objects.get(username="alice")
-        self.assertTrue(Participant.objects.filter(user=user, is_self=True, name="You").exists())
+        self.assertTrue(
+            Participant.objects.filter(user=user, is_self=True, name="alice (self)").exists()
+        )
 
     def test_signup_sends_one_confirmation_email(self):
         self.client.post(reverse("accounts:signup"), self._data())

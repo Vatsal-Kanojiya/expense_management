@@ -156,7 +156,9 @@ class NestedWriteTests(ApiTestCase):
         self.assertEqual(response.status_code, 201, response.content)
         expense = Expense.objects.get(spent_on=date(2026, 2, 1))
         self.assertEqual(expense.items.count(), 2)
-        self.assertEqual(ItemShare.objects.filter(item__expense=expense).count(), 1)
+        self.assertEqual(
+            ItemShare.objects.filter(item__expense=expense).count(), 2
+        )  # Rahul, plus the owner added by include_self
 
     def test_items_that_do_not_sum_are_accepted(self):
         # The web form stopped refusing these, so the API cannot keep

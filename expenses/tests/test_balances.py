@@ -273,7 +273,7 @@ class BalanceTests(TestCase):
             ItemShare.objects.create(item=pizza, participant=self.rahul)
             ExpenseItem.objects.create(expense=expense, name="Coke", amount=Decimal("200.00"))
 
-        with self.assertNumQueries(6):
+        with self.assertNumQueries(5):
             balances(self.alice)
 
     def test_split_rows_sum_to_the_accounted_amount(self):
