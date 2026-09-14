@@ -405,8 +405,13 @@ Three departures from the plan above, all deliberate:
 - **Settlement direction was not deferred.** Netting per person needed it, so `83ebb10` made
   settlement amounts signed rather than adding an `inbound`/`outbound` field. See DECISIONS D23.
 
-**Not tagged yet.** Tag once the owner has clicked through the phase:
-`git tag -a phase-17-explicit-splits bafcc68 -m "Phase 17: paid-by, explicit splits"`.
+**Not tagged yet.** Tag once the owner has clicked through the phase. Session 22 fixed a bug found
+during that click-through — line items vanished when the form had an error — and that fix is part of
+this phase, so tag at `0e1e602` or later, **not** at `bafcc68`:
+`git tag -a phase-17-explicit-splits 0e1e602 -m "Phase 17: paid-by, explicit splits"`.
+
+**Phase 17 is the last phase.** The project is frozen after it — see DECISIONS D27. The next build is
+project 2, done solo.
 
 ---
 

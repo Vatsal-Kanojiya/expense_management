@@ -1,5 +1,8 @@
 # Handoff plan — parked UI issues 28 to 32
 
+> **Status, session 22: every task here is done, and the project is frozen (DECISIONS D27).**
+> Do not start new work from this file. It remains as the record of how tasks were specified and why.
+
 **Audience: the implementing model (Gemini Flash or equivalent), not the project owner.**
 Read this file in full before writing any code. Every task below is self-contained and
 independently verifiable. Do them in the order given.
