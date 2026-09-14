@@ -105,7 +105,10 @@ class ExpenseSerializer(serializers.ModelSerializer):
             "amount",
             "spent_on",
             "note",
+            "paid_by",
             "participants",
+            "misc_amount",
+            "misc_note",
             "items",
             "created_at",
         ]
@@ -114,6 +117,11 @@ class ExpenseSerializer(serializers.ModelSerializer):
     def validate_amount(self, value):
         if value <= 0:
             raise serializers.ValidationError("Amount must be greater than zero.")
+        return value
+
+    def validate_misc_amount(self, value):
+        if value is not None and value <= 0:
+            raise serializers.ValidationError("Misc amount must be greater than zero.")
         return value
 
     # The cross-row invariant used to be restated here as a second gate, so

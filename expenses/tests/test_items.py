@@ -56,8 +56,8 @@ class ItemFormSetTests(TestCase):
     def test_items_that_do_not_sum_are_saved_with_a_warning(self):
         response = self._post(items=[("Pizza", "600.00"), ("Coke", "200.00")], follow=True)
 
-        self.assertContains(response, "add up to 800.00")
-        self.assertContains(response, "100.00 out")
+        self.assertContains(response, "100.00")
+        self.assertContains(response, "not accounted for")
         self.assertContains(response, "left out of balances")
 
     def test_the_expense_is_written_even_when_the_items_do_not_sum(self):
@@ -177,13 +177,33 @@ class ItemFormSetTests(TestCase):
         self.assertEqual(Expense.objects.count(), 0)
 
     def test_the_sum_is_compared_exactly_not_approximately(self):
-        # Decimal, not float. 0.1 + 0.2 != 0.3 in binary floating point, and
-        # money that is "close enough" is money that is wrong.
+        # Decimal, not float. 0.1 + 0.2 != 0.3 in binary floating point.
+        # Decimal sums stay exact; the ₹1 tolerance applies only to whether
+        # an expense is balanced, not to floating-point imprecision.
         response = self._post(amount="0.30", items=[("A", "0.10"), ("B", "0.20")])
 
         self.assertEqual(Expense.objects.count(), 1)
         self.assertEqual(response.status_code, 302)
         self.assertEqual(sum(i.amount for i in Expense.objects.get().items.all()), Decimal("0.30"))
+
+    def test_misc_amount_needs_line_items(self):
+        # A misc amount on an expense with no line items is refused.
+        data = {
+            "category": self.category.pk,
+            "amount": "300.00",
+            "spent_on": "2026-01-15",
+            "note": "Dinner",
+            "misc_amount": "50.00",
+            "misc_note": "Tip",
+            "items-TOTAL_FORMS": "0",
+            "items-INITIAL_FORMS": "0",
+            "items-MIN_NUM_FORMS": "0",
+            "items-MAX_NUM_FORMS": "1000",
+        }
+        response = self.client.post(reverse("expenses:expense_create"), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Expense.objects.count(), 0)
+        self.assertContains(response, "A misc amount can only be added to an itemised expense")
 
 
 class ItemShareTests(TestCase):

@@ -51,8 +51,24 @@ def balances(user, start=None, end=None):
             if not expense.is_balanced():
                 continue
 
+            consumption = defaultdict(lambda: Decimal("0"))
             for item in items:
-                _charge_item(owed, item, payer, self_participant)
+                _charge_item(owed, item, payer, self_participant, consumption)
+
+            if expense.misc_amount and expense.misc_amount > 0:
+                active_consumers = [p for p in consumption if consumption[p] > Decimal("0")]
+                active_consumers = sorted(active_consumers, key=lambda p: (not p.is_self, p.name))
+                if active_consumers:
+                    weights = [int(consumption[p] * 100) for p in active_consumers]
+                    if all(w > 0 for w in weights):
+                        portions = allocate(expense.misc_amount, weights)
+                        for participant, portion in zip(active_consumers, portions, strict=True):
+                            if payer.is_self:
+                                if not participant.is_self:
+                                    owed[participant] += portion
+                            else:
+                                if participant.is_self:
+                                    owed[payer] -= portion
         else:
             _charge_evenly(owed, expense, self_participant)
 
@@ -114,11 +130,12 @@ def _expenses(user, start, end):
     return queryset
 
 
-def _charge_item(owed, item, payer, self_participant):
+def _charge_item(owed, item, payer, self_participant, consumption):
     shares = list(item.shares.all())
 
     # Nobody ticked: the line was consumed by the owner alone.
     if not shares:
+        consumption[self_participant] += item.amount
         if not payer.is_self:
             owed[payer] -= item.amount
         return
@@ -130,6 +147,7 @@ def _charge_item(owed, item, payer, self_participant):
 
     for share, portion in zip(shares, portions, strict=True):
         participant = share.participant
+        consumption[participant] += portion
         if payer.is_self:
             if not participant.is_self:
                 owed[participant] += portion

@@ -43,6 +43,16 @@ class Category(models.Model):
         return self.name
 
 
+ROUNDING_TOLERANCE = Decimal("1.00")
+
+
+def unaccounted(amount, items_total, misc_amount):
+    """What the lines and the misc amount leave uncovered. Positive is under, negative is over."""
+    total_lines = items_total if items_total is not None else Decimal("0")
+    misc = misc_amount if misc_amount is not None else Decimal("0")
+    return amount - total_lines - misc
+
+
 class Expense(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -66,6 +76,8 @@ class Expense(models.Model):
         null=True,
         blank=True,
     )
+    misc_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    misc_note = models.CharField(max_length=100, blank=True)
 
     # An even split. Forward string reference because Participant is defined
     # below; Django resolves these when the app registry loads.
@@ -105,7 +117,11 @@ class Expense(models.Model):
             models.CheckConstraint(
                 condition=models.Q(amount__gt=0),
                 name="expense_amount_positive",
-            )
+            ),
+            models.CheckConstraint(
+                condition=models.Q(misc_amount__isnull=True) | models.Q(misc_amount__gt=0),
+                name="expense_misc_amount_positive",
+            ),
         ]
 
     def __str__(self):
@@ -129,6 +145,10 @@ class Expense(models.Model):
 
         return sum((item.amount for item in items), Decimal("0"))
 
+    def unaccounted_amount(self):
+        """What lines and misc leave uncovered."""
+        return unaccounted(self.amount, self.items_total(), self.misc_amount)
+
     def is_balanced(self):
         """Whether this expense's split adds up.
 
@@ -140,11 +160,12 @@ class Expense(models.Model):
         that says so. ``balances`` skips an expense that fails it, so a
         half-entered split is never silently counted as a whole one.
 
-        True when there is nothing to reconcile, which is the common case.
+        True when there is nothing to reconcile (no items), or when the
+        unaccounted difference is within the rounding tolerance.
         """
-        total = self.items_total()
-
-        return total is None or total == self.amount
+        if self.items_total() is None:
+            return True
+        return abs(self.unaccounted_amount()) < ROUNDING_TOLERANCE
 
     def shared_with(self):
         """Every participant on this expense, however they got there.

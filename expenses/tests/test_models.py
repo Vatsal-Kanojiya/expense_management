@@ -13,7 +13,14 @@ from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 from django.test import TestCase
 
-from expenses.models import Category, Expense, ExportJob, MonthlyDigest
+from expenses.models import (
+    Category,
+    Expense,
+    ExpenseItem,
+    ExportJob,
+    MonthlyDigest,
+    unaccounted,
+)
 
 User = get_user_model()
 
@@ -189,6 +196,66 @@ class ExpenseConstraintTests(TestCase):
         newer = self._expense(spent_on=date(2026, 9, 1))
 
         self.assertEqual(list(Expense.objects.all()), [newer, older])
+
+    def test_unaccounted_treats_missing_values_as_zero(self):
+        self.assertEqual(unaccounted(Decimal("900.00"), None, None), Decimal("900.00"))
+        self.assertEqual(unaccounted(Decimal("900.00"), Decimal("800.00"), None), Decimal("100.00"))
+        self.assertEqual(unaccounted(Decimal("900.00"), None, Decimal("100.00")), Decimal("800.00"))
+        self.assertEqual(
+            unaccounted(Decimal("900.00"), Decimal("800.00"), Decimal("100.00")),
+            Decimal("0.00"),
+        )
+
+    def test_an_expense_within_a_rupee_is_balanced(self):
+        expense = self._expense(amount=Decimal("900.00"))
+        ExpenseItem.objects.create(expense=expense, name="Pizza", amount=Decimal("899.40"))
+        self.assertTrue(expense.is_balanced())
+
+    def test_an_expense_a_rupee_out_is_not_balanced(self):
+        expense = self._expense(amount=Decimal("900.00"))
+        ExpenseItem.objects.create(expense=expense, name="Pizza", amount=Decimal("899.00"))
+        self.assertFalse(expense.is_balanced())
+
+    def test_misc_amount_counts_towards_the_total(self):
+        expense = self._expense(amount=Decimal("900.00"), misc_amount=Decimal("100.00"))
+        ExpenseItem.objects.create(expense=expense, name="Pizza", amount=Decimal("800.00"))
+        self.assertTrue(expense.is_balanced())
+
+    def test_misc_amount_must_be_positive(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self._expense(amount=Decimal("900.00"), misc_amount=Decimal("0.00"))
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self._expense(amount=Decimal("900.00"), misc_amount=Decimal("-5.00"))
+
+    def test_the_queryset_and_the_predicate_agree(self):
+        # 1. No items -> balanced
+        self._expense(amount=Decimal("900.00"))
+
+        # 2. Exact -> balanced
+        e2 = self._expense(amount=Decimal("900.00"))
+        ExpenseItem.objects.create(expense=e2, name="Item", amount=Decimal("900.00"))
+
+        # 3. Within a rupee -> balanced
+        e3 = self._expense(amount=Decimal("900.00"))
+        ExpenseItem.objects.create(expense=e3, name="Item", amount=Decimal("899.50"))
+
+        # 4. Exactly a rupee out -> unbalanced
+        e4 = self._expense(amount=Decimal("900.00"))
+        ExpenseItem.objects.create(expense=e4, name="Item", amount=Decimal("899.00"))
+
+        # 5. Covered by misc -> balanced
+        e5 = self._expense(amount=Decimal("900.00"), misc_amount=Decimal("100.00"))
+        ExpenseItem.objects.create(expense=e5, name="Item", amount=Decimal("800.00"))
+
+        # 6. Misc overshooting -> unbalanced
+        e6 = self._expense(amount=Decimal("900.00"), misc_amount=Decimal("150.00"))
+        ExpenseItem.objects.create(expense=e6, name="Item", amount=Decimal("800.00"))
+
+        unbalanced_pks = set(Expense.objects.unbalanced().values_list("pk", flat=True))
+        predicate_pks = {e.pk for e in Expense.objects.all() if not e.is_balanced()}
+
+        self.assertEqual(unbalanced_pks, predicate_pks)
+        self.assertEqual(unbalanced_pks, {e4.pk, e6.pk})
 
 
 class AsyncModelTests(TestCase):

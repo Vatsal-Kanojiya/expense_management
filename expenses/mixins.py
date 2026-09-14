@@ -107,12 +107,12 @@ class ItemFormSetMixin:
         if formset.sum_mismatch is None:
             return
 
-        total, expected = formset.sum_mismatch
-        difference = abs(total - expected)
+        unaccounted_diff, expected = formset.sum_mismatch
+        difference = abs(unaccounted_diff)
 
         messages.warning(
             self.request,
-            f"Saved, but the line items add up to {total} and the expense is "
-            f"{expected}. That is {difference} out, so this expense is left out "
-            f"of balances until the amounts agree.",
+            f"Saved, but ₹{difference:.2f} of the ₹{expected:.2f} is not accounted for by "
+            "the line items or the misc amount, so this expense is left out of "
+            "balances until it is.",
         )

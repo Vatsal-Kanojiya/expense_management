@@ -209,6 +209,73 @@ class BalanceTests(TestCase):
             [participant for participant, _ in balances(self.alice)], [self.rahul, self.priya]
         )
 
+    def test_misc_is_split_by_consumption_not_by_head(self):
+        # Pizza 600 shared with Rahul, Coke 200 not shared, misc 80, amount 880.
+        # Owner consumed 300 + 200 = 500, Rahul consumed 300.
+        # Rahul owes 300 + 30 = 330.
+        expense = self._expense("880.00")
+        expense.misc_amount = Decimal("80.00")
+        expense.misc_note = "Tip and tax"
+        expense.save()
+
+        pizza = ExpenseItem.objects.create(expense=expense, name="Pizza", amount=Decimal("600.00"))
+        ItemShare.objects.create(item=pizza, participant=self.self_participant)
+        ItemShare.objects.create(item=pizza, participant=self.rahul)
+
+        ExpenseItem.objects.create(expense=expense, name="Coke", amount=Decimal("200.00"))
+
+        self.assertEqual(balances(self.alice), [(self.rahul, Decimal("330.00"))])
+
+    def test_a_participant_who_consumed_nothing_bears_no_misc(self):
+        # Priya on the expense participants list but on no line items consumed nothing
+        # and bears no misc.
+        expense = self._expense("880.00")
+        expense.misc_amount = Decimal("80.00")
+        expense.misc_note = "GST"
+        expense.save()
+        expense.participants.add(self.self_participant, self.rahul, self.priya)
+
+        pizza = ExpenseItem.objects.create(expense=expense, name="Pizza", amount=Decimal("600.00"))
+        ItemShare.objects.create(item=pizza, participant=self.self_participant)
+        ItemShare.objects.create(item=pizza, participant=self.rahul)
+
+        ExpenseItem.objects.create(expense=expense, name="Coke", amount=Decimal("200.00"))
+
+        self.assertEqual(balances(self.alice), [(self.rahul, Decimal("330.00"))])
+
+    def test_misc_is_not_charged_to_the_owner_when_the_owner_is_out(self):
+        # Rahul and Priya shared a 600 meal (300 each), misc 80 (40 each).
+        # Alice is not on the items and paid for it. Rahul owes 340, Priya owes 340.
+        expense = self._expense("680.00")
+        expense.misc_amount = Decimal("80.00")
+        expense.misc_note = "Delivery charge"
+        expense.save()
+
+        meal = ExpenseItem.objects.create(expense=expense, name="Meal", amount=Decimal("600.00"))
+        ItemShare.objects.create(item=meal, participant=self.rahul)
+        ItemShare.objects.create(item=meal, participant=self.priya)
+
+        self.assertEqual(
+            dict(balances(self.alice)),
+            {self.rahul: Decimal("340.00"), self.priya: Decimal("340.00")},
+        )
+
+    def test_misc_adds_no_queries(self):
+        for _ in range(5):
+            expense = self._expense("880.00")
+            expense.misc_amount = Decimal("80.00")
+            expense.misc_note = "Tip"
+            expense.save()
+            pizza = ExpenseItem.objects.create(
+                expense=expense, name="Pizza", amount=Decimal("600.00")
+            )
+            ItemShare.objects.create(item=pizza, participant=self.self_participant)
+            ItemShare.objects.create(item=pizza, participant=self.rahul)
+            ExpenseItem.objects.create(expense=expense, name="Coke", amount=Decimal("200.00"))
+
+        with self.assertNumQueries(6):
+            balances(self.alice)
+
 
 class BalanceViewTests(TestCase):
     @classmethod
