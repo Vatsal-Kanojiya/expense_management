@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load money static %}
 {% block title %}
   {% if form.instance.pk %}Edit expense{% else %}New expense{% endif %} · Expense Tracker
 {% endblock %}
@@ -7,67 +7,134 @@
 {% block content %}
   <h1>{% if form.instance.pk %}Edit expense{% else %}New expense{% endif %}</h1>
 
-  <form method="post" novalidate>
-    {% csrf_token %}
+  {% if split %}
+    <nav class="tab-bar" role="tablist" aria-label="Expense views" hidden>
+      <button type="button" role="tab" class="tab-btn is-active" id="tab-details"
+              aria-selected="true" aria-controls="panel-details">
+        Details
+      </button>
+      <button type="button" role="tab" class="tab-btn" id="tab-split"
+              aria-selected="false" aria-controls="panel-split">
+        Split
+      </button>
+    </nav>
+  {% endif %}
 
+  <div id="panel-details" role="tabpanel" aria-labelledby="tab-details">
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <div class="card">
+        {{ form.as_p }}
+      </div>
+
+      <div class="card" data-formset="{{ formset.prefix }}">
+        <h2>Line items</h2>
+        <p class="muted">
+          Optional. Add them when different people had different things, and the lines must add up
+          to the expense amount. Leave this empty to split the whole amount evenly instead.
+        </p>
+
+        {# Without the management form Django cannot tell how many forms came back, and raises. #}
+        {{ formset.management_form }}
+
+        {% if formset.non_form_errors %}
+          <ul class="errorlist">
+            {% for error in formset.non_form_errors %}<li>{{ error }}</li>{% endfor %}
+          </ul>
+        {% endif %}
+
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th class="num">Amount</th>
+              <th>Shared with (besides you)</th>
+              <th>Remove</th>
+            </tr>
+          </thead>
+          <tbody data-formset-rows>
+            {% for item_form in formset %}
+              {% include "expenses/_item_row.html" %}
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div id="expense-unaccounted" class="muted" style="margin-top: 0.5rem;" hidden></div>
+
+        {% comment %}
+        The pattern Django documents for dynamic formsets: render one extra form
+        with a placeholder index, then clone it and substitute the real index
+        client-side. A <template> keeps it out of the submitted form -- its
+        contents are inert until the script copies them.
+        {% endcomment %}
+        <template data-formset-blank>
+          {% include "expenses/_item_row.html" with item_form=formset.empty_form %}
+        </template>
+
+        <button type="button" class="btn btn-small" data-formset-add hidden>Add line item</button>
+      </div>
+
+      <button class="btn btn-primary" type="submit">Save</button>
+      <a class="btn" href="{% url 'expenses:expense_list' %}">Cancel</a>
+    </form>
+  </div>
+
+  {% if split %}
+  <div id="panel-split" role="tabpanel" aria-labelledby="tab-split">
     <div class="card">
-      {{ form.as_p }}
-    </div>
-
-    <div class="card" data-formset="{{ formset.prefix }}">
-      <h2>Line items</h2>
-      <p class="muted">
-        Optional. Add them when different people had different things, and the lines must add up
-        to the expense amount. Leave this empty to split the whole amount evenly instead.
-      </p>
-
-      {# Without the management form Django cannot tell how many forms came back, and raises. #}
-      {{ formset.management_form }}
-
-      {% if formset.non_form_errors %}
-        <ul class="errorlist">
-          {% for error in formset.non_form_errors %}<li>{{ error }}</li>{% endfor %}
-        </ul>
-      {% endif %}
-
+      <h2>Split breakdown</h2>
+      <p class="muted">Reflects the split as last saved.</p>
       <table>
         <thead>
           <tr>
-            <th>Item</th>
-            <th class="num">Amount</th>
-            <th>Shared with (besides you)</th>
-            <th>Remove</th>
+            <th>Person</th>
+            <th class="num">Items</th>
+            {% if form.instance.misc_amount %}
+              <th class="num">Misc</th>
+            {% endif %}
+            <th class="num">Total</th>
           </tr>
         </thead>
-        <tbody data-formset-rows>
-          {% for item_form in formset %}
-            {% include "expenses/_item_row.html" %}
+        <tbody>
+          {% for row in split %}
+            <tr>
+              <td>
+                {% if row.participant %}
+                  {{ row.participant.name }}
+                {% else %}
+                  You
+                {% endif %}
+              </td>
+              <td class="num">{{ row.items|rupees }}</td>
+              {% if form.instance.misc_amount %}
+                <td class="num">{{ row.misc|rupees }}</td>
+              {% endif %}
+              <td class="num"><strong>{{ row.total|rupees }}</strong></td>
+            </tr>
           {% endfor %}
         </tbody>
+        <tfoot>
+          <tr>
+            <th>Total</th>
+            <th class="num">{{ split_items_total|rupees }}</th>
+            {% if form.instance.misc_amount %}
+              <th class="num">{{ split_misc_total|rupees }}</th>
+            {% endif %}
+            <th class="num"><strong>{{ split_grand_total|rupees }}</strong></th>
+          </tr>
+        </tfoot>
       </table>
-
-      <div id="expense-unaccounted" class="muted" style="margin-top: 0.5rem;" hidden></div>
-
-      {% comment %}
-      The pattern Django documents for dynamic formsets: render one extra form
-      with a placeholder index, then clone it and substitute the real index
-      client-side. A <template> keeps it out of the submitted form -- its
-      contents are inert until the script copies them.
-      {% endcomment %}
-      <template data-formset-blank>
-        {% include "expenses/_item_row.html" with item_form=formset.empty_form %}
-      </template>
-
-      <button type="button" class="btn btn-small" data-formset-add hidden>Add line item</button>
     </div>
-
-    <button class="btn btn-primary" type="submit">Save</button>
-    <a class="btn" href="{% url 'expenses:expense_list' %}">Cancel</a>
-  </form>
+  </div>
+  {% endif %}
 {% endblock %}
 
 {% block scripts %}
   {{ form.media }}
   <script src="{% static 'expenses/item-formset.js' %}" defer></script>
   <script src="{% static 'expenses/expense-totals.js' %}" defer></script>
+  {% if split %}
+    <script src="{% static 'expenses/expense-tabs.js' %}" defer></script>
+  {% endif %}
 {% endblock %}

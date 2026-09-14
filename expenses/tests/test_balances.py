@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from expenses.balances import balances
+from expenses.balances import balances, split_expense
 from expenses.models import Category, Expense, ExpenseItem, ItemShare, Participant
 
 User = get_user_model()
@@ -275,6 +275,83 @@ class BalanceTests(TestCase):
 
         with self.assertNumQueries(6):
             balances(self.alice)
+
+    def test_split_rows_sum_to_the_accounted_amount(self):
+        # 1. Itemised expense with misc: row totals sum to items_total() + misc_amount
+        expense = self._expense("880.00")
+        expense.misc_amount = Decimal("80.00")
+        expense.misc_note = "Tip"
+        expense.save()
+        pizza = ExpenseItem.objects.create(expense=expense, name="Pizza", amount=Decimal("600.00"))
+        ItemShare.objects.create(item=pizza, participant=self.self_participant)
+        ItemShare.objects.create(item=pizza, participant=self.rahul)
+        coke = ExpenseItem.objects.create(expense=expense, name="Coke", amount=Decimal("200.00"))
+        ItemShare.objects.create(item=coke, participant=self.self_participant)
+
+        rows = split_expense(expense)
+        self.assertIsNotNone(rows)
+        self.assertEqual(
+            sum((r.total for r in rows), Decimal("0")),
+            expense.items_total() + expense.misc_amount,
+        )
+
+        # 2. Even split: row totals sum exactly to amount
+        even_expense = self._expense("300.00")
+        even_expense.participants.add(self.self_participant, self.rahul, self.priya)
+        even_rows = split_expense(even_expense)
+        self.assertIsNotNone(even_rows)
+        self.assertEqual(
+            sum((r.total for r in even_rows), Decimal("0")),
+            even_expense.amount,
+        )
+
+    def test_split_includes_the_owner_row(self):
+        expense = self._expense("600.00")
+        pizza = ExpenseItem.objects.create(expense=expense, name="Pizza", amount=Decimal("600.00"))
+        ItemShare.objects.create(item=pizza, participant=self.self_participant)
+        ItemShare.objects.create(item=pizza, participant=self.rahul)
+
+        rows = split_expense(expense)
+        self.assertIsNotNone(rows)
+        self.assertTrue(any(r.participant is None for r in rows))
+        # Owner row is first
+        self.assertIsNone(rows[0].participant)
+
+    def test_split_has_no_owner_row_when_the_owner_is_out(self):
+        expense = self._expense("600.00")
+        pizza = ExpenseItem.objects.create(expense=expense, name="Pizza", amount=Decimal("600.00"))
+        ItemShare.objects.create(item=pizza, participant=self.rahul)
+        ItemShare.objects.create(item=pizza, participant=self.priya)
+
+        rows = split_expense(expense)
+        self.assertIsNotNone(rows)
+        self.assertTrue(all(r.participant is not None for r in rows))
+
+    def test_split_is_none_when_unbalanced(self):
+        expense = self._expense("900.00")
+        ExpenseItem.objects.create(expense=expense, name="Pizza", amount=Decimal("600.00"))
+        # Unbalanced: 600 items vs 900 expense, unaccounted = 300 >= 1.00
+        self.assertIsNone(split_expense(expense))
+
+    def test_split_shows_misc_per_person(self):
+        # Rahul's row is items 300, misc 30, total 330
+        expense = self._expense("880.00")
+        expense.misc_amount = Decimal("80.00")
+        expense.misc_note = "Tip"
+        expense.save()
+
+        pizza = ExpenseItem.objects.create(expense=expense, name="Pizza", amount=Decimal("600.00"))
+        ItemShare.objects.create(item=pizza, participant=self.self_participant)
+        ItemShare.objects.create(item=pizza, participant=self.rahul)
+        ExpenseItem.objects.create(expense=expense, name="Coke", amount=Decimal("200.00"))
+
+        rows = split_expense(expense)
+        self.assertIsNotNone(rows)
+        rahul_row = next((r for r in rows if r.participant == self.rahul), None)
+        self.assertIsNotNone(rahul_row)
+        self.assertEqual(rahul_row.items, Decimal("300.00"))
+        self.assertEqual(rahul_row.misc, Decimal("30.00"))
+        self.assertEqual(rahul_row.total, Decimal("330.00"))
 
 
 class BalanceViewTests(TestCase):

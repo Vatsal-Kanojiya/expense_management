@@ -241,15 +241,20 @@ class ExpenseItemForm(forms.ModelForm):
             qs = Participant.objects.none()
 
         if self.instance.pk:
-            saved_share_ids = list(self.instance.shares.values_list("participant_id", flat=True))
-            if saved_share_ids:
-                saved_qs = Participant.objects.filter(pk__in=saved_share_ids)
+            saved_share_ids = [s.participant_id for s in self.instance.shares.all()]
+            existing_pks = {p.pk for p in qs}
+            missing_share_ids = set(saved_share_ids) - existing_pks
+            if missing_share_ids:
+                saved_qs = Participant.objects.filter(pk__in=missing_share_ids)
                 if user is not None:
                     saved_qs = saved_qs.filter(user=user)
                 qs = (qs | saved_qs).distinct()
             self.fields["shared_with"].initial = saved_share_ids
 
         self.fields["shared_with"].queryset = qs
+        self.fields["shared_with"].choices = [
+            (p.pk, self.fields["shared_with"].label_from_instance(p)) for p in qs
+        ]
 
 
 class BaseExpenseItemFormSet(BaseInlineFormSet):
@@ -276,6 +281,12 @@ class BaseExpenseItemFormSet(BaseInlineFormSet):
     #: disagree, and left None otherwise. Not an error -- a fact the view
     #: reports back to the person after saving.
     sum_mismatch = None
+
+    def get_queryset(self):
+        if not hasattr(self, "_queryset"):
+            super().get_queryset()
+            self._queryset = self._queryset.prefetch_related("shares")
+        return self._queryset
 
     def __init__(self, *args, participant_queryset=None, **kwargs):
         self.participant_queryset = participant_queryset
