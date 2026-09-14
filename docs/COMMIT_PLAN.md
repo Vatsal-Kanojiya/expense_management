@@ -361,7 +361,7 @@ startup documented in RUNNING_ASYNC.md — one command instead of three terminal
 
 **Tag:** `phase-16-hardening` · **Closes issues 10, 15, 16 and 19.**
 
-### Phase 17 — Paid-by and explicit splits ⬜ *(planned — see session 20)*
+### Phase 17 — Paid-by and explicit splits ✅ *(built, not yet tagged — see sessions 20 and 21)*
 
 > **Prerequisite:** none beyond master. This phase touches `Participant`, `Expense`, `balances.py`,
 > forms, templates, and tests. It does **not** touch settlements, exports, or async — those are
@@ -381,6 +381,32 @@ startup documented in RUNNING_ASYNC.md — one command instead of three terminal
 | 17.10 | `docs: record session 20 decisions and phase 17` | `docs/` | BUILD_LOG session 20, DECISIONS D19–D21, COMMIT_PLAN phase 17 |
 
 **Tag:** `phase-17-explicit-splits` · **Closes issue 31.** Settlement direction (`inbound`/`outbound`) and the ledger system are deferred to a future phase.
+
+**As built.** The table above was the plan. The work landed as a cheaper model's handoff run against
+`docs/HANDOFF_PLAN.md`, so the commits do not map one-to-one onto its rows:
+
+| Commit | Message | Plan rows |
+|---|---|---|
+| `384b3ee` | `feat(expenses): focus the first field on create forms` | handoff T1 (issue 29) |
+| `682a55f` | `fix(expenses): pin ISO format and min-width for date inputs` | handoff T2 (issue 28) |
+| `49c3aef` | `feat(expenses): add paid_by foreign key and explicit self participation` | 17.1–17.6 |
+| `ebb1074` | `feat(expenses): add misc amount split by consumption with rounding tolerance` | handoff T4 (issue 32) |
+| `2075653` | `feat(expenses): scope line-item picker to expense participants` | handoff T5 |
+| `b9b6e0a` | `feat(expenses): add searchable chip-select widget for participants` | handoff T6 |
+| `6c97437` | `feat(expenses): add split tab on expense edit page` | 17.7 |
+| `83ebb10` | `fix(expenses): address review of the handoff implementation` | 17.8, plus review fixes |
+| `bafcc68` | `docs: log session 21 review fixes and supersede T3 design` | 17.10 |
+
+Three departures from the plan above, all deliberate:
+
+- **17.8 was missed and fixed late.** The API `paid_by` field shipped unscoped; `83ebb10` scoped it.
+- **The self participant is not named "You".** It is `FirstName (self)` with a numeric suffix,
+  because a fixed name crashed the backfill for anyone with a contact already called "You".
+- **Settlement direction was not deferred.** Netting per person needed it, so `83ebb10` made
+  settlement amounts signed rather than adding an `inbound`/`outbound` field. See DECISIONS D23.
+
+**Not tagged yet.** Tag once the owner has clicked through the phase:
+`git tag -a phase-17-explicit-splits bafcc68 -m "Phase 17: paid-by, explicit splits"`.
 
 ---
 

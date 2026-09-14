@@ -384,3 +384,65 @@ true). No new URL.
 items and participants, which are being edited on the same page. A tab that
 reacts to the current form state (valid vs invalid, balanced vs unbalanced)
 gives immediate feedback without navigating away.
+
+> **Superseded in part (session 21).** As built, the tab does **not** react to the form. It shows the
+> split as last saved, recomputed from a fresh database fetch, and is absent when the saved expense
+> is unbalanced or involves nobody else. A split computed from unsaved typing would describe numbers
+> that never existed, and after a rejected submission Django has already copied the rejected values
+> onto the form's instance. HANDOFF_PLAN T7 records the as-built rule.
+
+---
+
+## Session 21 — review of the handoff implementation
+
+### D22. The first JavaScript is dependency-free and progressive *(recorded late, from session 19)*
+
+**Decided:** add-and-remove line items in `item-formset.js`, then the chip widget, live unaccounted
+figure and tabs in the same style: one IIFE per file, no framework, no build step, served from the
+app's own `static/` directory. Every script enhances markup that already works without it.
+
+**Alternatives:** HTMX for server-rendered row fragments; Select2 or Choices.js for the picker; a
+separate React frontend.
+
+**Why:** the owner is learning Django, not a frontend toolchain, and may later replace the UI with
+React outright. Hand-written scripts cost nothing to delete. A dependency would have added a
+supply-chain surface and a settings change for a UI that might not survive.
+
+### D23. Settlements are signed, not given a direction field
+
+**Decided:** `Settlement.amount` is signed and constrained `!= 0`. Positive is the participant paying
+the owner; negative is the owner paying the participant. Balances net per person.
+
+**Alternative:** an explicit `direction` field, as session 20 suggested deferring.
+
+**Why:** outstanding stays one expression, `balance - sum(settlements)`, identical for both
+directions. A direction field makes every aggregate branch on it, and a missed branch silently
+double-counts. The cost is a column that reads less obviously in the database, paid for in
+the constraint name and model comment.
+
+### D24. The self participant is named `FirstName (self)`
+
+**Decided:** first name, or username when empty, plus `(self)`, plus a numeric suffix on collision.
+Migration 0008 was corrected in place and 0010 renames rows the old 0008 created.
+
+**Alternatives:** keep "You" and skip the collision; exclude `is_self` rows from the uniqueness
+constraint.
+
+**Why:** "You" crashed the backfill for anyone with a contact already named that. Excluding self rows
+from the constraint would allow two identical names in one picker. The owner asked for their own
+name. Editing an applied migration is normally wrong; it is acceptable here because the old version
+could not run on the databases it would fail on, and 0010 covers those it succeeded on.
+
+### D25. The API includes the owner by default, with `include_self` to opt out
+
+**Decided:** a write-only `include_self`, default true, adds the self participant to a split that
+names others, at expense level and on each shared line.
+
+**Alternative:** API clients must list the self participant explicitly.
+
+**Why:** the web form pre-selects the owner; an API client has no form. Without a default, a request
+naming only Rahul charges Rahul the whole bill, which is the exact bug the review found. Explicit
+opt-out keeps pure reimbursements expressible.
+
+**Known weakness:** the self participant is still an ordinary row in the API — listable, renamable,
+deletable. Parked as issue 34 pending a redesign of the self-participant model.
