@@ -142,3 +142,80 @@ class RequiredMarkerTests(TestCase):
         response = self.client.get(reverse("expenses:expense_create"))
 
         self.assertEqual(response.content.decode().count('class="required-mark"'), 2)
+
+
+class HeadingTests(TestCase):
+    """The expense form heading is the note, falling back when there is none.
+
+    expense-title.js keeps it in step while typing; these pin what the server
+    renders, which is what the page shows on load and without JavaScript.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user(
+            "alice", email="alice@example.com", password="pw12345!"
+        )
+        cls.category = Category.objects.create(user=cls.alice, name="Food")
+
+    def setUp(self):
+        self.client.force_login(self.alice)
+
+    def _expense(self, note):
+        return Expense.objects.create(
+            user=self.alice,
+            category=self.category,
+            amount=Decimal("500.00"),
+            spent_on=date.today(),
+            note=note,
+        )
+
+    def _heading(self, response):
+        html = response.content.decode()
+        start = html.index('id="expense-heading"')
+        return html[html.index(">", start) + 1 : html.index("</h1>", start)].strip()
+
+    def test_new_form_says_new_expense(self):
+        response = self.client.get(reverse("expenses:expense_create"))
+
+        self.assertEqual(self._heading(response), "New expense")
+        self.assertContains(response, 'data-fallback="New expense"')
+
+    def test_edit_form_shows_the_saved_note(self):
+        expense = self._expense("Goa trip dinner")
+
+        response = self.client.get(reverse("expenses:expense_update", args=[expense.pk]))
+
+        self.assertEqual(self._heading(response), "Goa trip dinner")
+        self.assertContains(response, "<title>\n  Goa trip dinner · Expense Tracker")
+        self.assertContains(response, 'data-fallback="Edit expense"')
+
+    def test_edit_form_without_a_note_says_edit_expense(self):
+        # Rows from before the note became required can still have none.
+        expense = self._expense("")
+
+        response = self.client.get(reverse("expenses:expense_update", args=[expense.pk]))
+
+        self.assertEqual(self._heading(response), "Edit expense")
+
+    def test_typed_note_is_the_heading_after_a_validation_error(self):
+        response = self.client.post(
+            reverse("expenses:expense_create"),
+            {
+                "category": self.category.pk,
+                "amount": "",
+                "spent_on": date.today().isoformat(),
+                "note": "Movie night",
+                **item_formset(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self._heading(response), "Movie night")
+
+    def test_note_is_escaped(self):
+        expense = self._expense("<b>snacks</b>")
+
+        response = self.client.get(reverse("expenses:expense_update", args=[expense.pk]))
+
+        self.assertEqual(self._heading(response), "&lt;b&gt;snacks&lt;/b&gt;")
