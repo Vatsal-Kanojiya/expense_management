@@ -24,12 +24,12 @@ class DateRangeForm(forms.Form):
 
     start = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={"type": "date"}),
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
         label="From",
     )
     end = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={"type": "date"}),
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
         label="To",
     )
 

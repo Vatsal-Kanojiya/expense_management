@@ -82,7 +82,7 @@ class ExpenseForm(forms.ModelForm):
         model = Expense
         fields = ["category", "amount", "spent_on", "note", "participants"]
         widgets = {
-            "spent_on": forms.DateInput(attrs={"type": "date"}),
+            "spent_on": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "note": forms.TextInput(attrs={"placeholder": "What was this for?"}),
             # A multi-select box hides how many are chosen and needs a modifier
             # key to pick more than one. Checkboxes show the whole set and its
