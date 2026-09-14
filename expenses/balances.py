@@ -25,7 +25,7 @@ from decimal import Decimal
 
 from django.db.models import Prefetch
 
-from .models import Expense, ExpenseItem
+from .models import Expense, ExpenseItem, Participant
 from .splitting import allocate
 
 
@@ -36,8 +36,10 @@ def balances(user, start=None, end=None):
     page whose question is "who owes me".
     """
     owed = defaultdict(lambda: Decimal("0"))
+    self_participant = Participant.get_or_create_self(user)
 
     for expense in _expenses(user, start, end):
+        payer = expense.paid_by or self_participant
         items = list(expense.items.all())
 
         if items:
@@ -50,9 +52,9 @@ def balances(user, start=None, end=None):
                 continue
 
             for item in items:
-                _charge_item(owed, item)
+                _charge_item(owed, item, payer, self_participant)
         else:
-            _charge_evenly(owed, expense)
+            _charge_evenly(owed, expense, self_participant)
 
     ranked = sorted(owed.items(), key=lambda pair: (-pair[1], pair[0].name))
     return [(participant, amount) for participant, amount in ranked if amount]
@@ -92,12 +94,16 @@ def _expenses(user, start, end):
     one query per expense for its items, then one per item for its shares.
     Phase 9 pins the count with assertNumQueries so it cannot regress.
     """
-    queryset = Expense.objects.for_user(user).prefetch_related(
-        "participants",
-        Prefetch(
-            "items",
-            queryset=ExpenseItem.objects.prefetch_related("shares__participant"),
-        ),
+    queryset = (
+        Expense.objects.for_user(user)
+        .select_related("paid_by")
+        .prefetch_related(
+            "participants",
+            Prefetch(
+                "items",
+                queryset=ExpenseItem.objects.prefetch_related("shares__participant"),
+            ),
+        )
     )
 
     if start is not None:
@@ -108,30 +114,47 @@ def _expenses(user, start, end):
     return queryset
 
 
-def _charge_item(owed, item):
+def _charge_item(owed, item, payer, self_participant):
     shares = list(item.shares.all())
 
-    # Nobody ticked: the line is yours.
+    # Nobody ticked: the line was consumed by the owner alone.
     if not shares:
+        if not payer.is_self:
+            owed[payer] -= item.amount
         return
 
-    # The owner's share goes first and is discarded. Including it in the
-    # allocation is what makes the split come out of the right denominator,
-    # and dropping it afterwards is what stops you owing yourself money.
-    weights = [1] + [share.weight for share in shares]
+    # Sort shares so self is first (absorbs extra paisa in allocate)
+    shares = sorted(shares, key=lambda s: (not s.participant.is_self, s.participant.name))
+    weights = [share.weight for share in shares]
     portions = allocate(item.amount, weights)
 
-    for share, portion in zip(shares, portions[1:], strict=True):
-        owed[share.participant] += portion
+    for share, portion in zip(shares, portions, strict=True):
+        participant = share.participant
+        if payer.is_self:
+            if not participant.is_self:
+                owed[participant] += portion
+        else:
+            if participant.is_self:
+                owed[payer] -= portion
 
 
-def _charge_evenly(owed, expense):
+def _charge_evenly(owed, expense, self_participant):
     people = list(expense.participants.all())
+    payer = expense.paid_by or self_participant
 
     if not people:
+        if not payer.is_self:
+            owed[payer] -= expense.amount
         return
 
-    portions = allocate(expense.amount, [1] * (len(people) + 1))
+    # Sort participants so that the owner/self is first (to absorb any extra paisa)
+    people = sorted(people, key=lambda p: (not p.is_self, p.name))
+    portions = allocate(expense.amount, [1] * len(people))
 
-    for participant, portion in zip(people, portions[1:], strict=True):
-        owed[participant] += portion
+    for participant, portion in zip(people, portions, strict=True):
+        if payer.is_self:
+            if not participant.is_self:
+                owed[participant] += portion
+        else:
+            if participant.is_self:
+                owed[payer] -= portion

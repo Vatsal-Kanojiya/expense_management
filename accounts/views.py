@@ -9,7 +9,7 @@ from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, TemplateView
 
-from expenses.models import Category, Expense
+from expenses.models import Category, Expense, Participant
 
 from . import ratelimit
 from .deletion import delete_account
@@ -125,6 +125,7 @@ class SignUpView(CreateView):
         form.instance.is_active = False
         response = super().form_valid(form)
 
+        Participant.get_or_create_self(self.object)
         send_verification_email(self.object, self.request)
 
         return response

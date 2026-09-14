@@ -211,9 +211,11 @@ class ParticipantListView(OwnerScopedMixin, ListView):
         # Two counts in one query. Counting across two different relations in
         # a single annotate() would multiply the join and inflate both, so
         # each uses distinct=True.
+        # Self ("You") is excluded: it is a split participant, not an address-book contact.
         return (
             super()
             .get_queryset()
+            .filter(is_self=False)
             .annotate(
                 shared_count=Count("shared_expenses", distinct=True),
                 item_count=Count("item_shares", distinct=True),
@@ -236,6 +238,9 @@ class ParticipantUpdateView(OwnerScopedMixin, OwnerFormMixin, UpdateView):
     form_class = ParticipantForm
     success_url = reverse_lazy("expenses:participant_list")
 
+    def get_queryset(self):
+        return super().get_queryset().filter(is_self=False)
+
     def form_valid(self, form):
         messages.success(self.request, f"Renamed to {form.instance.name}.")
         return super().form_valid(form)
@@ -244,6 +249,9 @@ class ParticipantUpdateView(OwnerScopedMixin, OwnerFormMixin, UpdateView):
 class ParticipantDeleteView(OwnerScopedMixin, DeleteView):
     model = Participant
     success_url = reverse_lazy("expenses:participant_list")
+
+    def get_queryset(self):
+        return super().get_queryset().filter(is_self=False)
 
     def form_valid(self, form):
         # ItemShare.participant is PROTECT, so someone who appears on a line
@@ -277,7 +285,7 @@ class ExpenseListView(OwnerScopedMixin, ListView):
         return self._filter_form
 
     def get_queryset(self):
-        # select_related joins the category in the same query. Without it the
+        # select_related joins the category and payer in the same query. Without it the
         # template's {{ expense.category.name }} fires one extra query per row
         # — the classic N+1.
         # select_related joins the category into the same query; it is a
@@ -292,7 +300,7 @@ class ExpenseListView(OwnerScopedMixin, ListView):
         queryset = (
             super()
             .get_queryset()
-            .select_related("category")
+            .select_related("category", "paid_by")
             .prefetch_related(
                 "participants",
                 Prefetch(

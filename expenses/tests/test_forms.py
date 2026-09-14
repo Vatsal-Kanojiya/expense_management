@@ -92,6 +92,14 @@ class ParticipantFormTests(TestCase):
         form = ParticipantForm(user=self.alice, instance=self.rahul)
         self.assertNotIn("autofocus", form.fields["name"].widget.attrs)
 
+    def test_name_you_is_reserved_for_self(self):
+        form = ParticipantForm(data={"name": "You"}, user=self.alice)
+        self.assertFalse(form.is_valid())
+        self.assertIn("name", form.errors)
+
+        form_lower = ParticipantForm(data={"name": "you"}, user=self.alice)
+        self.assertFalse(form_lower.is_valid())
+
 
 class ExpenseFormTests(TestCase):
     @classmethod
@@ -191,3 +199,19 @@ class ExpenseFormTests(TestCase):
         )
         form = ExpenseForm(user=self.alice, instance=expense)
         self.assertIn('value="2026-01-15"', form.as_p())
+
+    def test_paid_by_defaults_to_self(self):
+        self_p = Participant.get_or_create_self(self.alice)
+        form = ExpenseForm(user=self.alice)
+        self.assertEqual(form.fields["paid_by"].initial, self_p)
+
+    def test_split_includes_self_by_default(self):
+        self_p = Participant.get_or_create_self(self.alice)
+        form = ExpenseForm(user=self.alice)
+        self.assertEqual(form.fields["participants"].initial, [self_p])
+
+    def test_empty_paid_by_defaults_to_self(self):
+        self_p = Participant.get_or_create_self(self.alice)
+        form = ExpenseForm(data=self._data(), user=self.alice)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["paid_by"], self_p)

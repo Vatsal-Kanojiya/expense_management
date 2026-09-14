@@ -149,6 +149,13 @@ class SignUpTests(TestCase):
         self.assertFalse(user.is_active)
         self.assertFalse(response.context["user"].is_authenticated)
 
+    def test_signup_creates_self_participant(self):
+        from expenses.models import Participant
+
+        self.client.post(reverse("accounts:signup"), self._data())
+        user = User.objects.get(username="alice")
+        self.assertTrue(Participant.objects.filter(user=user, is_self=True, name="You").exists())
+
     def test_signup_sends_one_confirmation_email(self):
         self.client.post(reverse("accounts:signup"), self._data())
 
