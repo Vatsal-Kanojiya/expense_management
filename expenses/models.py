@@ -1,4 +1,5 @@
 # Create your models here.
+from decimal import Decimal
 from uuid import uuid4
 
 from django.conf import settings
@@ -101,6 +102,36 @@ class Expense(models.Model):
 
     def __str__(self):
         return f"{self.amount} on {self.spent_on}"
+
+    def items_total(self):
+        """Sum of the line items, or None when there are none.
+
+        Reads the prefetched cache like ``shared_with`` below, so callers
+        that already loaded the items pay nothing for asking.
+        """
+        items = list(self.items.all())
+
+        if not items:
+            return None
+
+        return sum((item.amount for item in items), Decimal("0"))
+
+    def is_balanced(self):
+        """Whether this expense's split adds up.
+
+        The rule used to be a hard validation error: items that did not sum
+        to the amount could not be saved at all. That cost more than it
+        bought -- a long form was refused wholesale over one wrong figure,
+        and a refresh lost the lot. The record is now allowed to exist in a
+        state the split cannot be computed from, and this is the predicate
+        that says so. ``balances`` skips an expense that fails it, so a
+        half-entered split is never silently counted as a whole one.
+
+        True when there is nothing to reconcile, which is the common case.
+        """
+        total = self.items_total()
+
+        return total is None or total == self.amount
 
     def shared_with(self):
         """Every participant on this expense, however they got there.

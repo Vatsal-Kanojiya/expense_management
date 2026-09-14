@@ -123,10 +123,17 @@ class ExpenseFormTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("amount", form.errors)
 
-    def test_note_is_optional(self):
+    def test_note_is_required(self):
+        """Required on the form, blank=True on the model, and both are right.
+
+        Rows written before this rule have empty notes and no migration can
+        invent text for them, so the column stays permissive and the demand
+        is made where it applies -- to new input.
+        """
         form = ExpenseForm(data=self._data(note=""), user=self.alice)
 
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid())
+        self.assertIn("note", form.errors)
 
     def test_amount_keeps_two_decimal_places(self):
         form = ExpenseForm(data=self._data(amount="25.99"), user=self.alice)

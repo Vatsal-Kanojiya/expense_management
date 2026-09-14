@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django import forms
 from django.forms import BaseInlineFormSet, inlineformset_factory
+from django.utils import timezone
 
 from .models import Category, Expense, ExpenseItem, ItemShare, Participant
 
@@ -78,7 +79,7 @@ class ExpenseForm(forms.ModelForm):
         fields = ["category", "amount", "spent_on", "note", "participants"]
         widgets = {
             "spent_on": forms.DateInput(attrs={"type": "date"}),
-            "note": forms.TextInput(attrs={"placeholder": "Optional"}),
+            "note": forms.TextInput(attrs={"placeholder": "What was this for?"}),
             # A multi-select box hides how many are chosen and needs a modifier
             # key to pick more than one. Checkboxes show the whole set and its
             # state at a glance, which is what this field is actually for.
@@ -92,6 +93,19 @@ class ExpenseForm(forms.ModelForm):
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
+
+        # Category, amount and note are what an expense has to carry to be
+        # worth keeping; everything else can be filled in later. The model
+        # leaves `note` blank=True because rows predating this rule exist and
+        # a migration cannot invent text for them, so the requirement is
+        # stated here, where it applies to new input only.
+        self.fields["note"].required = True
+
+        # A date is required by the column, and asking for one adds nothing
+        # when almost every expense is entered the day it happened. Today is
+        # the answer nine times in ten and is still editable.
+        if not self.instance.pk:
+            self.fields["spent_on"].initial = timezone.localdate
 
         # The subtle one. A ModelChoiceField defaults to *every* Category in
         # the table, so without this the dropdown leaks other users' category
@@ -174,9 +188,20 @@ class BaseExpenseItemFormSet(BaseInlineFormSet):
 
     That is the honest version of a rule people often try to push into the
     schema. The database still guarantees what it can -- every item costs
-    something, every share has a positive weight -- and the form guarantees
-    what the database cannot see.
+    something, every share has a positive weight.
+
+    What changed is the consequence. The rule is still checked here, but a
+    breach no longer refuses the submission: it is recorded on
+    ``sum_mismatch`` and the expense saves anyway. Blocking cost a whole
+    form's worth of typing over a single wrong figure. The guarantee that
+    replaces it lives in ``balances``, which skips an expense that does not
+    add up rather than counting a partial split as a complete one.
     """
+
+    #: Set by ``clean`` to ``(items_total, expense_amount)`` when the two
+    #: disagree, and left None otherwise. Not an error -- a fact the view
+    #: reports back to the person after saving.
+    sum_mismatch = None
 
     def clean(self):
         super().clean()
@@ -205,13 +230,14 @@ class BaseExpenseItemFormSet(BaseInlineFormSet):
             return
 
         if total != expected:
-            difference = abs(total - expected)
-            raise forms.ValidationError(
-                f"The items add up to {total}, but the expense is {expected}. "
-                f"That is {difference} out. Add a line for the difference, or "
-                f"correct the amounts.",
-                code="items_do_not_sum",
-            )
+            # Recorded, not raised. Refusing the whole submission over this
+            # threw away everything else the person had typed, and a refresh
+            # lost it for good -- a steep price for one wrong figure. The
+            # expense saves; `Expense.is_balanced` reports the mismatch and
+            # `balances` skips the expense until it is fixed, so nothing
+            # half-entered is ever counted as a whole split. The view reads
+            # this attribute to warn.
+            self.sum_mismatch = (total, expected)
 
     def save(self, commit=True):
         items = super().save(commit=commit)
@@ -248,6 +274,10 @@ ExpenseItemFormSet = inlineformset_factory(
     form=ExpenseItemForm,
     formset=BaseExpenseItemFormSet,
     fields=["name", "amount"],
-    extra=3,
+    # One blank row, not three. Three was a guess at how many lines a typical
+    # expense has, paid for by everyone who itemises fewer -- and there was no
+    # way to ask for a fourth. `item-formset.js` adds rows on demand, so the
+    # server only has to render the one that gets the person started.
+    extra=1,
     can_delete=True,
 )

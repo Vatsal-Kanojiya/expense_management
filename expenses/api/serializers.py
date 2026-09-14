@@ -116,38 +116,18 @@ class ExpenseSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Amount must be greater than zero.")
         return value
 
-    def validate(self, attrs):
-        """The cross-row invariant again, in its second home.
-
-        The formset enforces this for the web form; nothing it does applies
-        here. An invariant the database cannot hold has to be restated at
-        every entry point, which is the real cost of moving a rule out of
-        the schema -- and the reason ``check_splits`` exists.
-
-        ``validate()`` rather than ``validate_items()``, because the rule
-        needs both the items and the amount, and a field-level validator
-        only sees its own field.
-        """
-        items = attrs.get("items")
-
-        if not items:
-            return attrs
-
-        # On PATCH the amount may be absent, in which case the stored one
-        # is what the items must match.
-        amount = attrs.get("amount", getattr(self.instance, "amount", None))
-
-        if amount is None:
-            return attrs
-
-        total = sum(item["amount"] for item in items)
-
-        if total != amount:
-            raise serializers.ValidationError(
-                {"items": f"The items add up to {total}, but the expense is {amount}."}
-            )
-
-        return attrs
+    # The cross-row invariant used to be restated here as a second gate, so
+    # that an API client got the same refusal the web form gave. Both gates
+    # are gone: an expense whose items do not sum is now a legal record that
+    # `balances` declines to split, not a rejected write. Keeping the check
+    # here alone would have left the two entry points disagreeing about what
+    # an expense is, which is worse than either rule on its own.
+    #
+    # What enforces the invariant now is that nothing consumes an unbalanced
+    # expense: `Expense.is_balanced` is the predicate, `balances` skips, and
+    # `check_splits` reports. The lesson survives the change -- a rule the
+    # database cannot hold has to be restated at every entry point, and that
+    # cost is exactly why this one stopped being a gate.
 
     @transaction.atomic
     def create(self, validated_data):

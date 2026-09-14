@@ -197,7 +197,7 @@ class ExpenseViewTests(TestCase):
                 "category": self.category.pk,
                 "amount": "99.00",
                 "spent_on": "2026-09-01",
-                "note": "",
+                "note": "Dinner",
                 **item_formset(),
             },
         )

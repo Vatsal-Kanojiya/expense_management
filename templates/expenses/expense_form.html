@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}
   {% if form.instance.pk %}Edit expense{% else %}New expense{% endif %} · Expense Tracker
 {% endblock %}
@@ -13,7 +14,7 @@
       {{ form.as_p }}
     </div>
 
-    <div class="card">
+    <div class="card" data-formset="{{ formset.prefix }}">
       <h2>Line items</h2>
       <p class="muted">
         Optional. Add them when different people had different things, and the lines must add up
@@ -38,25 +39,31 @@
             <th>Remove</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody data-formset-rows>
           {% for item_form in formset %}
-            <tr>
-              {# Carries the primary key of an existing row. Drop it and every edit becomes an insert. #}
-              {{ item_form.id }}
-              <td>{{ item_form.name }}{{ item_form.name.errors }}</td>
-              <td class="num">{{ item_form.amount }}{{ item_form.amount.errors }}</td>
-              <td>
-                {# Leave every box clear and the line is yours alone. #}
-                {{ item_form.shared_with }}{{ item_form.shared_with.errors }}
-              </td>
-              <td>{% if item_form.instance.pk %}{{ item_form.DELETE }}{% endif %}</td>
-            </tr>
+            {% include "expenses/_item_row.html" %}
           {% endfor %}
         </tbody>
       </table>
+
+      {% comment %}
+      The pattern Django documents for dynamic formsets: render one extra form
+      with a placeholder index, then clone it and substitute the real index
+      client-side. A <template> keeps it out of the submitted form -- its
+      contents are inert until the script copies them.
+      {% endcomment %}
+      <template data-formset-blank>
+        {% include "expenses/_item_row.html" with item_form=formset.empty_form %}
+      </template>
+
+      <button type="button" class="btn btn-small" data-formset-add hidden>Add line item</button>
     </div>
 
     <button class="btn btn-primary" type="submit">Save</button>
     <a class="btn" href="{% url 'expenses:expense_list' %}">Cancel</a>
   </form>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'expenses/item-formset.js' %}" defer></script>
 {% endblock %}

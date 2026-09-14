@@ -13,6 +13,11 @@ An expense is read one of three ways, and nothing stores which:
 
 Items win over participants when both are present. Itemising is the more
 specific statement, and letting both apply would charge people twice.
+
+An itemised expense whose lines do not sum to its amount is skipped. Such an
+expense can be saved -- refusing the whole form over one wrong figure cost
+more than it was worth -- but it cannot be split, so it contributes nothing
+until it is corrected. ``check_splits`` lists them.
 """
 
 from collections import defaultdict
@@ -36,6 +41,14 @@ def balances(user, start=None, end=None):
         items = list(expense.items.all())
 
         if items:
+            # An itemised expense whose lines do not add up to its amount is
+            # a split nobody can compute: some part of the bill is charged to
+            # no one. The form no longer refuses to save it, so the refusal
+            # happens here instead -- the expense is left out entirely rather
+            # than contributing a figure that looks authoritative and is not.
+            if not expense.is_balanced():
+                continue
+
             for item in items:
                 _charge_item(owed, item)
         else:
