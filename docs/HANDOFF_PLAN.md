@@ -44,7 +44,7 @@ These are not suggestions. A change that breaks one of these is wrong even if it
 
 ## 1. Task list
 
-Six tasks. T1 and T2 are deliberately trivial: they exist to confirm the workflow before
+Seven tasks. T1 and T2 are deliberately trivial: they exist to confirm the workflow before
 anything risky. Do not skip ahead.
 
 ---
@@ -409,6 +409,102 @@ justified here and adds a surface that has to be ownership-scoped.
 
 **Do not.** Do not load Select2, Choices.js, jQuery or anything else (G1). Do not remove
 `item-formset.js` or change its behaviour.
+
+---
+
+### T7 — A Split tab on the expense page (issue 33)
+
+**Depends on T3 and T4.** Both must be committed and green.
+
+**Problem.** The balances page totals what each person owes across all expenses. Nothing shows how
+one expense splits: who owes what for this dinner, how much of it is items and how much is misc.
+The numbers are already computed per expense inside `balances()` and then thrown into running
+totals, so they are never visible.
+
+**Decided behaviour. Do not re-open it.**
+
+| Rule | Detail |
+|---|---|
+| Where | The existing edit page for a saved expense. Two in-page tabs: **Details** (the current form) and **Split**. No new URL, no new view, no browser tab. The create page gets no tabs |
+| When the tab exists | Only when the expense is balanced (`is_balanced()` is True) **and** at least one participant is involved, through the even split or through a line share. Otherwise neither the tab button nor the panel is rendered at all. Not disabled, not greyed — absent |
+| What it shows | The split **as last saved**. It does not update while the person edits the form. Say so in one line of muted text at the top of the panel |
+| No-JavaScript fallback | Both sections render one after the other, as the page does today plus the split below |
+
+**Change.**
+
+1. **One implementation of the split — the core of the task.** In `expenses/balances.py`, add
+   `split_expense(expense)`. Move the per-expense logic out of the loop in `balances()` into it:
+   the item path, the even-split path, and T4's misc apportionment. It returns `None` when the
+   expense is not balanced, otherwise a list of rows, one per person:
+
+   ```python
+   @dataclass(frozen=True)
+   class SplitRow:
+       participant: Participant | None   # None is the owner
+       items: Decimal                    # their portions of line items, or of the even split
+       misc: Decimal                     # their portion of misc_amount; Decimal("0") when none
+       total: Decimal                    # items + misc
+   ```
+
+   Owner row first, then participants ordered by name. **Keep the owner's row.** `balances()`
+   discards it; `split_expense()` must not, because the tab shows it. When T3's `owner_shares` is
+   False there is no owner row.
+
+2. **`balances()` becomes a sum over `split_expense()`.** For each expense from `_expenses()`, call
+   `split_expense()`, skip `None`, skip the owner row, add each participant's `total` to `owed`.
+   After this change there must be no split arithmetic left in `balances()` itself.
+   **The existing tests in `expenses/tests/test_balances.py` must pass without being edited.** That
+   is the proof the refactor changed no numbers. If one fails, the refactor is wrong — do not
+   change the test.
+
+3. **View.** In `ExpenseUpdateView.get_context_data`, add `split` to the context:
+   `split_expense()` on a **freshly fetched** copy of the expense —
+   `Expense.objects.for_user(self.request.user)` with the same prefetches `_expenses()` uses,
+   `.get(pk=self.object.pk)`.
+   **Do not pass `self.object`.** When a submission fails validation, Django has already copied the
+   rejected values onto `self.object`, so it would mix an unsaved amount with saved line items and
+   show a split that never existed. Set `split` to `None` when the involvement rule above fails.
+
+4. **Template.** In `templates/expenses/expense_form.html`, when `split` is present, render a tab
+   bar with two buttons and wrap the existing form card and a new split card as the two panels.
+   The split panel is a table: person (`You` for the owner row), items, misc, total, using the
+   existing `rupees` filter. Show the misc column only when the expense has a `misc_amount`. Add a
+   final row with the column totals.
+
+5. **Tabs script.** New file `expenses/static/expenses/expense-tabs.js`, loaded in the `scripts`
+   block. Same style as `item-formset.js`: IIFE, `"use strict"`, progressive enhancement. On load,
+   hide the split panel and reveal the tab bar, which ships `hidden`. Buttons toggle panel `hidden`
+   and `aria-selected`. Use `role="tablist"`, `role="tab"` and `role="tabpanel"`. Nothing else —
+   no remembering the last tab, no URL hash.
+
+**Acceptance.** Add to `expenses/tests/test_balances.py`:
+
+- `test_split_rows_sum_to_the_accounted_amount` — for an itemised expense with misc, the row
+  totals sum **exactly** to `items_total() + misc_amount`. For an even split, exactly to `amount`.
+- `test_split_includes_the_owner_row`
+- `test_split_has_no_owner_row_when_the_owner_is_out`
+- `test_split_is_none_when_unbalanced`
+- `test_split_shows_misc_per_person` — reuse T4's example: Rahul's row is items 300, misc 30,
+  total 330.
+
+Add to `expenses/tests/test_views.py`:
+
+- `test_the_split_tab_appears_for_a_balanced_shared_expense`
+- `test_the_split_tab_is_absent_when_unbalanced`
+- `test_the_split_tab_is_absent_for_an_expense_that_is_yours_alone`
+- `test_the_split_tab_is_absent_on_the_create_page`
+- `test_a_rejected_edit_shows_the_saved_split` — post an invalid change to the amount, assert the
+  rendered split still reflects the saved amount.
+- `test_the_split_tab_is_scoped_to_the_owner` — another user requesting the edit page gets 404, as
+  today. Guards against the fresh fetch in step 3 being written unscoped.
+- `test_the_edit_page_query_count_does_not_grow_with_items` — an expense with one line and one with
+  five lines render with the same number of queries. Compare the two counts to each other; do not
+  hardcode a number.
+
+**Do not.** Do not compute or update the split in JavaScript. Do not add a detail view, URL or
+API field for the split. Do not render a disabled or empty Split tab. Do not duplicate any split
+arithmetic in the view or template — both only read `split_expense()`'s rows. Do not edit
+existing balance tests.
 
 ---
 
