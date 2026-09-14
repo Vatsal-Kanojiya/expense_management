@@ -110,6 +110,15 @@ else. Do not touch `templates/expenses/export_list.html`, whose raw inputs are a
 
 ### T3 — The payer becomes a visible, removable participant (issue 31)
 
+> **Superseded — read this before the rest of T3.** The owner approved a different design during
+> implementation, and it is what the code does: `Expense.paid_by` is a foreign key to `Participant`,
+> and the owner is an explicit `Participant` row with `is_self=True`, named `FirstName (self)` with
+> a numeric suffix on collision. The owner is in a split only when that row is selected; new
+> expenses and new line rows pre-select it, and the API adds it unless `include_self` is false.
+> Balances are netted per person and signed, and settlements are signed (`amount != 0`). The
+> boolean design below is kept for the record only. The self-participant data model is flagged for
+> redesign as known issue 34.
+
 **Problem.** The payer is currently an unwritten share. `balances.py` hardcodes a leading `1` in
 both `_charge_item` and `_charge_evenly`, then discards that portion so you never owe yourself.
 Two consequences: the form never shows that you are already in the split, and a pure reimbursement
