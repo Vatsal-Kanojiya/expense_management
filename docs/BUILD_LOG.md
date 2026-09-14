@@ -19,10 +19,10 @@
 
 ## 1. Current state at a glance
 
-**Session:** 19 — **all sixteen phases complete**; now on UI feedback, uncommitted
-**Last commit:** `5556c1f` — *fix: add celery to requirements.txt*
+**Session:** 21 — **sixteen phases tagged; phase 17 (paid-by, explicit splits, misc, split tab) built, not yet tagged**
+**Last commit:** `bafcc68` — *docs: log session 21 review fixes and supersede T3 design*
 **Phase tags:** 17, `phase-1-foundation` … `phase-16-hardening` (`git tag | sort -V`)
-**Suite:** 361 tests, 95% coverage — green on SQLite, Postgres 16, the CI environment and real Redis
+**Suite:** 419 tests, 95% coverage at phase 16, not re-measured since — green on SQLite, Postgres 16, the CI environment and real Redis
 
 | Dimension | State |
 |---|---|
@@ -31,7 +31,7 @@
 | Async | Celery worker + beat, Redis broker, separate result backend |
 | Cache | Redis, version-stamped per-user keys (LocMem fallback) |
 | Deploy | Multi-stage image, compose stack of five services, gunicorn, WhiteNoise |
-| Open issues | 10 — 5 deliberate, 5 raised by the session 19 UI review — see §6 |
+| Open issues | 7 — 5 deliberate, plus the self-participant redesign (34) and the parked form layout (35) — see §6 |
 
 > **Phases ran out of order on purpose, and the bet paid off.** Auth was deferred past CRUD so it
 > could be studied properly. That was safe because phase 3's views were written fully user-scoped
@@ -56,6 +56,7 @@ erDiagram
     CATEGORY ||--o{ EXPENSE : "classifies"
     EXPENSE ||--o{ EXPENSEITEM : "itemises"
     EXPENSE }o--o{ PARTICIPANT : "split evenly (generated join, CASCADE)"
+    PARTICIPANT ||--o{ EXPENSE : "paid (paid_by, PROTECT)"
     EXPENSEITEM ||--o{ ITEMSHARE : "shared via"
     PARTICIPANT ||--o{ ITEMSHARE : "consumes"
     PARTICIPANT ||--o{ SETTLEMENT : "repays"
@@ -75,15 +76,19 @@ erDiagram
         int id PK
         int user_id FK "CASCADE"
         int category_id FK "PROTECT"
-        decimal amount "must be > 0; items should sum to this, reported not enforced"
+        decimal amount "must be > 0; items + misc within 1.00 of this, reported not enforced"
         date spent_on "indexed (user, spent_on) and (user, category, spent_on)"
-        string note "GIN full-text index on Postgres"
+        string note "GIN full-text index on Postgres; required on the form"
+        int paid_by_id FK "PROTECT; null means the owner paid"
+        decimal misc_amount "null or > 0; tax/tip/leftover, split by consumption"
+        string misc_note "what the misc amount was"
         datetime created_at
     }
     PARTICIPANT {
         int id PK
         int user_id FK "CASCADE"
         string name "UNIQUE with user, case-insensitive via Lower()"
+        bool is_self "the owner's own row, named FirstName (self)"
         datetime created_at
     }
     EXPENSEITEM {
@@ -102,7 +107,7 @@ erDiagram
         int id PK
         int user_id FK "CASCADE"
         int participant_id FK "CASCADE"
-        decimal amount "must be > 0; written under select_for_update"
+        decimal amount "signed, != 0: positive they paid you, negative you paid them"
         datetime settled_at
         string note
     }
@@ -1344,6 +1349,8 @@ interview-gap list.
 | Formsets: `empty_form`, `__prefix__` and `TOTAL_FORMS` | Frappe's child tables add and remove rows for you; nothing is hand-wired | S19 `item-formset.js` |
 | Deleting a formset row: `DELETE` flag for saved rows, blanking for unsaved | Frappe removes a grid row and reconciles server-side | S19 — renumbering avoided entirely |
 | A validation rule can be a *fact* rather than a *gate* | Frappe validations abort the save; there is no idiom for "record it, don't act on it" | S19 `is_balanced` |
+| Netting a two-way ledger with one signed column | Frappe's Payment Entry carries an explicit party type and direction | S21 `settlements.py` |
+| `has_changed()` decides whether a blank extra form is validated | Frappe child rows are either present or deleted; there is no unchanged extra row | S21 `ExpenseItemForm` |
 | Form-level `required` over a model `blank=False` | Frappe's `reqd` is a field property, so there is one place to set it | S19 — old rows cannot satisfy a new rule |
 
 ---
@@ -1360,7 +1367,8 @@ interview-gap list.
 
 ## 6. Known issues
 
-> Issues 28–33 came out of the session 19 UI review and are specced for implementation by a
+> Issues 28–33 came out of the session 19 UI review, were built by a cheaper model in phase 17 and
+> corrected after review in session 21 — now in the resolved table. They were specced for a
 > cheaper model in `docs/HANDOFF_PLAN.md` — seven ordered tasks with acceptance tests, ground
 > rules and an explicit out-of-scope list. Issue 32 was redesigned before handoff: not a GST field
 > but one **misc amount** covering tax, tip and leftovers, with a typed note, split by consumption,
@@ -1392,6 +1400,12 @@ interview-gap list.
 | 9 | README claimed the app had no login pages | session 8 (stale since `43eb608`) |
 | 22 | `templates/500.html` was unparseable — tags spelled out in an HTML comment | `61f9fc1` (session 8) |
 | 23 | CI test job ran with `DEBUG=False`, so the SSL redirect 301'd every request | `80e0fb0` (session 8) |
+| 28 | Date inputs lacked a pinned format and could be squeezed | `682a55f` (phase 17) — ISO format pinned, `min-width` |
+| 29 | No field focused when a create form opens | `384b3ee` (phase 17) |
+| 30 | Participant pickers listed the whole address book | `2075653` scoping, `b9b6e0a` chip widget (phase 17). Layout part parked as issue 35 |
+| 31 | Payer implicit and not removable from a split | `49c3aef` (phase 17) — `paid_by` FK and self participant, a design the owner approved over the plan's; corrected in `83ebb10` (session 21) |
+| 32 | No home for tax, tip or leftovers | `ebb1074` (phase 17); SQLite rounding and live-figure bugs fixed in `83ebb10` |
+| 33 | No per-expense split view | `6c97437` (phase 17); misc column bug fixed in `83ebb10` |
 
 ### Open
 
@@ -1402,10 +1416,5 @@ interview-gap list.
 | 20 | No worker supervision, monitoring or dead-letter handling | A crashed worker stays down; after `max_retries` a task is simply lost with nothing visible | systemd unit or container for the worker; Flower or event export for monitoring. See RUNNING_ASYNC.md |
 | 21 | `FileResponse` streams exports through Python | Fine in development, wasteful in production | `X-Accel-Redirect` (nginx) or a signed object-storage URL |
 | 25 | Participant deletion is refused once they are on a line item | `ItemShare.participant` is `PROTECT`, so removing someone from your list fails while any item still charges them. The view explains it rather than 500ing, but there is no way to re-share those items in bulk | Same shape as issue 10: an ordered delete, or a bulk re-share action. Deliberately left visible rather than papered over with `CASCADE`, which would leave items charged to nobody |
-| 28 | Date fields offer no calendar picker in practice | Every date on the site is typed by hand: `spent_on` on the expense form, and `start`/`end` on the export filter. Slow, and easy to get wrong | The widgets already declare `type="date"` (`expenses/forms.py`, `expenses/filters.py`, `templates/expenses/export_list.html`), so the attribute is not the gap — this needs reproducing in the actual browser first. The localized-format theory was checked in session 19 and is wrong — the field renders as `value="2026-09-14"`, which is exactly what a native date input wants. So the control is present and the complaint is about how it looks or behaves in this browser, not about markup. Reproduce it before changing anything; a small date-picker library is the fallback if the native control is genuinely not good enough |
-| 29 | No field is focused when a create form opens | On New category, New person and New expense the caret starts nowhere, so every entry costs a mouse trip before the first keystroke | `autofocus` on the first editable field. Set it on the widget rather than in the template so it follows the form wherever it renders, and only on create, not edit — auto-focusing a pre-filled field on edit fights the person who came to change field three |
-| 30 | Participant pickers are checkbox lists of the whole address book | `CheckboxSelectMultiple` renders every participant the user owns, at both levels: once for `Expense.participants` and again for `shared_with` on every line-item row. At 100 people a five-line expense renders 600 checkboxes. Pagination is the wrong answer for a picker; search is | Three separable changes, in increasing cost. **(a)** Narrow the line-item queryset to the participants chosen on the expense, not the whole address book — in a real expense that is 2–4 names, so most of the size problem disappears with no JavaScript. Note this *tightens* current semantics: `Expense.shared_with()` deliberately unions both sets, so today a line may charge someone absent from the expense. Tightening makes that union redundant and needs a formset-level validation rule plus a data check for existing rows. **(b)** A searchable chip-style multiselect as one custom Django `Widget` subclass with its own `template_name` and `Media`, used by both fields, degrading to a plain multi-select without JS. Participants per user are in the dozens, so the list ships inline and filters client-side — no autocomplete endpoint, no Select2, no jQuery. **(c)** Replace `{{ form.as_p }}` with a two-column grid so category/amount/date share rows. **Parked, not in the handoff:** presentation rather than function, and the UI may move to a separate frontend. This would be the project's first JavaScript and first static asset — see DECISIONS before starting |
-| 31 | The payer is implicit and cannot be taken out of a split | Ownership is hardcoded as an unwritten share: `balances.py` builds `[1] + [share.weight ...]` in `_charge_item` and `[1] * (len(people) + 1)` in `_charge_evenly`, then discards the first portion so you never owe yourself. The UI says "besides you" and never shows you. Two consequences: nothing on the form tells a newcomer they are already in the split, and a pure reimbursement — you booked the taxi but did not ride in it — cannot be expressed at all, because the denominator always includes you | **In progress (session 20).** Design reversed the `BooleanField` recommendation: self is modelled as `Participant(is_self=True)`, which unifies the payer dropdown and the consumer checkboxes into one model. `Expense.paid_by` FK to `Participant` defaults to the self-participant. See DECISIONS D19–D20 and session 20 in §2. Schema, balance engine rewrite, and tests are planned but not yet executed |
-| 32 | Bills carry money no line item accounts for — GST, tip, service charge, rounding | Lines get fudged to hit the total, or the expense saves unbalanced and drops out of balances | Redesigned in session 19, specced as T4 in `docs/HANDOFF_PLAN.md`. One positive `misc_amount` per itemised expense plus a free-text `misc_note`, no kind or rate field. Apportioned by each person's consumption through the existing `allocate()`. An expense is balanced when under ₹1.00 is unaccounted, and the payer absorbs that remainder. The field is never pre-filled: the form shows the unaccounted figure live instead, because an auto-filled value would have to track whether the person had edited it. **Found while speccing:** `ExpenseQuerySet.unbalanced()` holds a second, SQL copy of the balance rule with exact equality and no misc, used by `check_splits`, so the plan requires a test that the two agree |
-| 33 | No per-expense split view | The balances page totals each person across all expenses. Nothing shows how a single expense divides, so T4's consumption-based misc is invisible | Specced as T7 in `docs/HANDOFF_PLAN.md`: extract `split_expense()` from `balances()` so both read one implementation, then a Split tab on the edit page that renders only when the expense is balanced and shared. Built from a fresh fetch, because a rejected submission has already written its values onto `self.object` |
 | 34 | The self participant is unprotected in the API | The web People pages filter out `is_self`, but the API participant endpoints list, rename and delete it like any contact. Renaming it makes the owner appear under a friend's name; deleting it strands `paid_by` on every expense the owner paid | **Parked for better design, session 21.** Proposed: keep it listed with an `is_self` marker, since API clients need its id to set `paid_by` and participation, and refuse rename and delete. The owner judged the self-participant design itself may need rethinking before patching it, so no fix was applied. **Same design review should cover:** `balances()` calling `get_or_create_self` on every read (fixed tactically in session 21 by treating a null `paid_by` as the owner, but the owner judged the self-participant data model as a whole needs a better design), and self naming, now `FirstName (self)` with a numeric suffix on collision |
+| 35 | The expense form wastes vertical space | `{{ form.as_p }}` gives every field a full-width row | **Parked by the owner, session 20.** Presentation rather than function, and the UI may move to a separate frontend such as React. Was T7 in the first handoff plan |
