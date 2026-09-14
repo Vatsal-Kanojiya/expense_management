@@ -12,8 +12,8 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from expenses.forms import CategoryForm, ExpenseForm
-from expenses.models import Category
+from expenses.forms import CategoryForm, ExpenseForm, ParticipantForm
+from expenses.models import Category, Expense, Participant
 
 User = get_user_model()
 
@@ -66,6 +66,31 @@ class CategoryFormTests(TestCase):
         form = CategoryForm(data={"name": "Food"}, user=self.alice, instance=self.alice_food)
 
         self.assertTrue(form.is_valid(), form.errors)
+
+    def test_create_form_focuses_the_first_field(self):
+        form = CategoryForm(user=self.alice)
+        self.assertTrue(form.fields["name"].widget.attrs.get("autofocus"))
+
+    def test_edit_form_does_not_autofocus(self):
+        form = CategoryForm(data={"name": "Food"}, user=self.alice, instance=self.alice_food)
+        self.assertNotIn("autofocus", form.fields["name"].widget.attrs)
+
+
+class ParticipantFormTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user(
+            "alice", email="alice@example.com", password="pw12345!"
+        )
+        cls.rahul = Participant.objects.create(user=cls.alice, name="Rahul")
+
+    def test_create_form_focuses_the_first_field(self):
+        form = ParticipantForm(user=self.alice)
+        self.assertTrue(form.fields["name"].widget.attrs.get("autofocus"))
+
+    def test_edit_form_does_not_autofocus(self):
+        form = ParticipantForm(user=self.alice, instance=self.rahul)
+        self.assertNotIn("autofocus", form.fields["name"].widget.attrs)
 
 
 class ExpenseFormTests(TestCase):
@@ -140,3 +165,18 @@ class ExpenseFormTests(TestCase):
 
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.cleaned_data["amount"], Decimal("25.99"))
+
+    def test_create_form_focuses_the_first_field(self):
+        form = ExpenseForm(user=self.alice)
+        self.assertTrue(form.fields["category"].widget.attrs.get("autofocus"))
+
+    def test_edit_form_does_not_autofocus(self):
+        expense = Expense.objects.create(
+            user=self.alice,
+            category=self.alice_food,
+            amount=Decimal("25.00"),
+            spent_on=date(2026, 9, 5),
+            note="Lunch",
+        )
+        form = ExpenseForm(user=self.alice, instance=expense)
+        self.assertNotIn("autofocus", form.fields["category"].widget.attrs)

@@ -22,6 +22,8 @@ class CategoryForm(forms.ModelForm):
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
+        if not self.instance.pk:
+            self.fields["name"].widget.attrs["autofocus"] = True
 
     def clean_name(self):
         name = self.cleaned_data["name"].strip()
@@ -55,6 +57,8 @@ class ParticipantForm(forms.ModelForm):
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
+        if not self.instance.pk:
+            self.fields["name"].widget.attrs["autofocus"] = True
 
     def clean_name(self):
         name = self.cleaned_data["name"].strip()
@@ -106,6 +110,7 @@ class ExpenseForm(forms.ModelForm):
         # the answer nine times in ten and is still editable.
         if not self.instance.pk:
             self.fields["spent_on"].initial = timezone.localdate
+            self.fields["category"].widget.attrs["autofocus"] = True
 
         # The subtle one. A ModelChoiceField defaults to *every* Category in
         # the table, so without this the dropdown leaks other users' category
