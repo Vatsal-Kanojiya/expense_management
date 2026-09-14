@@ -180,3 +180,14 @@ class ExpenseFormTests(TestCase):
         )
         form = ExpenseForm(user=self.alice, instance=expense)
         self.assertNotIn("autofocus", form.fields["category"].widget.attrs)
+
+    def test_a_bound_date_renders_in_iso_format(self):
+        expense = Expense.objects.create(
+            user=self.alice,
+            category=self.alice_food,
+            amount=Decimal("25.00"),
+            spent_on=date(2026, 1, 15),
+            note="Lunch",
+        )
+        form = ExpenseForm(user=self.alice, instance=expense)
+        self.assertIn('value="2026-01-15"', form.as_p())
