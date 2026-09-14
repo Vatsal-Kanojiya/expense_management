@@ -12,8 +12,9 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from expenses.forms import CategoryForm, ExpenseForm, ParticipantForm
+from expenses.forms import CategoryForm, ExpenseForm, ExpenseItemForm, ParticipantForm
 from expenses.models import Category, Expense, Participant
+from expenses.widgets import ChipSelectMultiple
 
 User = get_user_model()
 
@@ -245,3 +246,29 @@ class ExpenseFormTests(TestCase):
             user=self.alice,
         )
         self.assertTrue(form.is_valid(), form.errors)
+
+    def test_participants_use_the_chip_widget(self):
+        expense_form = ExpenseForm(user=self.alice)
+        self.assertIsInstance(expense_form.fields["participants"].widget, ChipSelectMultiple)
+
+        item_form = ExpenseItemForm(user=self.alice)
+        self.assertIsInstance(item_form.fields["shared_with"].widget, ChipSelectMultiple)
+
+    def test_the_widget_falls_back_to_a_plain_multiselect(self):
+        form = ExpenseForm(user=self.alice)
+        html = form.as_p()
+        self.assertIn("<select", html)
+        self.assertIn("multiple", html)
+
+    def test_the_widget_queryset_is_still_scoped_to_the_user(self):
+        bob = User.objects.create_user("bob_scope", "bob_scope@example.com", "pw12345!")
+        bob_p = Participant.objects.create(user=bob, name="Bob Person")
+        alice_p = Participant.objects.create(user=self.alice, name="Alice Person")
+
+        expense_form = ExpenseForm(user=self.alice)
+        self.assertIn(alice_p, expense_form.fields["participants"].queryset)
+        self.assertNotIn(bob_p, expense_form.fields["participants"].queryset)
+
+        item_form = ExpenseItemForm(user=self.alice)
+        self.assertIn(alice_p, item_form.fields["shared_with"].queryset)
+        self.assertNotIn(bob_p, item_form.fields["shared_with"].queryset)
