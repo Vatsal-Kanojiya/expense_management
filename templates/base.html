@@ -65,6 +65,33 @@
     .messages li { padding: 0.6rem 0.85rem; border-radius: 6px; background: var(--surface); border-left: 3px solid var(--ok); }
     .messages li.error { border-left-color: var(--danger); }
 
+    /* Chip multiselect widget */
+    .chip-select-ui { display: flex; flex-direction: column; gap: 0.35rem; position: relative; }
+    .chip-list { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      background: var(--border); color: var(--text); border-radius: 12px;
+      padding: 0.15rem 0.5rem; font-size: 0.85rem;
+    }
+    .chip-remove {
+      background: none; border: none; cursor: pointer; color: var(--muted);
+      font-size: 1rem; line-height: 1; padding: 0 0.1rem;
+    }
+    .chip-remove:hover { color: var(--danger); }
+    .chip-input-wrap { position: relative; }
+    .chip-search { width: 100%; }
+    .chip-dropdown {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 10;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; max-height: 12rem; overflow-y: auto;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); margin-top: 2px;
+    }
+    .chip-dropdown-item {
+      padding: 0.4rem 0.6rem; cursor: pointer; font-size: 0.9rem;
+    }
+    .chip-dropdown-item:hover { background: var(--border); }
+    .chip-empty { padding: 0.5rem; color: var(--muted); font-size: 0.85rem; font-style: italic; }
+
     /* Dashboard */
     .stat-grid {
       display: grid; gap: 0.75rem; margin-top: 1rem;

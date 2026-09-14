@@ -13,6 +13,7 @@ from .models import (
     Participant,
     unaccounted,
 )
+from .widgets import ChipSelectMultiple
 
 
 class CategoryForm(forms.ModelForm):
@@ -106,10 +107,7 @@ class ExpenseForm(forms.ModelForm):
             "note": forms.TextInput(attrs={"placeholder": "What was this for?"}),
             "misc_amount": forms.NumberInput(attrs={"step": "0.01", "placeholder": "0.00"}),
             "misc_note": forms.TextInput(attrs={"placeholder": "e.g. GST, tip, service charge"}),
-            # A multi-select box hides how many are chosen and needs a modifier
-            # key to pick more than one. Checkboxes show the whole set and its
-            # state at a glance, which is what this field is actually for.
-            "participants": forms.CheckboxSelectMultiple,
+            "participants": ChipSelectMultiple,
         }
         labels = {
             "paid_by": "Paid by",
@@ -218,7 +216,7 @@ class ExpenseItemForm(forms.ModelForm):
     shared_with = forms.ModelMultipleChoiceField(
         queryset=Participant.objects.none(),
         required=False,
-        widget=forms.CheckboxSelectMultiple,
+        widget=ChipSelectMultiple,
         label="Shared with (besides you)",
     )
 

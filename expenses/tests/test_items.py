@@ -357,5 +357,5 @@ class ItemShareTests(TestCase):
 
         response = self.client.get(reverse("expenses:expense_update", args=[expense.pk]))
 
-        # The attribute order Django renders: value, id, then checked.
-        self.assertContains(response, 'id="id_items-0-shared_with_0" checked')
+        # SelectMultiple renders selected options with the selected attribute.
+        self.assertContains(response, f'value="{self.rahul.pk}" selected')

@@ -67,6 +67,7 @@
 {% endblock %}
 
 {% block scripts %}
+  {{ form.media }}
   <script src="{% static 'expenses/item-formset.js' %}" defer></script>
   <script src="{% static 'expenses/expense-totals.js' %}" defer></script>
 {% endblock %}
