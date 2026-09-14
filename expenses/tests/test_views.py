@@ -9,10 +9,12 @@ from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from expenses.models import Category, Expense
+from expenses.models import Category, Expense, ExpenseItem, Participant
 from expenses.tests.helpers import item_formset
 
 User = get_user_model()
@@ -254,3 +256,110 @@ class ExpenseViewTests(TestCase):
         # stated as a property rather than a magic number.
         with self.assertNumQueries(8):
             self.client.get(reverse("expenses:expense_list"))
+
+    def test_the_split_tab_appears_for_a_balanced_shared_expense(self):
+        bob = Participant.objects.create(user=self.alice, name="Bob")
+        expense = self._create(amount=Decimal("100.00"))
+        expense.participants.set([Participant.get_or_create_self(self.alice), bob])
+        item = ExpenseItem.objects.create(expense=expense, name="Dinner", amount=Decimal("100.00"))
+        item.shares.create(participant=bob, weight=Decimal("1"))
+
+        response = self.client.get(reverse("expenses:expense_update", args=[expense.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.context["split"], list)
+        self.assertContains(response, 'id="panel-split"')
+        self.assertContains(response, 'id="tab-split"')
+
+    def test_the_split_tab_is_absent_when_unbalanced(self):
+        bob = Participant.objects.create(user=self.alice, name="Bob")
+        expense = self._create(amount=Decimal("100.00"))
+        expense.participants.set([Participant.get_or_create_self(self.alice), bob])
+        item = ExpenseItem.objects.create(expense=expense, name="Starter", amount=Decimal("30.00"))
+        item.shares.create(participant=bob, weight=Decimal("1"))
+
+        response = self.client.get(reverse("expenses:expense_update", args=[expense.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["split"])
+        self.assertNotContains(response, 'id="panel-split"')
+        self.assertNotContains(response, 'id="tab-split"')
+
+    def test_the_split_tab_is_absent_for_an_expense_that_is_yours_alone(self):
+        expense = self._create(amount=Decimal("50.00"))
+        self_p = Participant.get_or_create_self(self.alice)
+        expense.participants.set([self_p])
+        ExpenseItem.objects.create(expense=expense, name="Coffee", amount=Decimal("50.00"))
+
+        response = self.client.get(reverse("expenses:expense_update", args=[expense.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["split"])
+        self.assertNotContains(response, 'id="panel-split"')
+        self.assertNotContains(response, 'id="tab-split"')
+
+    def test_the_split_tab_is_absent_on_the_create_page(self):
+        response = self.client.get(reverse("expenses:expense_create"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'id="panel-split"')
+        self.assertNotContains(response, 'id="tab-split"')
+
+    def test_a_rejected_edit_shows_the_saved_split(self):
+        bob = Participant.objects.create(user=self.alice, name="Bob")
+        expense = self._create(amount=Decimal("100.00"))
+        expense.participants.set([Participant.get_or_create_self(self.alice), bob])
+        item = ExpenseItem.objects.create(expense=expense, name="Dinner", amount=Decimal("100.00"))
+        item.shares.create(participant=bob, weight=Decimal("1"))
+
+        response = self.client.post(
+            reverse("expenses:expense_update", args=[expense.pk]),
+            {
+                "category": self.category.pk,
+                "amount": "",
+                "spent_on": "2026-09-01",
+                "note": "Dinner",
+                **item_formset(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(response.context["split"])
+        self.assertContains(response, 'id="panel-split"')
+        self.assertContains(response, "₹100.00")
+
+    def test_the_split_tab_is_scoped_to_the_owner(self):
+        bob_user = User.objects.create_user(
+            "bob_user", email="bob_user@example.com", password="pw!"
+        )
+        bob = Participant.objects.create(user=self.alice, name="Bob")
+        expense = self._create(amount=Decimal("100.00"))
+        expense.participants.set([Participant.get_or_create_self(self.alice), bob])
+
+        self.client.force_login(bob_user)
+        response = self.client.get(reverse("expenses:expense_update", args=[expense.pk]))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_the_edit_page_query_count_does_not_grow_with_items(self):
+        bob = Participant.objects.create(user=self.alice, name="Bob")
+        self_p = Participant.get_or_create_self(self.alice)
+
+        exp1 = self._create(amount=Decimal("20.00"))
+        exp1.participants.set([self_p, bob])
+        item1 = ExpenseItem.objects.create(expense=exp1, name="Item 1", amount=Decimal("20.00"))
+        item1.shares.create(participant=bob, weight=Decimal("1"))
+
+        exp5 = self._create(amount=Decimal("50.00"))
+        exp5.participants.set([self_p, bob])
+        for i in range(5):
+            it = ExpenseItem.objects.create(expense=exp5, name=f"Item {i}", amount=Decimal("10.00"))
+            it.shares.create(participant=bob, weight=Decimal("1"))
+
+        with CaptureQueriesContext(connection) as ctx1:
+            self.client.get(reverse("expenses:expense_update", args=[exp1.pk]))
+
+        with CaptureQueriesContext(connection) as ctx5:
+            self.client.get(reverse("expenses:expense_update", args=[exp5.pk]))
+
+        self.assertEqual(len(ctx1), len(ctx5))

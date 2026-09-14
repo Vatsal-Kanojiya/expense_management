@@ -51,6 +51,18 @@
     td.row-actions { white-space: nowrap; }
     .toolbar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
     .toolbar .spacer { margin-left: auto; }
+    /* Tabs */
+    .tab-bar { display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .tab-bar[hidden] { display: none; }
+    .tab-btn {
+      background: none; border: none; border-bottom: 2px solid transparent;
+      padding: 0.5rem 1rem; font: inherit; font-weight: 500; color: var(--muted);
+      cursor: pointer; border-radius: 0;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.is-active, .tab-btn[aria-selected="true"] {
+      color: var(--accent); border-bottom-color: var(--accent);
+    }
     form p { margin: 0 0 1rem; }
     label { display: block; font-weight: 500; margin-bottom: 0.25rem; }
     input, select, textarea {

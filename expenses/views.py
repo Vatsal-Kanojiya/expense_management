@@ -19,7 +19,7 @@ from django.views.generic import (
     UpdateView,
 )
 
-from .balances import balances, outstanding_balances
+from .balances import balances, outstanding_balances, split_expense
 from .cache import cached_summary, owed_count_key
 from .filters import DateRangeForm, ExpenseFilterForm
 from .forms import CategoryForm, ExpenseForm, ExpenseItemFormSet, ParticipantForm
@@ -343,6 +343,33 @@ class ExpenseUpdateView(OwnerScopedMixin, ItemFormSetMixin, OwnerFormMixin, Upda
     form_class = ExpenseForm
     formset_class = ExpenseItemFormSet
     success_url = reverse_lazy("expenses:expense_list")
+
+    def get_queryset(self):
+        return super().get_queryset().select_related("paid_by").prefetch_related("participants")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        fresh_expense = (
+            Expense.objects.for_user(self.request.user)
+            .select_related("paid_by")
+            .prefetch_related(
+                "participants",
+                Prefetch(
+                    "items",
+                    queryset=ExpenseItem.objects.prefetch_related("shares__participant"),
+                ),
+            )
+            .get(pk=self.object.pk)
+        )
+        rows = split_expense(fresh_expense)
+        if rows is not None and any(r.participant is not None for r in rows):
+            context["split"] = rows
+            context["split_items_total"] = sum((r.items for r in rows), Decimal("0"))
+            context["split_misc_total"] = sum((r.misc for r in rows), Decimal("0"))
+            context["split_grand_total"] = sum((r.total for r in rows), Decimal("0"))
+        else:
+            context["split"] = None
+        return context
 
     def form_valid(self, form):
         messages.success(self.request, "Expense updated.")
