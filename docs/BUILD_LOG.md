@@ -30,8 +30,8 @@
 >
 > **Loose ends, in the order worth doing them:**
 >
-> 1. **Push.** `master` is 15 commits ahead of `origin`. The GitHub tokens used before were meant
->    to be revoked, so a push needs fresh credentials for the personal account
+> 1. **Push.** Session 22 was pushed. Session 23 (the note-as-heading change) is committed locally
+>    and not pushed. A push needs a fresh token for the personal account
 >    `Vatsal-Kanojiya/expense_management`. **Never push with the global git identity or the
 >    default SSH key — both belong to the office account.** This repo pins the personal identity
 >    with `git config --local`.
@@ -483,6 +483,34 @@ cursor bug fails `TransactionTestCase` only.
 `ContentFile` · `queryset.iterator()` and cursor lifetime · `TestCase` vs `TransactionTestCase` ·
 `BaseCommand`, `add_arguments`, `CommandError`, `self.style` · `call_command` in tests ·
 `IntegrityError` as a concurrency primitive · `FileResponse` · `MEDIA_ROOT`.
+
+---
+
+### Session 23 — The expense form heading is the note
+
+The form said "Edit expense" on every expense, which tells you nothing about *which* one. The
+heading and the browser tab title now show the note.
+
+| State | Heading |
+|---|---|
+| New form, nothing typed | New expense |
+| Editing an expense | its saved note |
+| Editing an old expense with no note | Edit expense |
+| Re-rendered after a validation error | the note that was typed |
+| While typing | follows each keystroke; clearing it brings back the fallback |
+
+**Server first, script second.** The template renders `form.note.value`, which is the saved value on
+a GET and the posted value on an error re-render, so one expression covers both. The fallback text
+is put in a `data-fallback` attribute, so the script never has to know whether this is a create or an
+edit. `expense-title.js` only listens for `input` and sets `textContent`, never `innerHTML`, because
+the note is user input. A browser check typed an `<img onerror>` note and no element was created.
+Without JavaScript the heading is still right on load; it just stops following keystrokes.
+
+**Verified.** Five server-side tests cover new, edit, edit with no note, error re-render and escaping.
+A real browser covered typing, clearing, HTML and the error path. Run it against a scratch
+`DATABASE_URL` so the dev database gains no demo user.
+
+**Suite:** 432 tests.
 
 ---
 
