@@ -526,6 +526,9 @@ T9 is presentation. Both are small. If either needs more than the files named in
 
 ### T8 — Line items vanish when the expense form has an error (issue 36)
 
+> **Done at the owner's request, session 22. Do not implement.** Kept as the record of
+> the diagnosis. See BUILD_LOG issue 36.
+
 **Problem.** Fill in line items and tick who shared each one, leave a required field such as `note`
 empty, and submit. The page comes back with the error — and every line item gone. The person has to
 type them all again.
@@ -598,6 +601,9 @@ confirm the first three fail. If they pass before your change, the test is wrong
 ---
 
 ### T9 — Mark required fields with a red asterisk (issue 37)
+
+> **Done at the owner's request, session 22. Do not implement.** Kept as the record of
+> the diagnosis. See BUILD_LOG issue 37.
 
 **Problem.** Nothing shows which fields are mandatory, so the first a person learns that `note` is
 required is the error after submitting.
