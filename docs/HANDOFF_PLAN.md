@@ -44,7 +44,7 @@ These are not suggestions. A change that breaks one of these is wrong even if it
 
 ## 1. Task list
 
-Seven tasks. T1 and T2 are deliberately trivial: they exist to confirm the workflow before
+Seven tasks in the first batch, two more in §1b. T1 and T2 are deliberately trivial: they exist to confirm the workflow before
 anything risky. Do not skip ahead.
 
 ---
@@ -514,6 +514,150 @@ Add to `expenses/tests/test_views.py`:
 API field for the split. Do not render a disabled or empty Split tab. Do not duplicate any split
 arithmetic in the view or template — both only read `split_expense()`'s rows. Do not edit
 existing balance tests.
+
+---
+
+## 1b. Second batch — form state and required markers (issues 36 and 37)
+
+**Added session 22, after T1 to T7 were committed.** Do T8 before T9. T8 is a real data-loss bug;
+T9 is presentation. Both are small. If either needs more than the files named in it, stop and report.
+
+---
+
+### T8 — Line items vanish when the expense form has an error (issue 36)
+
+**Problem.** Fill in line items and tick who shared each one, leave a required field such as `note`
+empty, and submit. The page comes back with the error — and every line item gone. The person has to
+type them all again.
+
+**This is a bug, not missing persistence.** Nothing needs storing. The browser already sent every
+line item in the POST. The server receives them and then discards them when it re-renders.
+
+**Root cause, verified by reproduction.** In `expenses/mixins.py`, `ItemFormSetMixin` builds a
+*bound* formset (one carrying the POST data) only inside `form_valid()`. When the **parent** form is
+invalid, Django never calls `form_valid()`. It calls `form_invalid()`, which calls
+`get_context_data(form=form)` with no formset — and `get_context_data` falls back to
+`self.build_formset(instance=self.object)` with no `data`. That is an **unbound** formset, so the
+page re-renders empty.
+
+A reproduction on current `master` confirmed it: parent error `{'note': ['This field is required.']}`,
+`formset.is_bound` is `False`, the re-rendered item names are `[None]`, and the item text is absent
+from the response.
+
+The comment above that `setdefault` line says "form_invalid re-renders with a bound formset". **That
+comment is wrong.** It describes only the path where the *formset* fails inside `form_valid`, and it
+is the reason the bug was invisible in review.
+
+**There is a second, smaller symptom of the same cause.** Because the formset is never validated
+when the parent fails, its own errors — an item with no amount, say — only appear *after* the person
+fixes the parent field and resubmits. Two round trips to find two mistakes.
+
+**Change.** In `expenses/mixins.py`, add a `form_invalid` method to `ItemFormSetMixin`:
+
+1. Build the formset with `self.build_formset(instance=form.instance, data=self.request.POST)`.
+   Use `form.instance`, not `self.object`, so the formset's sum check sees the amount that was
+   *posted* rather than the one last saved. This mirrors what `form_valid` already does.
+2. Call `formset.is_valid()` so the formset's own errors are populated and render in the same
+   response as the parent's. Ignore its return value here — the response is an error page either way.
+3. Return `self.render_to_response(self.get_context_data(form=form, formset=formset))`.
+
+Then **correct the comment** above `context.setdefault("formset", ...)` so it states what actually
+passes a bound formset in: both `form_valid` (when the formset fails) and the new `form_invalid`
+(when the parent fails). Keep `setdefault`; do not change it to assignment.
+
+**No template or JavaScript change is needed.** Both were checked. `chip-select.js` rebuilds its chips
+from options that arrive already selected, and `item-formset.js` trusts the rendered `TOTAL_FORMS`. A
+correct server re-render restores the rows *and* the people ticked on each row with no client work.
+
+**Acceptance.** Create `expenses/tests/test_form_state.py`. Post to both `expense_create` and
+`expense_update` with `note` empty, two line items, and one item's `shared_with` ticked. Use
+`expenses/tests/helpers.py` for the management form data. Assert:
+
+- `test_line_items_survive_a_parent_form_error` — `response.context["formset"].is_bound` is `True`,
+  and both item names appear in `response.content`.
+- `test_item_shares_survive_a_parent_form_error` — the ticked participant is still selected in the
+  re-rendered row.
+- `test_parent_and_formset_errors_show_together` — post with `note` empty **and** one item with no
+  amount. Both the `note` error and the item amount error are in the same response.
+- `test_nothing_is_saved_on_a_parent_form_error` — `Expense.objects.count()` and
+  `ExpenseItem.objects.count()` are unchanged.
+- `test_update_keeps_edited_items_on_error` — on `expense_update`, change an existing item's name,
+  blank the `note`, submit. The *edited* name is re-rendered, not the saved one.
+
+**Each test must fail on the code before your change.** Run the file against `master` first and
+confirm the first three fail. If they pass before your change, the test is wrong — fix the test.
+
+**Do not.**
+
+- Do not store form state in the session, `localStorage`, cookies or the database. The POST already
+  carries it; persistence would be a second copy that can disagree with what was submitted.
+- Do not add JavaScript to save or restore rows.
+- Do not change `form_valid`, `build_formset` or `_warn_if_unbalanced`.
+- Do not catch the parent form's errors and save anyway.
+
+---
+
+### T9 — Mark required fields with a red asterisk (issue 37)
+
+**Problem.** Nothing shows which fields are mandatory, so the first a person learns that `note` is
+required is the error after submitting.
+
+**Why this is one CSS rule and no Python.** Django already renders the HTML `required` attribute on
+every required input, and omits it on optional ones. This was checked against `ExpenseForm` and
+against Django's own `AuthenticationForm`: category, amount, spent-on, note, username and password
+carry it; paid-by, split-evenly-with and both misc fields do not. Every create and edit form in the
+project renders through `{{ form.as_p }}`, which puts the `<label>` and its input as siblings inside
+one `<p>`. So CSS can find required fields directly, on every form at once, including the Django auth
+forms we do not own.
+
+**Change, part one — every `as_p` form.** In `templates/base.html`, inside the existing `<style>`
+block and directly after the `label { ... }` rule, add:
+
+```css
+p:has(> :is(input, select, textarea)[required]) > label::after {
+  content: " *" / "";
+  color: var(--danger);
+}
+```
+
+- `:has()` selects the row whose input is required. It is supported in every current browser.
+- `/ ""` gives the asterisk empty alternative text. Screen readers already announce "required" from
+  the attribute, so reading "star" as well would be noise.
+- `var(--danger)` is the existing red, which already has a dark-mode value. Do not hard-code a colour.
+
+**Change, part two — the line-item table.** Formset rows deliberately do **not** carry the `required`
+attribute: a blank spare row must be submittable, so the rule above cannot reach them. In
+`templates/expenses/expense_form.html`, mark the **Item** and **Amount** column headers only:
+
+```html
+<th>Item <span class="required-mark" aria-hidden="true">*</span></th>
+```
+
+and add one more rule beside the first: `.required-mark { color: var(--danger); }`. Do not mark
+**Shared with** or **Remove**.
+
+**Deliberately not starred: "What was it?" (`misc_note`).** It is required *only when* a misc amount is
+entered, enforced in `ExpenseForm.clean()`. A permanent asterisk would claim it is always mandatory,
+which is false. Leave it unmarked; its existing error message covers the conditional case.
+
+**Acceptance.** Add to `expenses/tests/test_templates.py`:
+
+- `test_required_fields_render_the_required_attribute` — render the new-expense page and assert the
+  `category`, `amount`, `spent_on` and `note` inputs carry `required`, and `paid_by`, `misc_amount`
+  and `misc_note` do not. This is the property the CSS depends on; if a future change drops the
+  attribute, this test is what notices.
+- `test_line_item_required_columns_are_marked` — the page contains exactly two `required-mark` spans.
+
+Then **check it in a browser**, because a test cannot see CSS: open New expense, Log in, and New
+category, and confirm a red asterisk sits beside each required label and no optional one.
+
+**Do not.**
+
+- Do not add `required_css_class` to form classes or subclass Django's auth forms. The CSS rule
+  already covers them without touching Python.
+- Do not replace `{{ form.as_p }}` or render fields individually. That is issue 35, parked.
+- Do not add the asterisk inside label text in Python (for example `label="Note *"`). It would be
+  read aloud, copied into error messages, and wrong for any form rendered without that CSS.
 
 ---
 
