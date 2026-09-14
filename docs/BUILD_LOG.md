@@ -501,6 +501,37 @@ Tests: no changes this session. Suite remains at 361, all passing.
 
 ---
 
+### Session 21 — Review of the handoff implementation, and the fixes
+
+A cheaper model implemented T1–T7. A review found nine problems; one was withdrawn because the owner
+had approved the `paid_by` foreign key, one (the self participant's API exposure) was parked as
+issue 34, and the rest were fixed here.
+
+| Fix | What was wrong |
+|---|---|
+| Owner counted by default | New line rows now pre-select the self participant; the API adds it unless `include_self` is false. Ticking only Rahul had charged him the whole bill |
+| Unticked line with owner out | Refused. It was silently charged to the owner |
+| API `paid_by` scoping | Accepted another user's participant — the sixth appearance of the scoping lesson |
+| Self participant naming | Migration 0008 crashed for anyone with a contact named "You". Now `FirstName (self)` with a suffix; 0010 renames old rows |
+| Write on read | `balances()` created the self row on every call. A null `paid_by` now means the owner |
+| Netting | Balances are signed per person; the page lists "Owes you" and "You owe" |
+| Two-way settle-up | Settlements are signed, constraint `amount != 0` (0011) |
+| Live unaccounted figure | The script found the header's logout `<form>` first and silently did nothing |
+| SQLite rounding | `unbalanced()` rounds the gap to the paisa, so it agrees with `is_balanced()` at exactly ₹1.00 |
+| Split tab misc column | Now decided from the saved expense, not a rejected edit's typed values |
+
+> **A `has_changed()` trap, caught before it shipped.** Pre-selecting the owner on blank line rows
+> makes every blank row differ from "nothing", so a removed or untouched row would have counted as
+> filled in and failed on its empty name. `ExpenseItemForm.has_changed()` now looks only at name
+> and amount for unsaved rows.
+
+The review also claimed the balance tests were rewritten to hide changed numbers. Checked: they only
+add the self participant to each split, which the approved design requires. No expected figure moved.
+
+Tests: 411 → 419, all passing.
+
+---
+
 ### Session 19 — UI feedback: dynamic line items, and the sum rule stops being a gate
 
 A UI review produced four items. Two were built, four were parked as issues 28–31.
@@ -1377,3 +1408,4 @@ interview-gap list.
 | 31 | The payer is implicit and cannot be taken out of a split | Ownership is hardcoded as an unwritten share: `balances.py` builds `[1] + [share.weight ...]` in `_charge_item` and `[1] * (len(people) + 1)` in `_charge_evenly`, then discards the first portion so you never owe yourself. The UI says "besides you" and never shows you. Two consequences: nothing on the form tells a newcomer they are already in the split, and a pure reimbursement — you booked the taxi but did not ride in it — cannot be expressed at all, because the denominator always includes you | **In progress (session 20).** Design reversed the `BooleanField` recommendation: self is modelled as `Participant(is_self=True)`, which unifies the payer dropdown and the consumer checkboxes into one model. `Expense.paid_by` FK to `Participant` defaults to the self-participant. See DECISIONS D19–D20 and session 20 in §2. Schema, balance engine rewrite, and tests are planned but not yet executed |
 | 32 | Bills carry money no line item accounts for — GST, tip, service charge, rounding | Lines get fudged to hit the total, or the expense saves unbalanced and drops out of balances | Redesigned in session 19, specced as T4 in `docs/HANDOFF_PLAN.md`. One positive `misc_amount` per itemised expense plus a free-text `misc_note`, no kind or rate field. Apportioned by each person's consumption through the existing `allocate()`. An expense is balanced when under ₹1.00 is unaccounted, and the payer absorbs that remainder. The field is never pre-filled: the form shows the unaccounted figure live instead, because an auto-filled value would have to track whether the person had edited it. **Found while speccing:** `ExpenseQuerySet.unbalanced()` holds a second, SQL copy of the balance rule with exact equality and no misc, used by `check_splits`, so the plan requires a test that the two agree |
 | 33 | No per-expense split view | The balances page totals each person across all expenses. Nothing shows how a single expense divides, so T4's consumption-based misc is invisible | Specced as T7 in `docs/HANDOFF_PLAN.md`: extract `split_expense()` from `balances()` so both read one implementation, then a Split tab on the edit page that renders only when the expense is balanced and shared. Built from a fresh fetch, because a rejected submission has already written its values onto `self.object` |
+| 34 | The self participant is unprotected in the API | The web People pages filter out `is_self`, but the API participant endpoints list, rename and delete it like any contact. Renaming it makes the owner appear under a friend's name; deleting it strands `paid_by` on every expense the owner paid | **Parked for better design, session 21.** Proposed: keep it listed with an `is_self` marker, since API clients need its id to set `paid_by` and participation, and refuse rename and delete. The owner judged the self-participant design itself may need rethinking before patching it, so no fix was applied. **Same design review should cover:** `balances()` calling `get_or_create_self` on every read (fixed tactically in session 21 by treating a null `paid_by` as the owner, but the owner judged the self-participant data model as a whole needs a better design), and self naming, now `FirstName (self)` with a numeric suffix on collision |
