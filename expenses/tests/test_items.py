@@ -1,9 +1,13 @@
 """Line items, the invariant no constraint can express, and atomicity.
 
 The rule under test is "the items of an expense must sum to that expense's
-amount". It spans rows, so a CheckConstraint cannot hold it. These tests
-cover both halves of the answer: the formset refuses it at submit time, and
-the transaction stops a half-written split existing at rest.
+amount". It spans rows, so a CheckConstraint cannot hold it.
+
+It is no longer a gate. Refusing the submission cost the person everything
+else they had typed, so a mismatch is now saved and reported instead, and
+what keeps the numbers honest is that `balances` declines to split an
+expense that does not add up. These tests cover that shift: the record is
+written, the warning is shown, and `is_balanced` marks it.
 """
 
 from decimal import Decimal
@@ -29,16 +33,17 @@ class ItemFormSetTests(TestCase):
     def setUp(self):
         self.client.force_login(self.alice)
 
-    def _post(self, amount="900.00", items=(), initial=0, url=None):
+    def _post(self, amount="900.00", items=(), initial=0, url=None, follow=False):
         return self.client.post(
             url or reverse("expenses:expense_create"),
             {
                 "category": self.category.pk,
                 "amount": amount,
                 "spent_on": "2026-01-15",
-                "note": "",
+                "note": "Dinner",
                 **item_formset(*items, initial=initial),
             },
+            follow=follow,
         )
 
     def test_an_expense_can_be_itemised(self):
@@ -48,21 +53,34 @@ class ItemFormSetTests(TestCase):
         self.assertEqual(expense.items.count(), 2)
         self.assertEqual(expense.items.first().name, "Pizza")
 
-    def test_items_that_do_not_sum_are_refused(self):
-        response = self._post(items=[("Pizza", "600.00"), ("Coke", "200.00")])
+    def test_items_that_do_not_sum_are_saved_with_a_warning(self):
+        response = self._post(items=[("Pizza", "600.00"), ("Coke", "200.00")], follow=True)
 
-        self.assertEqual(response.status_code, 200)
         self.assertContains(response, "add up to 800.00")
         self.assertContains(response, "100.00 out")
+        self.assertContains(response, "left out of balances")
 
-    def test_nothing_is_written_when_the_items_do_not_sum(self):
-        # The half that matters. The parent is saved before its children, so
-        # without the transaction this would leave an expense whose items do
-        # not add up -- exactly the state the rule exists to prevent.
+    def test_the_expense_is_written_even_when_the_items_do_not_sum(self):
+        # The rule used to refuse the submission outright, which threw away
+        # every other field the person had filled in. The record is kept now;
+        # what protects the numbers is that nothing will split it.
         self._post(items=[("Pizza", "600.00"), ("Coke", "200.00")])
 
-        self.assertEqual(Expense.objects.count(), 0)
-        self.assertEqual(ExpenseItem.objects.count(), 0)
+        self.assertEqual(Expense.objects.count(), 1)
+        self.assertEqual(ExpenseItem.objects.count(), 2)
+
+    def test_an_expense_that_does_not_sum_is_not_balanced(self):
+        self._post(items=[("Pizza", "600.00"), ("Coke", "200.00")])
+
+        expense = Expense.objects.get()
+        self.assertEqual(expense.items_total(), Decimal("800.00"))
+        self.assertFalse(expense.is_balanced())
+
+    def test_an_expense_with_no_items_is_balanced(self):
+        self._post(items=[])
+
+        self.assertIsNone(Expense.objects.get().items_total())
+        self.assertTrue(Expense.objects.get().is_balanced())
 
     def test_itemising_is_optional(self):
         self._post(items=[])
@@ -86,7 +104,7 @@ class ItemFormSetTests(TestCase):
                 "category": self.category.pk,
                 "amount": "900.00",
                 "spent_on": "2026-01-15",
-                "note": "",
+                "note": "Dinner",
                 "items-TOTAL_FORMS": "1",
                 "items-INITIAL_FORMS": "1",
                 "items-MIN_NUM_FORMS": "0",
@@ -113,7 +131,7 @@ class ItemFormSetTests(TestCase):
                 "category": self.category.pk,
                 "amount": "600.00",
                 "spent_on": "2026-01-15",
-                "note": "",
+                "note": "Dinner",
                 "items-TOTAL_FORMS": "2",
                 "items-INITIAL_FORMS": "2",
                 "items-MIN_NUM_FORMS": "0",
@@ -151,7 +169,7 @@ class ItemFormSetTests(TestCase):
                 "category": self.category.pk,
                 "amount": "900.00",
                 "spent_on": "2026-01-15",
-                "note": "",
+                "note": "Dinner",
             },
         )
 
@@ -189,7 +207,7 @@ class ItemShareTests(TestCase):
             "category": self.category.pk,
             "amount": "600.00",
             "spent_on": "2026-01-15",
-            "note": "",
+            "note": "Dinner",
             "items-TOTAL_FORMS": "1",
             "items-INITIAL_FORMS": str(initial),
             "items-MIN_NUM_FORMS": "0",

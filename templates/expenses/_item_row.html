@@ -1,0 +1,27 @@
+{% comment %}
+One line-item row. Rendered twice: once per form in the formset, and once more
+inside the blank-row <template> with the formset's empty_form. Sharing the
+partial is what keeps the cloned row identical to the real ones -- two copies
+of this markup would drift the first time a column changed.
+{% endcomment %}
+<tr data-formset-row>
+  {# Carries the primary key of an existing row. Drop it and every edit becomes an insert. #}
+  {{ item_form.id }}
+  <td>{{ item_form.name }}{{ item_form.name.errors }}</td>
+  <td class="num">{{ item_form.amount }}{{ item_form.amount.errors }}</td>
+  <td>
+    {# Leave every box clear and the line is yours alone. #}
+    {{ item_form.shared_with }}{{ item_form.shared_with.errors }}
+  </td>
+  <td class="row-actions">
+    {% comment %}
+    The no-JavaScript path: tick the box, submit, Django deletes the row. The
+    script hides this and reveals the button, which does the same thing in one
+    click. Only saved rows have anything to delete.
+    {% endcomment %}
+    {% if item_form.instance.pk %}
+      <label data-formset-delete>{{ item_form.DELETE }} Remove</label>
+    {% endif %}
+    <button type="button" class="btn btn-small" data-formset-remove hidden>Remove</button>
+  </td>
+</tr>

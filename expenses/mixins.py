@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 
@@ -91,4 +92,27 @@ class ItemFormSetMixin:
             formset.instance = self.object
             formset.save()
 
+        self._warn_if_unbalanced(formset)
+
         return response
+
+    def _warn_if_unbalanced(self, formset):
+        """Say what was saved, and what it will not be counted towards.
+
+        The save succeeded, so this is not an error. But an itemised expense
+        that does not add up is left out of balances, and letting that happen
+        quietly would be worse than the refusal it replaced -- the person
+        would think the split was recorded.
+        """
+        if formset.sum_mismatch is None:
+            return
+
+        total, expected = formset.sum_mismatch
+        difference = abs(total - expected)
+
+        messages.warning(
+            self.request,
+            f"Saved, but the line items add up to {total} and the expense is "
+            f"{expected}. That is {difference} out, so this expense is left out "
+            f"of balances until the amounts agree.",
+        )

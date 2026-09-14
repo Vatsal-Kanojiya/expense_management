@@ -162,7 +162,7 @@ class DashboardCacheTests(TestCase):
                 "category": self.category.pk,
                 "amount": "50.00",
                 "spent_on": date.today().isoformat(),
-                "note": "",
+                "note": "Dinner",
                 "items-TOTAL_FORMS": "0",
                 "items-INITIAL_FORMS": "0",
                 "items-MIN_NUM_FORMS": "0",

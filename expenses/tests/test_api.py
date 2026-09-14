@@ -158,9 +158,10 @@ class NestedWriteTests(ApiTestCase):
         self.assertEqual(expense.items.count(), 2)
         self.assertEqual(ItemShare.objects.filter(item__expense=expense).count(), 1)
 
-    def test_items_that_do_not_sum_are_rejected(self):
-        # The cross-row invariant has to be restated at every entry point.
-        # Nothing the formset does applies here.
+    def test_items_that_do_not_sum_are_accepted(self):
+        # The web form stopped refusing these, so the API cannot keep
+        # refusing them: two entry points disagreeing about what an expense
+        # is would be worse than either rule alone.
         response = self.client.post(
             self.list_url,
             {
@@ -172,10 +173,9 @@ class NestedWriteTests(ApiTestCase):
             content_type="application/json",
         )
 
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("items", response.json())
+        self.assertEqual(response.status_code, 201, response.content)
 
-    def test_nothing_is_written_when_the_items_do_not_sum(self):
+    def test_an_expense_that_does_not_sum_is_written_but_not_balanced(self):
         self.client.post(
             self.list_url,
             {
@@ -187,7 +187,9 @@ class NestedWriteTests(ApiTestCase):
             content_type="application/json",
         )
 
-        self.assertFalse(Expense.objects.filter(spent_on=date(2026, 2, 1)).exists())
+        expense = Expense.objects.get(spent_on=date(2026, 2, 1))
+        self.assertEqual(expense.items.count(), 1)
+        self.assertFalse(expense.is_balanced())
 
     def test_a_patch_that_omits_items_leaves_them_alone(self):
         """The classic nested-write data loss, asserted as not happening.

@@ -37,6 +37,29 @@ class BalanceTests(TestCase):
             spent_on=spent_on,
         )
 
+    def test_an_itemised_expense_that_does_not_sum_is_skipped(self):
+        """The guarantee that replaced the validation error.
+
+        A mismatch can be saved now, so this is what stops it being counted.
+        Charging the items anyway would put 150 on the board for a bill whose
+        remaining 600 belongs to nobody -- a number that looks settled and is
+        not. Skipping is the honest reading of an incomplete split.
+        """
+        expense = self._expense("900.00")
+        item = ExpenseItem.objects.create(expense=expense, name="Pizza", amount=Decimal("300.00"))
+        ItemShare.objects.create(item=item, participant=self.rahul)
+
+        self.assertFalse(expense.is_balanced())
+        self.assertEqual(balances(self.alice), [])
+
+    def test_the_same_expense_counts_once_it_adds_up(self):
+        expense = self._expense("300.00")
+        item = ExpenseItem.objects.create(expense=expense, name="Pizza", amount=Decimal("300.00"))
+        ItemShare.objects.create(item=item, participant=self.rahul)
+
+        self.assertTrue(expense.is_balanced())
+        self.assertEqual(balances(self.alice), [(self.rahul, Decimal("150.00"))])
+
     def test_an_unshared_expense_owes_nothing(self):
         self._expense("300.00")
 
