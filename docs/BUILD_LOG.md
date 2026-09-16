@@ -30,22 +30,35 @@
 >
 > **Loose ends, in the order worth doing them:**
 >
-> 1. **Push.** Session 22 was pushed. Session 23 (the note-as-heading change) is committed locally
->    and not pushed. A push needs a fresh token for the personal account
->    `Vatsal-Kanojiya/expense_management`. **Never push with the global git identity or the
->    default SSH key — both belong to the office account.** This repo pins the personal identity
->    with `git config --local`.
+> 1. ~~**Push.**~~ Done — session 23 is on `origin/master` as `63956f6`. The identity warning still
+>    stands for any future push: **never push with the global git identity or the default SSH key,
+>    both belong to the office account.** This repo pins the personal identity with
+>    `git config --local`.
 > 2. **Click through phase 17, then tag it.** `git tag -a phase-17-explicit-splits 0e1e602 -m
 >    "Phase 17: paid-by, explicit splits"`. The session 22 fix belongs to this phase, so tag at or
 >    after `0e1e602`, not at `bafcc68` as COMMIT_PLAN originally said.
 > 3. **Issue 34 is the only open item that can break something.** The API lets the self participant
 >    be listed, renamed and deleted. Under D26 that is a fix, not polish, if it is ever picked up.
+>
+> **Study material (session 24).** Two pages built from these docs, for revising away from the
+> laptop. Both are committed here and also published as private pages:
+>
+> - `docs/phase-ledger.html` — all 18 phases, the concepts each exercised, the trap each hides and
+>   the bugs that only appeared when the thing was run.
+>   [Published](https://claude.ai/code/artifact/fb7c6a4c-ccc0-42ce-9c7f-97bbed7eb798)
+> - `docs/concept-atlas.html` — STUDY_MAP's eleven topics redrawn as copyable mermaid mind maps,
+>   each closed by a phase, each with the story to tell about it.
+>   [Published](https://claude.ai/code/artifact/8cfd23cb-9fce-4bfb-9961-f828b63d6a30)
+>
+> Both were generated from BUILD_LOG, COMMIT_PLAN, DECISIONS and STUDY_MAP at `63956f6`. **If those
+> docs change, the pages go stale** — they are a projection of this log, not a second source.
+> Discussion: <https://claude.ai/code/session_0192K6QsQDjhnfxymJ7YfskB>
 
-**Session:** 22 — sixteen phases tagged; phase 17 built and fixed, **awaiting owner click-through before tagging**
-**Last code commit:** `0e1e602` — *fix(expenses): keep line items when the expense form has an error*
-**Phase tags:** 16, `phase-1-foundation` … `phase-16-hardening` (`git tag | sort -V`)
-**Suite:** 427 tests, 95% coverage (re-measured session 22) — green on SQLite. Postgres, CI and Redis were last verified at phase 16
-**Remote:** `github.com/Vatsal-Kanojiya/expense_management` — **15 commits unpushed**
+**Session:** 24 — study pages added; phase 17 still **awaiting owner click-through before tagging**
+**Last code commit:** `63956f6` — *feat(expenses): show the note as the expense form heading*
+**Phase tags:** 17, `phase-1-foundation` … `phase-16-hardening` (`git tag | sort -V`)
+**Suite:** 432 tests, 95% coverage — green on SQLite. Postgres, CI and Redis were last verified at phase 16
+**Remote:** `github.com/Vatsal-Kanojiya/expense_management` — **in sync**
 
 | Dimension | State |
 |---|---|

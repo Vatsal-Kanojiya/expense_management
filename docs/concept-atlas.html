@@ -1,0 +1,1072 @@
+<title>Django Concept Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+:root{
+  --paper:#F1F4F1;
+  --surface:#FBFCFA;
+  --surface-2:#E9EEEA;
+  --ink:#141A17;
+  --ink-2:#3D4A43;
+  --ink-3:#6B7A72;
+  --rule:#D5DCD6;
+  --rule-soft:#E4E9E4;
+  --accent:#1B6B4F;
+  --accent-ink:#12513C;
+  --accent-soft:#E0EDE6;
+  --trap:#8A5F0B;
+  --trap-soft:#F5EDDA;
+  --blood:#9E2F26;
+  --blood-soft:#F7E7E4;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  --serif:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0D1211;
+    --surface:#141B18;
+    --surface-2:#1B2420;
+    --ink:#E7EDE9;
+    --ink-2:#AEBDB5;
+    --ink-3:#7C8D85;
+    --rule:#24302B;
+    --rule-soft:#1C2622;
+    --accent:#5EC096;
+    --accent-ink:#7FD3AF;
+    --accent-soft:#132720;
+    --trap:#D9AC49;
+    --trap-soft:#2A2214;
+    --blood:#E58175;
+    --blood-soft:#2C1815;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0D1211;
+  --surface:#141B18;
+  --surface-2:#1B2420;
+  --ink:#E7EDE9;
+  --ink-2:#AEBDB5;
+  --ink-3:#7C8D85;
+  --rule:#24302B;
+  --rule-soft:#1C2622;
+  --accent:#5EC096;
+  --accent-ink:#7FD3AF;
+  --accent-soft:#132720;
+  --trap:#D9AC49;
+  --trap-soft:#2A2214;
+  --blood:#E58175;
+  --blood-soft:#2C1815;
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.55;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:880px;margin:0 auto;padding-inline:20px;padding-block:40px 72px}
+h1,h2,h3,h4{font-family:var(--serif);font-weight:600;text-wrap:balance;margin:0}
+code{font-family:var(--mono)}
+
+.eyebrow{
+  font-family:var(--mono);
+  font-size:11.5px;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+  margin:0 0 14px;
+}
+h1{font-size:clamp(32px,8.5vw,52px);line-height:1.04;letter-spacing:-.022em}
+.standfirst{margin:16px 0 0;max-width:62ch;color:var(--ink-2);font-size:16px}
+.standfirst strong{color:var(--ink);font-weight:600}
+
+.callout{
+  margin-top:26px;
+  padding:16px 18px;
+  background:var(--accent-soft);
+  border-radius:3px;
+  max-width:66ch;
+}
+.callout p{margin:0;font-size:14.5px}
+.callout p + p{margin-top:8px}
+.callout .kicker{
+  display:block;
+  font-family:var(--mono);
+  font-size:10.5px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--accent-ink);
+  margin-bottom:6px;
+}
+
+/* ---------- sections ---------- */
+.section{margin-top:54px}
+.section > h2{font-size:27px;letter-spacing:-.018em}
+.section > p.lede{margin:10px 0 0;color:var(--ink-2);max-width:64ch}
+.rule{height:1px;background:var(--rule);border:0;margin:0}
+
+/* ---------- diagram blocks ---------- */
+.fig{
+  margin-top:20px;
+  border:1px solid var(--rule);
+  border-radius:3px;
+  background:var(--surface);
+  overflow:hidden;
+}
+.fig-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 12px;
+  border-bottom:1px solid var(--rule-soft);
+  background:var(--surface-2);
+}
+.fig-name{
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+}
+.fig-actions{display:flex;gap:6px;flex:none}
+.btn{
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--ink-2);
+  background:var(--surface);
+  border:1px solid var(--rule);
+  border-radius:2px;
+  padding:4px 9px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.btn:hover{border-color:var(--ink-3);color:var(--ink)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.done{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
+.fig-body{padding:16px 10px;overflow-x:auto}
+.fig-body pre.mermaid{margin:0;min-width:280px;text-align:center}
+pre.code{
+  margin:0;
+  padding:14px 12px;
+  border-top:1px solid var(--rule-soft);
+  background:var(--surface-2);
+  font-family:var(--mono);
+  font-size:11.5px;
+  line-height:1.6;
+  color:var(--ink-2);
+  overflow-x:auto;
+  white-space:pre;
+  -webkit-user-select:all;
+  user-select:all;
+}
+.fig-note{
+  padding:11px 14px;
+  border-top:1px solid var(--rule-soft);
+  font-size:13.5px;
+  color:var(--ink-2);
+}
+.fig-note b{color:var(--ink)}
+
+/* ---------- topic cards ---------- */
+.tier{margin-top:34px}
+.tier-head{
+  display:flex;
+  align-items:baseline;
+  gap:10px;
+  flex-wrap:wrap;
+  padding-bottom:8px;
+  border-bottom:1px solid var(--rule);
+}
+.tier-head h3{font-size:19px;letter-spacing:-.012em}
+.tier-head span{
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--ink-3);
+}
+.topics{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.topic{
+  border:1px solid var(--rule);
+  border-radius:3px;
+  background:var(--surface);
+  overflow:hidden;
+}
+.topic > summary{
+  position:relative;
+  display:block;
+  padding:13px 34px 13px 14px;
+  cursor:pointer;
+  list-style:none;
+}
+.topic > summary::-webkit-details-marker{display:none}
+.topic h4{font-size:17px;letter-spacing:-.01em;margin-bottom:4px}
+.badges{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:7px}
+.depth{
+  font-family:var(--mono);
+  font-size:10.5px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  padding:2px 7px;
+  border-radius:2px;
+}
+.depth.deep{color:var(--blood);background:var(--blood-soft)}
+.depth.working{color:var(--trap);background:var(--trap-soft)}
+.depth.aware{color:var(--ink-3);background:var(--surface-2)}
+.closed{
+  font-family:var(--mono);
+  font-size:10.5px;
+  color:var(--accent-ink);
+  background:var(--accent-soft);
+  border-radius:2px;
+  padding:2px 7px;
+}
+.topic .why{margin:0;font-size:14px;color:var(--ink-2);max-width:60ch}
+.chev{position:absolute;right:13px;top:17px;color:var(--ink-3);transition:transform .15s ease}
+.topic[open] > summary .chev{transform:rotate(90deg)}
+@media (prefers-reduced-motion:reduce){.chev{transition:none}}
+.topic-body{padding:2px 14px 18px;border-top:1px solid var(--rule-soft)}
+.topic-body h5{
+  font-family:var(--mono);
+  font-size:10.5px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+  font-weight:500;
+  margin:16px 0 7px;
+}
+.topic-body ul{margin:0;padding-left:18px}
+.topic-body li{font-size:14px;color:var(--ink-2);margin-bottom:4px;max-width:60ch}
+.topic-body li code{font-size:12.5px;background:var(--surface-2);padding:1px 4px;border-radius:2px}
+.qs li{color:var(--ink)}
+.story{
+  margin-top:16px;
+  border-left:2px solid var(--accent);
+  padding:2px 0 2px 13px;
+  font-size:14px;
+  color:var(--ink-2);
+  max-width:60ch;
+}
+.story b{color:var(--ink)}
+.story .kicker{
+  display:block;
+  font-family:var(--mono);
+  font-size:10.5px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--accent-ink);
+  margin-bottom:3px;
+}
+
+/* ---------- tables ---------- */
+.tablewrap{overflow-x:auto;margin-top:18px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+th{
+  font-family:var(--mono);
+  font-size:10.5px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+  font-weight:500;
+}
+td code{font-size:12px;white-space:nowrap}
+td:last-child{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);white-space:nowrap}
+
+.open-list{
+  margin-top:18px;
+  display:grid;
+  gap:1px;
+  background:var(--rule);
+  border:1px solid var(--rule);
+  border-radius:3px;
+  overflow:hidden;
+}
+.open-item{background:var(--surface);padding:14px 15px}
+.open-item h4{font-size:15.5px}
+.open-item p{margin:5px 0 0;font-size:13.5px;color:var(--ink-2);max-width:60ch}
+.open-item .tagline{
+  display:inline-block;
+  margin-top:8px;
+  font-family:var(--mono);
+  font-size:10.5px;
+  color:var(--ink-3);
+  background:var(--surface-2);
+  padding:2px 7px;
+  border-radius:2px;
+}
+
+footer{
+  margin-top:56px;
+  padding-top:20px;
+  border-top:1px solid var(--rule);
+  font-family:var(--mono);
+  font-size:11.5px;
+  color:var(--ink-3);
+  line-height:1.7;
+}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">expense_management · 432 tests · 18 phases · frozen at session 22</p>
+  <h1>Django Concept Atlas</h1>
+  <p class="standfirst">Your study map had eleven ranked topics and a column of <strong>⬜ not started</strong>. Sixteen phases later, every one of those boxes is closed by something you built. This is the map redrawn — every diagram here is copyable mermaid, so it can go straight into your own notes.</p>
+
+  <div class="callout">
+    <span class="kicker">Read this first</span>
+    <p>You lost the January interview on <b>lack of hands-on</b>, not lack of theory. So the question to rehearse for every topic below is never “what is X” — it is <b>“tell me about a time you used X, and what went wrong.”</b></p>
+    <p>Each topic card ends with that story, taken from a real commit. Learn the story and the theory comes with it; learn the theory alone and you rebuild the gap that cost you the interview.</p>
+  </div>
+</header>
+
+<!-- ============ MASTER MIND MAP ============ -->
+<section class="section">
+  <h2>The whole map</h2>
+  <p class="lede">Eleven topics in three tiers, plus what the build added that the original map never listed. Tier 1 decides interviews; tier 3 is awareness only — do not sink days there.</p>
+
+  <div class="fig">
+    <div class="fig-head">
+      <span class="fig-name">mindmap · master</span>
+      <span class="fig-actions">
+        <button class="btn" data-code="m1" data-act="code" type="button">code</button>
+        <button class="btn" data-code="m1" data-act="copy" type="button">copy</button>
+      </span>
+    </div>
+    <div class="fig-body">
+<pre class="mermaid">
+mindmap
+  root((Django))
+    Tier 1 decides interviews
+      Auth sessions permissions
+        Session auth end to end
+        AbstractUser vs AbstractBaseUser
+        AUTHENTICATION_BACKENDS
+        Model vs object level permissions
+        Rate limiting and verification
+      ORM and query performance
+        Querysets are lazy
+        select_related vs prefetch_related
+        annotate vs aggregate
+        Subquery and OuterRef
+        F and Q expressions
+        distinct does not fix an aggregate
+      Request lifecycle
+        Middleware chain and ordering
+        URL resolution
+        Context processors run every render
+        ContextVar not threading_local
+      CBVs and the MRO
+        as_view then dispatch
+        get_queryset vs get_object
+        get_form_kwargs and form_valid
+        When a function view is clearer
+      Django REST Framework
+        ModelSerializer and validate_field
+        Writable nested serializers
+        has_object_permission skips list
+        Pagination throttling versioning
+    Tier 2 working knowledge
+      Migrations
+        RunPython with a reverse
+        Backend specific DDL
+        Zero downtime in three deploys
+      Forms and validation
+        clean_field vs clean vs full_clean
+        ModelForm cannot see excluded constraints
+        Inline formsets and management_form
+      Testing
+        TestCase vs TransactionTestCase
+        assertNumQueries
+        Mutation testing
+        Eager mode is a partial lie
+      Celery and background work
+        Queue for requests cron for clocks
+        Idempotency and acks_late
+        Pass primary keys not instances
+        transaction_on_commit
+      Caching
+        Low level API over cache_page
+        Version stamped keys
+        Invalidation is the hard part
+      Security
+        CSRF and XSS and autoescaping
+        check deploy as a CI gate
+        Settings gated on DEBUG at import
+    Tier 3 awareness only
+      Signals have an opinion
+      Static files and WhiteNoise
+      Deployment gunicorn and ASGI
+      Async views and sync_to_async
+      Channels only if asked
+      GraphQL only if asked
+    Promoted by the build
+      Postgres depth
+        Functional and composite indexes
+        GIN and to_tsvector
+        Index expression must match query
+      Concurrency
+        select_for_update
+        The lost update
+        Savepoints and nested atomic
+      Formsets and form state
+        empty_form and __prefix__
+        DELETE flag or blanking
+        has_changed on extra rows
+        form_valid and form_invalid share no code
+        Re render from the request
+      Data migrations
+        Backfill meets real data
+        Editing an applied migration
+        Signed column beats a direction field
+        A rule can be a fact not a gate
+</pre>
+    </div>
+    <p class="fig-note"><b>Two branches were not on your original map.</b> Postgres specifics sat in tier 3 as “awareness only” and concurrency was not listed at all — phases 12 and 13 promoted both into things you can now demonstrate. That promotion is the single biggest change to your interview surface.</p>
+  </div>
+</section>
+
+<!-- ============ LEARNING ORDER ============ -->
+<section class="section">
+  <h2>What to study, in what order</h2>
+  <p class="lede">Dependencies matter more than difficulty — some topics make others click. This is your own suggested order, with the phase that already gives you the hands-on half of each.</p>
+
+  <div class="fig">
+    <div class="fig-head">
+      <span class="fig-name">flowchart · study order</span>
+      <span class="fig-actions">
+        <button class="btn" data-code="m2" data-act="code" type="button">code</button>
+        <button class="btn" data-code="m2" data-act="copy" type="button">copy</button>
+      </span>
+    </div>
+    <div class="fig-body">
+<pre class="mermaid">
+flowchart TD
+    A["3 · Request lifecycle<br/>phase-15-internals"] --> B["1 · Auth and sessions<br/>phase-2-auth"]
+    A --> S["11 · Security<br/>phase-7 + phase-16"]
+    B --> D["5 · DRF<br/>phase-10-api"]
+    C["2 · ORM depth<br/>phase-9-orm"] --> E["Aggregation<br/>phase-5-dashboard"]
+    C --> D
+    F["4 · CBVs and MRO<br/>phase-3-crud"] --> D
+    E --> G["9 · Celery<br/>phase-6-async"]
+    G --> H["10 · Caching<br/>phase-14-caching"]
+    I["6 · Migrations<br/>phase-1 + phase-12"] --> G
+    P["Postgres depth<br/>phase-12"] --> Q["Concurrency<br/>phase-13"]
+</pre>
+    </div>
+    <p class="fig-note"><b>Start at the top left.</b> The request lifecycle is cheap to learn and is the frame auth, CSRF and sessions all hang on — studying it first makes topic 1 click instead of being memorised. ORM depth runs in parallel, continuously; it never stops paying.</p>
+  </div>
+</section>
+
+<!-- ============ TIER 1 ============ -->
+<section class="section">
+  <h2>Tier 1 — these decide interviews</h2>
+  <p class="lede">Five topics. Expect follow-up questions three levels down on each, and expect to be asked for the story rather than the definition.</p>
+
+  <div class="fig">
+    <div class="fig-head">
+      <span class="fig-name">mindmap · tier 1 detail</span>
+      <span class="fig-actions">
+        <button class="btn" data-code="m3" data-act="code" type="button">code</button>
+        <button class="btn" data-code="m3" data-act="copy" type="button">copy</button>
+      </span>
+    </div>
+    <div class="fig-body">
+<pre class="mermaid">
+mindmap
+  root((Tier 1))
+    Auth
+      login writes the session
+      AuthenticationMiddleware sets request_user
+      set_password and PASSWORD_HASHERS
+      Return 404 not 403 for another users row
+      OwnerScopedMixin is object level by hand
+      Session vs token vs JWT
+    ORM
+      When does a query execute
+      JOIN widens rows prefetch does not
+      values before annotate is the GROUP BY switch
+      Subquery selects one row Max pairs two
+      only and defer can create the N plus 1
+      exists stops count scans
+    Lifecycle
+      ASGI entry to middleware to resolver
+      AuthenticationMiddleware after SessionMiddleware
+      CsrfViewMiddleware and the per session token
+      Custom middleware and log filters
+      Context processor cost per render
+    CBVs
+      as_view to dispatch to get or post
+      get_queryset is the security boundary
+      Mixin order and Python MRO
+      LoginRequiredMixin comes first
+    DRF
+      Serializer vs ModelSerializer
+      validate_field mirrors clean_field
+      list never calls get_object
+      Scope the queryset not the permission
+      Cursor pagination pins the ordering
+</pre>
+    </div>
+  </div>
+
+  <div class="tier">
+    <div class="tier-head"><h3>The five, with their stories</h3><span>tap to open</span></div>
+    <div class="topics">
+
+      <details class="topic">
+        <summary>
+          <div class="badges"><span class="depth deep">deep</span><span class="closed">phase-2-auth · phase-16-hardening</span></div>
+          <h4>1 · Auth, sessions and permissions</h4>
+          <p class="why">Your biggest gap, and you flagged it yourself. Frappe hands you <code>User</code>, roles and <code>has_permission</code> as furniture; Django gives you primitives and expects you to assemble the policy.</p>
+          <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="topic-body">
+          <h5>What deep means</h5>
+          <ul>
+            <li>Session auth end to end: what <code>login()</code> writes, where the session lives, what the cookie holds, how <code>AuthenticationMiddleware</code> puts <code>request.user</code> there</li>
+            <li><code>AbstractUser</code> vs <code>AbstractBaseUser</code> vs <code>PermissionsMixin</code> — when each is right</li>
+            <li><code>AUTHENTICATION_BACKENDS</code>, and writing one (login-by-email is the classic exercise)</li>
+            <li>Password hashing: <code>PASSWORD_HASHERS</code>, why <code>set_password</code> exists, why a plain <code>ModelAdmin</code> on a user model is a security bug</li>
+            <li><b>Model permissions vs object-level permissions</b> — Django's built-ins are per <em>model</em>, not per <em>row</em>. Your <code>OwnerScopedMixin</code> is object-level authorisation done by hand</li>
+            <li>Session vs token vs JWT, and when each is appropriate</li>
+          </ul>
+          <h5>Answer cold</h5>
+          <ul class="qs">
+            <li>“A user logs in. Walk me from POST to the next request being authenticated.”</li>
+            <li>“How do you restrict a view to only the rows the current user owns?”</li>
+            <li>“Why 404 rather than 403 for another user's record?”</li>
+            <li>“Add login-by-email without breaking username login.”</li>
+          </ul>
+          <p class="story"><span class="kicker">Your story</span>Rate limiting, hand-written in forty lines because <b>the keying decision is the whole design</b> and a library hides it. By address alone, one office behind one NAT is one blocked building. By username alone, an attacker locks any account out of its own login for free. By both, credential stuffing gets slowed — and the module states what it still does not stop.</p>
+        </div>
+      </details>
+
+      <details class="topic">
+        <summary>
+          <div class="badges"><span class="depth deep">deep</span><span class="closed">phase-5 · phase-9 · phase-12</span></div>
+          <h4>2 · The ORM and query performance</h4>
+          <p class="why">The most-asked Django topic by a wide margin, and the easiest place to look junior — a candidate who cannot spot an N+1 is filtered fast. Frappe's <code>get_list</code> hid all of it from you.</p>
+          <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="topic-body">
+          <h5>What deep means</h5>
+          <ul>
+            <li><b>Querysets are lazy</b> — when does a query actually execute, and what causes a second one</li>
+            <li><code>select_related</code> (JOIN, forward FK) vs <code>prefetch_related</code> (second query, M2M and reverse FK) — and <em>why they are different mechanisms</em> rather than one flag</li>
+            <li><code>annotate</code> vs <code>aggregate</code>; <code>values()</code> before <code>annotate()</code> as the GROUP BY switch</li>
+            <li><code>F()</code> to reference a column and dodge a race; <code>Q()</code> for OR and NOT</li>
+            <li><code>Subquery</code> / <code>OuterRef</code> / <code>Exists</code> — the step up from filtering</li>
+            <li><code>only()</code> / <code>defer()</code>; <code>exists()</code> vs <code>count()</code> vs truthiness</li>
+            <li>Reading <code>print(qs.query)</code> and an <code>EXPLAIN</code> plan</li>
+          </ul>
+          <h5>Answer cold</h5>
+          <ul class="qs">
+            <li>“This page makes 200 queries. Find out why and fix it.” <em>— the most common practical task there is</em></li>
+            <li>“Increment a counter safely under concurrency.” → <code>F()</code>, not read-modify-write</li>
+            <li>“<code>filter().exclude()</code> vs <code>filter(Q(…) &amp; ~Q(…))</code> — same result?”</li>
+          </ul>
+          <p class="story"><span class="kicker">Your story</span>Search across items and people crossed a multi-valued relation and <b>the total came back as 1800 for a 900 expense</b>. <code>.distinct()</code> does not fix an aggregate — DISTINCT removes duplicate rows, but <code>Sum()</code> has already eaten them. The fix aggregates over the distinct set of pks via a subquery. The failure returned a <em>plausible wrong number</em>, never an error.</p>
+        </div>
+      </details>
+
+      <details class="topic">
+        <summary>
+          <div class="badges"><span class="depth deep">deep</span><span class="closed">phase-15-internals</span></div>
+          <h4>3 · Request/response lifecycle and middleware</h4>
+          <p class="why">Frappe hides the whole pipeline. Interviewers use this to separate people who <em>use</em> a framework from people who <em>understand</em> one — and it is the frame that makes auth, CSRF and sessions click.</p>
+          <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="topic-body">
+          <h5>What deep means</h5>
+          <ul>
+            <li>WSGI/ASGI entry → middleware chain → URL resolution → view → template → response, and back <em>out</em> through middleware in reverse</li>
+            <li>Writing custom middleware, and why <code>AuthenticationMiddleware</code> must come after <code>SessionMiddleware</code></li>
+            <li>What <code>CsrfViewMiddleware</code> checks, and why the token is per-session</li>
+            <li>Where exceptions are caught</li>
+          </ul>
+          <h5>Answer cold</h5>
+          <ul class="qs">
+            <li>“What happens between the browser sending a request and your view running?”</li>
+            <li>“Write middleware that logs slow requests.”</li>
+            <li>“Why does middleware order matter? Give an example of a wrong order.”</li>
+          </ul>
+          <p class="story"><span class="kicker">Your story</span>The nav-badge context processor counted balances — and <b>a context processor runs on every single template render</b>, so it added four to six queries to every request in the project and broke three pinned query counts. It now only reads a cached value. Pair it with the request-id middleware, which uses <code>ContextVar</code> rather than <code>threading.local</code> because under ASGI one thread interleaves many requests and a thread-local leaks one request's id into another's logs.</p>
+        </div>
+      </details>
+
+      <details class="topic">
+        <summary>
+          <div class="badges"><span class="depth deep">deep</span><span class="closed">phase-3-crud</span></div>
+          <h4>4 · Class-based views and the MRO</h4>
+          <p class="why">You already use these, which makes them fair game for deep follow-ups. “I used <code>ListView</code>” invites “what does it do?” — and having no answer is worse than having used a function view.</p>
+          <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="topic-body">
+          <h5>What deep means</h5>
+          <ul>
+            <li><code>as_view()</code> → <code>dispatch()</code> → <code>get</code>/<code>post</code></li>
+            <li>Where <code>get_queryset</code>, <code>get_context_data</code>, <code>get_form_kwargs</code> and <code>form_valid</code> sit in that chain</li>
+            <li>Why mixin order matters and how Python's MRO resolves it</li>
+            <li><b>When a CBV is the wrong choice</b> — a strong answer names cases where a function view is clearer</li>
+          </ul>
+          <h5>Answer cold</h5>
+          <ul class="qs">
+            <li>“Walk me through what <code>ListView</code> does between the URL match and the template rendering.”</li>
+            <li>“Why must <code>LoginRequiredMixin</code> come first?”</li>
+            <li>“When would you <em>not</em> use a CBV?”</li>
+          </ul>
+          <p class="story"><span class="kicker">Your story</span>Scoping is the security boundary and it lives in <code>get_queryset</code>, not <code>get_object</code> — scope the wrong one and <code>/expenses/3/edit/</code> edits someone else's row. The subtler half: a <code>ModelChoiceField</code> defaults to <b>every row in the table</b>, so an unscoped dropdown leaks other users' category names <em>and</em> lets a crafted POST file an expense against one. The mixin was extracted only after the duplication was real — six <code>get_queryset</code> overrides, four <code>get_form_kwargs</code>.</p>
+        </div>
+      </details>
+
+      <details class="topic">
+        <summary>
+          <div class="badges"><span class="depth deep">deep</span><span class="closed">phase-10-api</span></div>
+          <h4>5 · Django REST Framework</h4>
+          <p class="why">Flagged unprompted as the gap you had not noticed: a large share of Django postings are API roles, and this project was server-rendered templates only. Frappe gave you REST from the DocType, so you had never hand-built a serializer. <b>Now closed.</b></p>
+          <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="topic-body">
+          <h5>What deep means</h5>
+          <ul>
+            <li><code>Serializer</code> vs <code>ModelSerializer</code>; validation and <code>validate_&lt;field&gt;</code> mirroring <code>clean_&lt;field&gt;</code></li>
+            <li><code>APIView</code> vs <code>GenericAPIView</code> vs <code>ViewSet</code>, and routers</li>
+            <li>Permission classes, including object-level <code>has_object_permission</code> — the DRF mirror of <code>OwnerScopedMixin</code></li>
+            <li>Authentication classes, pagination, throttling, versioning</li>
+            <li>Prefetching inside serializers to avoid the nested N+1</li>
+          </ul>
+          <h5>Answer cold</h5>
+          <ul class="qs">
+            <li>“Your ViewSet has <code>IsOwner</code> in <code>permission_classes</code> — is it safe?”</li>
+            <li>“Cursor or offset pagination, and what does each cost?”</li>
+          </ul>
+          <p class="story"><span class="kicker">Your story</span><b><code>has_object_permission</code> never runs on <code>list</code>.</b> <code>retrieve</code>, <code>update</code> and <code>destroy</code> call <code>get_object()</code> so the object permission is consulted; <code>list</code> does not call it at all. A ViewSet whose only protection is a permission class returns <em>every user's rows</em> from its collection endpoint while correctly refusing them one at a time. The boundary is <code>get_queryset()</code> — the same answer as the server-rendered views.</p>
+        </div>
+      </details>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ TIER 2 ============ -->
+<section class="section">
+  <h2>Tier 2 — solid working knowledge</h2>
+  <p class="lede">Use these correctly and explain the trade-off. No need to know the source.</p>
+
+  <div class="fig">
+    <div class="fig-head">
+      <span class="fig-name">mindmap · tier 2 detail</span>
+      <span class="fig-actions">
+        <button class="btn" data-code="m4" data-act="code" type="button">code</button>
+        <button class="btn" data-code="m4" data-act="copy" type="button">copy</button>
+      </span>
+    </div>
+    <div class="fig-body">
+<pre class="mermaid">
+mindmap
+  root((Tier 2))
+    Migrations
+      RunPython with a reverse function
+      Backend specific DDL stays out of Meta
+      Squashing and conflict resolution
+      Add nullable backfill then constrain
+    Forms
+      clean_field explains constraints guarantee
+      ModelForm skips excluded field constraints
+      inlineformset_factory
+      management_form or the POST is refused
+      commit False then save_m2m
+    Testing
+      TestCase wraps each test in a transaction
+      TransactionTestCase actually commits
+      assertNumQueries pins the N plus 1
+      Cache is not cleared between tests
+      Mutation testing checks the tests
+    Celery
+      Request triggered use a queue
+      Clock triggered use cron
+      acks_late means redelivery
+      Idempotency claimed before the side effect
+      Pass pks tasks re read state
+      transaction_on_commit not delay
+    Caching
+      cache_page keys on URL only
+      Low level API with user scoped keys
+      Version stamp beats key deletion
+      LocMemCache is per process
+      Stampede and get_or_set
+    Security
+      CSRF token per session
+      Autoescaping and the cost of safe
+      raw and extra break ORM protection
+      check deploy as a failing gate
+      DEBUG gates run at import time
+</pre>
+    </div>
+  </div>
+
+  <div class="tier">
+    <div class="tier-head"><h3>The six, with their stories</h3><span>tap to open</span></div>
+    <div class="topics">
+
+      <details class="topic">
+        <summary>
+          <div class="badges"><span class="depth working">working</span><span class="closed">phase-1 · phase-12</span></div>
+          <h4>6 · Migrations, beyond makemigrations</h4>
+          <p class="why">Frappe's auto-sync from DocType JSON means you have never had to think about ordering. This is the one topic where the project gives you <em>most</em> of the answer, not all of it.</p>
+          <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="topic-body">
+          <h5>What working means</h5>
+          <ul>
+            <li>Data migrations with <code>RunPython</code> and a reverse function; why migrations are committed</li>
+            <li>Squashing; resolving conflicting migrations on a shared branch</li>
+            <li><b>Zero-downtime schema change</b> — add nullable, backfill, then make non-null, as three deploys</li>
+            <li><code>swappable_dependency</code> and why the initial migration survived the user-model swap</li>
+          </ul>
+          <h5>Answer cold</h5>
+          <ul class="qs"><li>“Add a non-nullable column to a table with 10 million rows, no downtime. How?”</li></ul>
+          <p class="story"><span class="kicker">Your story</span>The GIN index over <code>to_tsvector('english', note)</code> is created by <code>RunPython</code>, <b>not declared in <code>Meta</code></b> — a <code>GinIndex</code> on the model would be attempted on SQLite and fail to migrate. That is the honest shape of an index one backend cannot have.</p>
+          <p class="story"><span class="kicker">Second story — new in phase 17</span>Adding <code>paid_by</code> took <b>five migrations and a backfill</b>: add the nullable column, create one self-participant per user, point every existing expense at it, add the self participant to old splits so the implicit “+1” behaviour is preserved. Then it <b>crashed</b> — the self row was named <code>"You"</code>, which collides with the case-insensitive unique name constraint for anyone who already had a contact called that, and a failing data migration stops the whole upgrade. Renamed to <code>FirstName (self)</code> with a numeric suffix.</p>
+          <p class="story"><span class="kicker">Third story — the rule you're allowed to break</span>Migration 0008 was <b>edited in place</b> after being applied, with 0010 added to rename the rows the old version had created. Editing an applied migration is normally wrong; the written reasoning is that the old version <em>could not have run</em> on the databases it would fail on, and 0010 covers the ones where it succeeded. Knowing when a rule bends, and being able to justify it, is a better answer than reciting the rule.</p>
+          <p class="story" style="border-color:var(--trap)"><span class="kicker" style="color:var(--trap)">Still to rehearse</span>Zero-downtime schema change on a live table — add nullable, backfill, constrain, as three <em>deploys</em>. Phase 17 gave you the backfill half; the deploy-sequencing half is still reading.</p>
+        </div>
+      </details>
+
+      <details class="topic">
+        <summary>
+          <div class="badges"><span class="depth working">working</span><span class="closed">phase-3 · phase-8</span></div>
+          <h4>7 · Forms and validation</h4>
+          <p class="why">Already strong, and it carries one of your best stories — the kind that sounds like experience because it only happens to people who shipped something.</p>
+          <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="topic-body">
+          <h5>What working means</h5>
+          <ul>
+            <li><code>clean_&lt;field&gt;</code> vs <code>clean()</code> vs model <code>full_clean()</code>; what <code>_post_clean</code> does</li>
+            <li>Formsets, widgets, <code>initial</code> vs <code>instance</code> vs <code>data</code></li>
+            <li>Which invariants a database can hold, and which have to live in a form plus a transaction</li>
+            <li><b>Formset mechanics:</b> <code>empty_form</code> and <code>__prefix__</code> for adding a row, <code>TOTAL_FORMS</code>, the <code>DELETE</code> flag for saved rows vs blanking for unsaved ones, and why neither needs renumbering</li>
+            <li><code>has_changed()</code> — it decides whether a blank extra form gets validated at all</li>
+            <li><b><code>form_valid</code> and <code>form_invalid</code> are separate exits that share no code</b></li>
+            <li>Form-level <code>required</code> over model <code>blank=False</code>, when old rows can't satisfy a new rule</li>
+          </ul>
+          <p class="story"><span class="kicker">Your story</span><b>A <code>ModelForm</code> cannot validate a <code>UniqueConstraint</code> over a field the form excludes.</b> Django skips constraints touching absent fields, and <code>user</code> is absent by design — so the constraint <em>guarantees</em> correctness while <code>clean_name()</code> <em>explains</em> it. Without the form layer a duplicate is an <code>IntegrityError</code> 500 instead of a field error.</p>
+          <p class="story"><span class="kicker">Second story</span>Adding an inline formset <b>changed every existing POST to the view</b>. Without <code>{{ formset.management_form }}</code> Django cannot tell how many child forms came back and refuses the submission — which surfaces as the <em>parent</em> form apparently rejecting valid data. The symptom points nowhere near the cause.</p>
+          <p class="story"><span class="kicker">Third story — the best one you have</span>Fill in line items, tick who shared each, leave the note blank, submit — and <b>every line item is gone</b>. The POST carried all of it; the server threw it away. A <code>CreateView</code> has two exits after validation and <b>they share no code</b>: <code>form_valid()</code> got the formset bound to the POST, while <code>form_invalid()</code> fell through to <code>get_context_data</code>, whose fallback built a fresh empty one. The comment beside that fallback <em>claimed</em> <code>form_invalid</code> passed a bound formset — which is exactly how it survived review from phase 8 until session 22.</p>
+          <p class="story"><span class="kicker">And the fix you refused</span>No persistence was added, deliberately. <code>sessionStorage</code>, <code>localStorage</code> or a draft table would each be a second copy of state that <em>already exists in the POST</em> — and a second copy can disagree with what was submitted. <b>Re-render from the request.</b> That's the answer that shows judgement, not just a fix.</p>
+          <p class="story"><span class="kicker">Fourth story — a rule that stopped being a gate</span>“Items must sum to the total” used to refuse the whole submission, throwing away everything else the person had typed. Now the breach is <b>recorded as a fact</b>, the expense saves, the view warns — and nothing <em>consumes</em> an unbalanced expense, because <code>balances()</code> skips one rather than charging its items and leaving part of the bill owed by nobody. Frappe has no idiom for “record it, don't act on it”, which is why it takes a lost form to think of it.</p>
+        </div>
+      </details>
+
+      <details class="topic">
+        <summary>
+          <div class="badges"><span class="depth working">working</span><span class="closed">phase-4 · deepened in 6, 13, 14</span></div>
+          <h4>8 · Testing, past what you have</h4>
+          <p class="why">357 tests means the follow-ups get sharper. The interesting answers here are about what tests <em>cannot</em> see.</p>
+          <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="topic-body">
+          <h5>What working means</h5>
+          <ul>
+            <li><code>TestCase</code> vs <code>TransactionTestCase</code>, and why <code>assertRaises(IntegrityError)</code> needs its own <code>atomic()</code> savepoint</li>
+            <li><code>override_settings</code> and <b>what it cannot reach</b> — anything evaluated at import time</li>
+            <li>Mocking external calls, freezing time, fixtures vs factories</li>
+            <li>What coverage does and does not prove; testing Celery with <code>CELERY_TASK_ALWAYS_EAGER</code> and why that is a partial lie</li>
+          </ul>
+          <h5>Answer cold</h5>
+          <ul class="qs"><li>“You have 100% coverage. What can still be broken?”</li></ul>
+          <p class="story"><span class="kicker">Your story</span>The digest command iterated users with <code>queryset.iterator()</code> — a server-side cursor — while committing inside the loop. The commit invalidates the cursor and user two raises <code>InterfaceError</code>. <b>All sixteen tests passed with the bug present</b>, because <code>TestCase</code> wraps each test in a transaction so <code>atomic()</code> is only a savepoint and never really commits. It surfaced only when the command was run for real. That is the clearest demonstration of why both base classes exist.</p>
+        </div>
+      </details>
+
+      <details class="topic">
+        <summary>
+          <div class="badges"><span class="depth working">working</span><span class="closed">phase-6-async · phase-13</span></div>
+          <h4>9 · Celery and background work</h4>
+          <p class="why">The phase this project exists to demonstrate — and the one where “I've used Celery” invites the question that separates users from operators.</p>
+          <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="topic-body">
+          <h5>What working means</h5>
+          <ul>
+            <li>Broker vs result backend; beat vs cron</li>
+            <li><b>Idempotency</b> — the <code>MonthlyDigest(user, month)</code> unique constraint, claimed <em>before</em> the send</li>
+            <li>Retries, <code>acks_late</code>, visibility timeout, what happens when a worker dies mid-task</li>
+            <li>Why passing a model <em>instance</em> to a task is a bug, and you pass the pk</li>
+            <li>Every setting as a failure mode: JSON-only serialisation, <code>prefetch_multiplier=1</code>, <code>autodiscover_tasks</code></li>
+          </ul>
+          <h5>Answer cold</h5>
+          <ul class="qs"><li>“Your task ran twice. Why, and how do you make that harmless?”</li><li>“When would you <em>not</em> use Celery?”</li></ul>
+          <p class="story"><span class="kicker">Your story</span>The rule worth saying out loud: <b>reach for a queue when the trigger is a request; when the trigger is a clock, a command plus cron is usually the honest answer.</b> CSV export is Celery because a user is waiting on a connection. The monthly digest is cron because nobody is. Both can run twice, so both have a guard — an early return on status, and a unique constraint claimed before sending.</p>
+          <p class="story"><span class="kicker">Second story</span>Dispatch with <code>transaction.on_commit</code>, never <code>.delay()</code> inline — the worker is fast enough to query for a row the web process has not committed yet. That is the classic Celery bug, and phase 13 found it living in the setup phase 6 had already built.</p>
+        </div>
+      </details>
+
+      <details class="topic">
+        <summary>
+          <div class="badges"><span class="depth working">working</span><span class="closed">phase-14-caching</span></div>
+          <h4>10 · Caching</h4>
+          <p class="why">Invalidation is the actual hard part, and user-scoped querysets — exactly what this app is made of — are what you must be most careful with.</p>
+          <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="topic-body">
+          <h5>What working means</h5>
+          <ul>
+            <li>Per-site / per-view / template fragment / low-level API, and when each is safe</li>
+            <li>Redis as backend; a separate db index from the broker</li>
+            <li><b>Invalidation</b> — and why bumping a version stamp beats deleting keys</li>
+            <li>Cache stampede; <code>get_or_set</code> is not atomic</li>
+          </ul>
+          <h5>Answer cold</h5>
+          <ul class="qs"><li>“What is safe to cache in a multi-user app?”</li><li>“How do you invalidate a cached aggregation on write?”</li></ul>
+          <p class="story"><span class="kicker">Your story</span><b><code>@cache_page</code> on a signed-in dashboard is a data breach.</b> It keys on the URL and nothing else, so every user requesting <code>/</code> is served whatever the first one put there. There is a test that builds it and demonstrates one user receiving another's page — <em>the view never runs for the second user</em> — and then rejects it for the low-level API with user-scoped, version-stamped keys.</p>
+        </div>
+      </details>
+
+      <details class="topic">
+        <summary>
+          <div class="badges"><span class="depth working">working</span><span class="closed">phase-7 · phase-16</span></div>
+          <h4>11 · Security</h4>
+          <p class="why">The five open <code>check --deploy</code> warnings that made this concrete study material are now closed, and the check is a failing CI gate.</p>
+          <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="topic-body">
+          <h5>What working means</h5>
+          <ul>
+            <li>CSRF: what the token is, why every POST form needs it, why it is per-session</li>
+            <li>XSS and Django's autoescaping — and what <code>|safe</code> costs you</li>
+            <li>SQL injection, and why the ORM protects you until <code>.raw()</code> or <code>.extra()</code></li>
+            <li>Clickjacking middleware; <code>check --deploy</code> and each warning it raises</li>
+            <li>HSTS preload, and why silencing a check with a written reason beats flipping a flag</li>
+          </ul>
+          <p class="story"><span class="kicker">Your story</span>Security settings gated on <code>if not DEBUG</code> are <b>evaluated at import time</b> — which broke 106 of 180 CI tests when <code>SECURE_SSL_REDIRECT</code> turned every test-client request into a 301, and which makes <code>override_settings</code> useless for testing the block. The only honest assertion is a subprocess started without DEBUG, checked in both directions.</p>
+          <p class="story"><span class="kicker">Second story</span>The 500 page could not render, <em>and the comment explaining why caused it</em>: template tags spelled out inside an <b>HTML</b> comment, which Django's parser reads like any other text. The 500 page would itself have 500'd, in production only.</p>
+        </div>
+      </details>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ TIER 3 ============ -->
+<section class="section">
+  <h2>Tier 3 — awareness only</h2>
+  <p class="lede">Know what it is, what problem it solves, and when you would reach for it. Do not sink days here — with two exceptions, which the build promoted out of this tier entirely.</p>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>Topic</th><th>What is enough</th><th>Status now</th></tr></thead>
+    <tbody>
+      <tr><td><b>Signals</b></td><td>What they are and why many teams avoid them. Having an opinion beats having used them.</td><td>built one, argued the case</td></tr>
+      <tr><td><b>Static / media</b></td><td><code>collectstatic</code>, WhiteNoise vs S3, why <code>DEBUG=False</code> stops serving them</td><td>phase-11</td></tr>
+      <tr><td><b>Deployment</b></td><td>gunicorn behind nginx, WSGI vs ASGI, why <code>runserver</code> is not production</td><td>phase-11</td></tr>
+      <tr><td><b>Async Django</b></td><td><code>async def</code> views, ASGI, <code>sync_to_async</code></td><td>touched via ContextVar</td></tr>
+      <tr><td><b>Postgres specifics</b></td><td>Index types, <code>EXPLAIN</code>, pooling, <code>JSONField</code></td><td><b>promoted — phase-12</b></td></tr>
+      <tr><td><b>Django admin</b></td><td><code>list_select_related</code>, <code>readonly_fields</code>, and that admin is not a customer UI</td><td>done from session 1</td></tr>
+      <tr><td><b>Channels / GraphQL</b></td><td>Only if a job description mentions it</td><td>untouched, correctly</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="story" style="margin-top:20px"><span class="kicker">The promotion worth naming</span><b>Postgres specifics and concurrency both left tier 3.</b> A functional unique index, a composite index whose column order you can defend, a GIN index you verified by reading <code>pg_indexes</code> back, and a lost-update race proved in both directions are not “awareness” answers — they are the answers that end an ORM interview early, in your favour.</p>
+</section>
+
+<!-- ============ STORY BANK ============ -->
+<section class="section">
+  <h2>The story bank</h2>
+  <p class="lede">Every one of these is a real commit in your repo, and every one answers <em>“tell me about a time it went wrong.”</em> Rehearse the italic half — the recovery is what they are listening for.</p>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>The story</th><th>What it proves</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td>Swapping <code>AUTH_USER_MODEL</code> cost <em>nothing</em> because the model used the indirection</td><td>you understand why the indirection exists</td><td>phase-1</td></tr>
+      <tr><td>A <code>ModelChoiceField</code> leaks every row in the table unless you scope its queryset</td><td>Django gives you no automatic permissions</td><td>phase-3</td></tr>
+      <tr><td>A <code>ModelForm</code> cannot validate a constraint over a field it excludes</td><td>you know where validation actually lives</td><td>phase-3</td></tr>
+      <tr><td>404 over 403, because a 403 confirms the row exists</td><td>you think about what a response leaks</td><td>phase-3</td></tr>
+      <tr><td><code>CASCADE</code> meeting <code>PROTECT</code> broke account deletion — found by writing the test</td><td>tests find design collisions, not just typos</td><td>phase-4 → 16</td></tr>
+      <tr><td>A multi-line <code>{# #}</code> comment silently leaked into the page</td><td>you read the parser, not the docs</td><td>phase-5</td></tr>
+      <tr><td>Sixteen tests stayed green while a cursor bug waited for production</td><td><code>TestCase</code> vs <code>TransactionTestCase</code>, for real</td><td>phase-6</td></tr>
+      <tr><td>An import-time <code>DEBUG</code> gate turned 106 tests into 301s</td><td>you know what <code>override_settings</code> cannot reach</td><td>phase-7</td></tr>
+      <tr><td>The 500 page would itself have 500'd, in production only</td><td>error paths need tests too</td><td>phase-7</td></tr>
+      <tr><td>Splitting ₹100 three ways loses a paisa unless you allocate remainders</td><td>you have opinions about money types</td><td>phase-8</td></tr>
+      <tr><td>A total read 1800 for a 900 expense — <code>.distinct()</code> does not fix an aggregate</td><td>the deepest ORM answer you own</td><td>phase-9</td></tr>
+      <tr><td><code>has_object_permission</code> never runs on <code>list</code></td><td>DRF depth that tutorials skip</td><td>phase-10</td></tr>
+      <tr><td>WhiteNoise quietly cost the suite 11 seconds per run</td><td>you profile your own tooling</td><td>phase-11</td></tr>
+      <tr><td>An index on <code>to_tsvector(note)</code> is invisible to <code>to_tsvector('english', note)</code></td><td>silent performance failures</td><td>phase-12</td></tr>
+      <tr><td>The race test was run <em>without</em> the lock, and failed — 300 repaid on a 150 debt</td><td>a concurrency test never seen to fail proves nothing</td><td>phase-13</td></tr>
+      <tr><td><code>@cache_page</code> served one user another user's dashboard</td><td>you can name a cache that is a breach</td><td>phase-14</td></tr>
+      <tr><td>A context processor added six queries to every request in the project</td><td>you know what runs on every render</td><td>phase-15</td></tr>
+      <tr><td>CI had never run because there was no remote — the first run found a missing dependency</td><td>green locally is not green</td><td>session 18</td></tr>
+      <tr><td>Every line item vanished on a validation error — <code>form_invalid</code> shares no code with <code>form_valid</code></td><td>you know the CBV's two exits</td><td>phase 17</td></tr>
+      <tr><td>Refused to add <code>localStorage</code> — the state was already in the POST</td><td>you don't fix a bug by duplicating state</td><td>phase 17</td></tr>
+      <tr><td>A data migration crashed because the self participant was named "You"</td><td>backfills meet real data, and real data has a contact named You</td><td>phase 17</td></tr>
+      <tr><td>The API accepted another user's participant as <code>paid_by</code> — scoping, sixth time</td><td>every new entry point forgets the filter</td><td>phase 17</td></tr>
+      <tr><td>Pre-selecting the owner made every blank formset row look "changed"</td><td>you know what <code>has_changed()</code> decides</td><td>phase 17</td></tr>
+      <tr><td>A browser test clicked the first submit button and logged itself out</td><td>the nav's logout form is the first form on every page</td><td>phase 17</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ WHAT IS STILL OPEN ============ -->
+<section class="section">
+  <h2>What is genuinely still open</h2>
+  <p class="lede">The project is <b>frozen</b> as of session 22 — only bugs that lose data or break a working flow get fixed from here. So these are study gaps and one real defect, not a roadmap.</p>
+
+  <div class="open-list">
+    <div class="open-item">
+      <h4>Zero-downtime schema change</h4>
+      <p>Add nullable → backfill → constrain, as three <em>deploys</em>. Phase 17's five migrations gave you the backfill half for real; the deploy-sequencing half is still reading. Cheapest gap to close, and a common interview question.</p>
+      <span class="tagline">reading · half done for real</span>
+    </div>
+    <div class="open-item">
+      <h4>Issue 34 — the self participant is unprotected in the API</h4>
+      <p>The web People pages filter out <code>is_self</code>; the API lists, renames and deletes it like any contact. Renaming it makes you appear under a friend's name; deleting it strands <code>paid_by</code> on every expense you paid. <b>The one open item that can still break something</b> — parked because the self-participant design may need rethinking rather than patching.</p>
+      <span class="tagline">real defect · a fix under the freeze rule</span>
+    </div>
+    <div class="open-item">
+      <h4>Token and JWT authentication</h4>
+      <p>The API ships with session auth. When a token or JWT is the right answer — and what each costs in revocation — is a fair follow-up to any DRF question.</p>
+      <span class="tagline">reading · half a session to try</span>
+    </div>
+    <div class="open-item">
+      <h4>Worker supervision, and serving files properly</h4>
+      <p>Issues 20 and 21: a crashed worker stays down and a lost task is invisible after <code>max_retries</code>; <code>FileResponse</code> streams exports through Python. Both are known, both are deliberate, and being able to say <em>why they're still open</em> is worth as much as closing them.</p>
+      <span class="tagline">deliberate · know the answer, not the fix</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PHASE MAP ============ -->
+<section class="section">
+  <h2>Concept to phase, in one chart</h2>
+  <p class="lede">The reverse lookup: when you want to re-read the code behind a concept, this is which tag to check out. Branch off a tag rather than checking it out — a tag leaves you in detached HEAD and you cannot commit.</p>
+
+  <div class="fig">
+    <div class="fig-head">
+      <span class="fig-name">flowchart · concept to tag</span>
+      <span class="fig-actions">
+        <button class="btn" data-code="m5" data-act="code" type="button">code</button>
+        <button class="btn" data-code="m5" data-act="copy" type="button">copy</button>
+      </span>
+    </div>
+    <div class="fig-body">
+<pre class="mermaid">
+flowchart LR
+    subgraph Models
+      M1[constraints and indexes] --> T0[session 1]
+      M2[custom user model] --> T1[phase-1-foundation]
+      M3[through models] --> T8[phase-8-splitting]
+    end
+    subgraph Views
+      V1[CBVs and scoping] --> T3[phase-3-crud]
+      V2[aggregation dashboard] --> T5[phase-5-dashboard]
+      V3[DRF viewsets] --> T10[phase-10-api]
+    end
+    subgraph Queries
+      Q1[N plus 1 and prefetch] --> T9[phase-9-orm]
+      Q2[subquery and F] --> T9
+      Q3[indexes and full text] --> T12[phase-12-postgres]
+      Q4[locking] --> T13[phase-13-concurrency]
+    end
+    subgraph Infra
+      I1[celery and idempotency] --> T6[phase-6-async]
+      I2[production settings] --> T7[phase-7-production]
+      I3[docker and compose] --> T11[phase-11-docker]
+      I4[redis cache] --> T14[phase-14-caching]
+      I5[middleware and signals] --> T15[phase-15-internals]
+    end
+    subgraph Auth
+      A1[login signup reset] --> T2[phase-2-auth]
+      A2[rate limit and verify] --> T16[phase-16-hardening]
+    end
+    subgraph Phase17
+      P1[formsets and form state] --> T17[phase 17 untagged]
+      P2[paid_by and explicit self] --> T17
+      P3[data migration backfill] --> T17
+      P4[signed settlements] --> T17
+    end
+</pre>
+    </div>
+    <p class="fig-note">Re-implementing a phase by hand is the highest-value revision you can do. <code>git switch -c practice-orm phase-8-splitting</code> puts you at the commit <em>before</em> phase 9 started, with its tests waiting to tell you when you got it right.</p>
+  </div>
+</section>
+
+<footer>
+  Sources: docs/STUDY_MAP.md · BUILD_LOG.md · COMMIT_PLAN.md · DECISIONS.md · HANDOFF_PLAN.md<br>
+  Verified at <code>63956f6</code> — 432 tests green, 9 skipped, 95% coverage · 17 tags plus phase 17, built and awaiting its tag<br>
+  27 decisions logged · 72 Frappe-to-Django gaps · project frozen at session 22, next step is project 2 built solo
+</footer>
+
+</div>
+
+<script>
+(function(){
+  var sources = {};
+  var figs = document.querySelectorAll('.fig');
+  Array.prototype.forEach.call(figs, function(fig, i){
+    var pre = fig.querySelector('pre.mermaid');
+    if (!pre) return;
+    var btn = fig.querySelector('.btn[data-act="code"]');
+    var key = btn ? btn.getAttribute('data-code') : ('fig' + i);
+    sources[key] = pre.textContent.trim();
+
+    var block = document.createElement('pre');
+    block.className = 'code';
+    block.hidden = true;
+    block.textContent = sources[key];
+    var note = fig.querySelector('.fig-note');
+    if (note) { fig.insertBefore(block, note); } else { fig.appendChild(block); }
+    fig._block = block;
+  });
+
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest ? e.target.closest('.btn') : null;
+    if (!btn) return;
+    var fig = btn.closest('.fig');
+    var key = btn.getAttribute('data-code');
+    var act = btn.getAttribute('data-act');
+    if (!fig || !sources[key]) return;
+
+    if (act === 'code'){
+      var hidden = fig._block.hidden;
+      fig._block.hidden = !hidden;
+      btn.textContent = hidden ? 'hide' : 'code';
+      return;
+    }
+
+    if (act === 'copy'){
+      var text = sources[key];
+      var done = function(){
+        btn.textContent = 'copied';
+        btn.classList.add('done');
+        setTimeout(function(){ btn.textContent = 'copy'; btn.classList.remove('done'); }, 1600);
+      };
+      var fallback = function(){
+        fig._block.hidden = false;
+        var codeBtn = fig.querySelector('.btn[data-act="code"]');
+        if (codeBtn) codeBtn.textContent = 'hide';
+        try {
+          var r = document.createRange();
+          r.selectNodeContents(fig._block);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(r);
+          if (document.execCommand('copy')) { done(); return; }
+        } catch (err) {}
+        btn.textContent = 'select it';
+        setTimeout(function(){ btn.textContent = 'copy'; }, 2000);
+      };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(text).then(done, fallback);
+        } else { fallback(); }
+      } catch (err) { fallback(); }
+    }
+  });
+})();
+</script>
