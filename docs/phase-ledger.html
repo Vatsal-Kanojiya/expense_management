@@ -1,0 +1,1225 @@
+<title>Django Phase Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+:root{
+  --paper:#F1F4F1;
+  --surface:#FBFCFA;
+  --surface-2:#E9EEEA;
+  --ink:#141A17;
+  --ink-2:#3D4A43;
+  --ink-3:#6B7A72;
+  --rule:#D5DCD6;
+  --rule-soft:#E4E9E4;
+  --accent:#1B6B4F;
+  --accent-ink:#12513C;
+  --accent-soft:#E0EDE6;
+  --trap:#8A5F0B;
+  --trap-soft:#F5EDDA;
+  --blood:#9E2F26;
+  --blood-soft:#F7E7E4;
+  --shadow:0 1px 2px rgba(20,26,23,.06), 0 8px 24px -16px rgba(20,26,23,.35);
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  --serif:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0D1211;
+    --surface:#141B18;
+    --surface-2:#1B2420;
+    --ink:#E7EDE9;
+    --ink-2:#AEBDB5;
+    --ink-3:#7C8D85;
+    --rule:#24302B;
+    --rule-soft:#1C2622;
+    --accent:#5EC096;
+    --accent-ink:#7FD3AF;
+    --accent-soft:#132720;
+    --trap:#D9AC49;
+    --trap-soft:#2A2214;
+    --blood:#E58175;
+    --blood-soft:#2C1815;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0D1211;
+  --surface:#141B18;
+  --surface-2:#1B2420;
+  --ink:#E7EDE9;
+  --ink-2:#AEBDB5;
+  --ink-3:#7C8D85;
+  --rule:#24302B;
+  --rule-soft:#1C2622;
+  --accent:#5EC096;
+  --accent-ink:#7FD3AF;
+  --accent-soft:#132720;
+  --trap:#D9AC49;
+  --trap-soft:#2A2214;
+  --blood:#E58175;
+  --blood-soft:#2C1815;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.9);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.55;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{
+  max-width:860px;
+  margin:0 auto;
+  padding-inline:20px;
+  padding-block:40px 72px;
+}
+h1,h2,h3{font-family:var(--serif);font-weight:600;text-wrap:balance;margin:0}
+code,kbd{font-family:var(--mono)}
+a{color:var(--accent-ink)}
+
+/* ---------- masthead ---------- */
+.eyebrow{
+  font-family:var(--mono);
+  font-size:11.5px;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+  margin:0 0 14px;
+}
+h1{font-size:clamp(32px,8.5vw,52px);line-height:1.04;letter-spacing:-.022em}
+.standfirst{
+  margin:16px 0 0;
+  max-width:62ch;
+  color:var(--ink-2);
+  font-size:16px;
+}
+.standfirst strong{color:var(--ink);font-weight:600}
+
+.stats{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(104px,1fr));
+  gap:1px;
+  margin-top:28px;
+  background:var(--rule);
+  border:1px solid var(--rule);
+  border-radius:3px;
+  overflow:hidden;
+}
+.stat{background:var(--surface);padding:12px 14px}
+.stat b{
+  display:block;
+  font-family:var(--mono);
+  font-size:19px;
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:-.02em;
+}
+.callout-frozen{
+  margin-top:22px;
+  padding:14px 16px;
+  background:var(--trap-soft);
+  border-radius:3px;
+  max-width:66ch;
+}
+.callout-frozen p{margin:0;font-size:14px;color:var(--ink-2)}
+.callout-frozen b{color:var(--ink)}
+.kicker-frozen{
+  display:block;
+  font-family:var(--mono);
+  font-size:10.5px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--trap);
+  margin-bottom:5px;
+}
+.stat span{
+  display:block;
+  font-size:11px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+  margin-top:2px;
+}
+
+/* ---------- controls ---------- */
+.controls{
+  position:sticky;
+  top:0;
+  z-index:20;
+  background:var(--paper);
+  padding-block:14px 10px;
+  margin-top:36px;
+  border-bottom:1px solid var(--rule);
+}
+.search{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  background:var(--surface);
+  border:1px solid var(--rule);
+  border-radius:3px;
+  padding:9px 12px;
+}
+.search svg{flex:none;color:var(--ink-3)}
+.search input{
+  flex:1;
+  min-width:0;
+  border:0;
+  background:transparent;
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:15px;
+  outline:none;
+}
+.search input::placeholder{color:var(--ink-3)}
+.search:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+
+.lanes{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:10px;
+}
+.lane{
+  font-family:var(--mono);
+  font-size:11.5px;
+  letter-spacing:.04em;
+  color:var(--ink-2);
+  background:var(--surface);
+  border:1px solid var(--rule);
+  border-radius:100px;
+  padding:5px 11px;
+  cursor:pointer;
+}
+.lane:hover{border-color:var(--ink-3)}
+.lane[aria-pressed="true"]{
+  background:var(--ink);
+  border-color:var(--ink);
+  color:var(--paper);
+}
+.lane:focus-visible,.linkish:focus-visible,summary:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+}
+.resultline{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  gap:12px;
+  font-family:var(--mono);
+  font-size:11.5px;
+  color:var(--ink-3);
+  margin-top:10px;
+}
+.linkish{
+  background:none;
+  border:0;
+  padding:0;
+  font:inherit;
+  color:var(--ink-3);
+  text-decoration:underline;
+  text-underline-offset:3px;
+  cursor:pointer;
+}
+.linkish:hover{color:var(--ink)}
+
+/* ---------- phase list ---------- */
+.phases{margin-top:26px;display:flex;flex-direction:column;gap:10px}
+.phase{
+  background:var(--surface);
+  border:1px solid var(--rule);
+  border-radius:3px;
+  overflow:hidden;
+}
+.phase[hidden]{display:none}
+.phase[data-hit="true"]{border-color:var(--accent)}
+.phase > details > summary{
+  position:relative;
+  display:block;
+  padding:14px 34px 14px 60px;
+  cursor:pointer;
+  list-style:none;
+}
+.phase > details > summary::before{
+  content:"";
+  position:absolute;
+  left:48px;
+  top:14px;
+  bottom:14px;
+  width:1px;
+  background:var(--rule-soft);
+}
+summary::-webkit-details-marker{display:none}
+.num{
+  position:absolute;
+  left:14px;
+  top:15px;
+  width:30px;
+  font-family:var(--mono);
+  font-size:12px;
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
+  color:var(--ink-3);
+}
+.tagrow{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+.tag{
+  font-family:var(--mono);
+  font-size:11.5px;
+  font-weight:500;
+  color:var(--accent-ink);
+  background:var(--accent-soft);
+  border-radius:2px;
+  padding:2px 6px;
+  white-space:nowrap;
+}
+.tag.untagged{color:var(--ink-3);background:var(--surface-2)}
+.lanetag{
+  font-family:var(--mono);
+  font-size:10.5px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+}
+.phase h3{
+  font-size:19px;
+  letter-spacing:-.012em;
+  margin-top:5px;
+}
+.ship{margin:4px 0 0;color:var(--ink-2);font-size:14px;max-width:58ch}
+.sig{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px 12px;
+  margin-top:8px;
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--ink-3);
+  font-variant-numeric:tabular-nums;
+}
+.sig .mark{color:var(--blood)}
+details[open] > summary .chev{transform:rotate(90deg)}
+.chev{
+  position:absolute;
+  right:14px;
+  top:18px;
+  color:var(--ink-3);
+  transition:transform .15s ease;
+}
+@media (prefers-reduced-motion:reduce){.chev{transition:none}}
+
+/* ---------- phase body ---------- */
+.body{
+  padding:4px 16px 20px 60px;
+  border-top:1px solid var(--rule-soft);
+  margin-top:2px;
+}
+@media (max-width:520px){
+  .phase > details > summary{padding-left:48px;padding-right:28px}
+  .phase > details > summary::before{left:38px}
+  .num{left:10px;width:26px}
+  .body{padding-left:20px;padding-right:14px}
+}
+.body h4{
+  font-family:var(--mono);
+  font-size:10.5px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+  font-weight:500;
+  margin:18px 0 8px;
+}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin:0;padding:0;list-style:none}
+.chips li{
+  font-family:var(--mono);
+  font-size:12px;
+  line-height:1.35;
+  color:var(--ink-2);
+  background:var(--surface-2);
+  border-radius:2px;
+  padding:3px 7px;
+}
+.note{
+  border-left:2px solid var(--rule);
+  padding:2px 0 2px 13px;
+  margin:14px 0 0;
+  font-size:14px;
+  color:var(--ink-2);
+  max-width:60ch;
+}
+.note b{color:var(--ink);font-weight:600}
+.note code{
+  font-size:12.5px;
+  background:var(--surface-2);
+  padding:1px 4px;
+  border-radius:2px;
+}
+.note.trap{border-color:var(--trap)}
+.note.trap .kicker{color:var(--trap)}
+.note.blood{border-color:var(--blood)}
+.note.blood .kicker{color:var(--blood)}
+.kicker{
+  display:block;
+  font-family:var(--mono);
+  font-size:10.5px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+  margin-bottom:3px;
+}
+.ask{
+  margin-top:18px;
+  padding:12px 14px;
+  background:var(--accent-soft);
+  border-radius:3px;
+  font-size:14px;
+  color:var(--ink);
+  max-width:60ch;
+}
+.ask .kicker{color:var(--accent-ink)}
+.ask p{margin:0}
+.ask p + p{margin-top:6px}
+.files{
+  margin-top:14px;
+  font-family:var(--mono);
+  font-size:11.5px;
+  color:var(--ink-3);
+  word-break:break-word;
+}
+
+/* ---------- sections ---------- */
+.section{margin-top:56px}
+.section > h2{
+  font-size:26px;
+  letter-spacing:-.018em;
+}
+.section > p.lede{margin:10px 0 0;color:var(--ink-2);max-width:62ch}
+.diagram{
+  margin-top:20px;
+  background:var(--surface);
+  border:1px solid var(--rule);
+  border-radius:3px;
+  padding:18px 12px;
+  overflow-x:auto;
+}
+.diagram pre{margin:0;min-width:300px}
+
+.threads{
+  margin-top:22px;
+  display:grid;
+  gap:1px;
+  background:var(--rule);
+  border:1px solid var(--rule);
+  border-radius:3px;
+  overflow:hidden;
+}
+.thread{background:var(--surface);padding:15px 16px}
+.thread h3{font-size:16px;letter-spacing:-.01em}
+.thread p{margin:6px 0 0;font-size:14px;color:var(--ink-2);max-width:60ch}
+.thread .hits{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  margin-top:9px;
+}
+.hits code{
+  font-size:11px;
+  color:var(--ink-3);
+  background:var(--surface-2);
+  padding:2px 6px;
+  border-radius:2px;
+}
+.thread.blood-thread{border-left:2px solid var(--blood)}
+
+table.order{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:18px;
+  font-size:13.5px;
+}
+table.order th,table.order td{
+  text-align:left;
+  padding:9px 10px;
+  border-bottom:1px solid var(--rule-soft);
+  vertical-align:top;
+}
+table.order th{
+  font-family:var(--mono);
+  font-size:10.5px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--ink-3);
+  font-weight:500;
+}
+table.order td:first-child,table.order td:nth-child(2){
+  font-family:var(--mono);
+  font-size:12px;
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.tablewrap{overflow-x:auto}
+
+footer{
+  margin-top:60px;
+  padding-top:20px;
+  border-top:1px solid var(--rule);
+  font-family:var(--mono);
+  font-size:11.5px;
+  color:var(--ink-3);
+  line-height:1.7;
+}
+.empty{
+  display:none;
+  padding:34px 4px;
+  color:var(--ink-3);
+  font-size:14px;
+}
+.empty.show{display:block}
+mark{background:var(--trap-soft);color:var(--ink);border-radius:2px;padding:0 1px}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">expense_management · 23 sessions · 17 tags + phase 17</p>
+  <h1>Django Phase Ledger</h1>
+  <p class="standfirst">Every phase of the expense tracker, with the Django concepts it exercised, the trap each one hides, and the bugs that only showed up when the thing was actually run. Built as a <strong>Frappe-to-Django gap list</strong> — the ranking favours <em>can you do it and explain why</em> over <em>can you define it</em>.</p>
+
+  <div class="stats">
+    <div class="stat"><b>18</b><span>phases built</span></div>
+    <div class="stat"><b>432</b><span>tests green</span></div>
+    <div class="stat"><b>95%</b><span>coverage</span></div>
+    <div class="stat"><b>72</b><span>concepts logged</span></div>
+    <div class="stat"><b>27</b><span>decisions</span></div>
+    <div class="stat"><b>37</b><span>issues tracked</span></div>
+  </div>
+
+  <div class="callout-frozen">
+    <span class="kicker-frozen">Status · session 22</span>
+    <p><b>The project is frozen.</b> Sixteen phases are tagged, phase 17 is built and fixed but <b>not yet tagged</b> — it waits on a click-through. From here only bugs that lose data or break a working flow get fixed; polish stays on the backlog. The next step is project 2, built solo from memory, using this log as the spec.</p>
+  </div>
+</header>
+
+<div class="controls">
+  <label class="search" for="q">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    <input id="q" type="search" placeholder="Search a concept — select_for_update, N+1, formset…" autocomplete="off">
+  </label>
+  <div class="lanes" role="group" aria-label="Filter by track">
+    <button class="lane" id="lane-all" data-lane="all" aria-pressed="true">all 19</button>
+    <button class="lane" data-lane="foundation" aria-pressed="false">foundations</button>
+    <button class="lane" data-lane="crud" aria-pressed="false">crud + forms</button>
+    <button class="lane" data-lane="testing" aria-pressed="false">testing</button>
+    <button class="lane" data-lane="query" aria-pressed="false">queries + data</button>
+    <button class="lane" data-lane="infra" aria-pressed="false">async + infra</button>
+    <button class="lane" data-lane="surface" aria-pressed="false">api + hardening</button>
+  </div>
+  <div class="resultline">
+    <span id="count">19 phases</span>
+    <span><button class="linkish" id="toggle-all" type="button">expand all</button></span>
+  </div>
+</div>
+
+<main class="phases" id="list">
+
+<!-- ===================== PHASE 0 ===================== -->
+<article class="phase" data-lane="foundation" data-key="phase 0 scaffold models admin foreignkey on_delete cascade protect related_name meta constraints uniqueconstraint checkconstraint indexes auth_user_model migrations modeladmin list_select_related domain modelling">
+<details open>
+  <summary>
+    <span class="num">00</span>
+    <span class="tagrow"><code class="tag untagged">untagged · pre-phase-1</code><span class="lanetag">foundations</span></span>
+    <h3>Scaffold and the domain model</h3>
+    <p class="ship">Two models — <code>Category</code> and <code>Expense</code> — with their rules written into the schema, not the controller.</p>
+    <span class="sig"><span>session 1</span><span>925f501 · b3cf8d5</span><span>54 lines by hand</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>ForeignKey + on_delete</li><li>CASCADE vs PROTECT</li><li>related_name</li><li>Meta.ordering</li><li>Meta.constraints</li><li>UniqueConstraint</li><li>CheckConstraint</li><li>Meta.indexes</li><li>verbose_name_plural</li><li>settings.AUTH_USER_MODEL</li><li>__str__</li><li>migrations as code</li><li>@admin.register</li><li>list_select_related</li>
+    </ul>
+    <p class="note"><span class="kicker">The Frappe gap</span>Frappe syncs schema from DocType JSON on <code>bench migrate</code> and handles delete policy through Link field config. Django makes both of those <b>your decisions, written down and version-controlled</b>.</p>
+    <p class="note trap"><span class="kicker">Done out of order</span>Models landed before the foundation phase. Phase 1 corrects it while the cost is still one DB rebuild — a custom user model gets more expensive every session you delay it.</p>
+    <div class="ask"><span class="kicker">Answer cold</span><p>“Why does <code>Expense.user</code> point at <code>settings.AUTH_USER_MODEL</code> instead of importing <code>User</code>?” — the answer is phase 1's payoff, one session later.</p></div>
+    <p class="files">expenses/models.py · expenses/admin.py · migrations/0001_initial.py</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 1 ===================== -->
+<article class="phase" data-lane="foundation" data-key="phase 1 foundation custom user model abstractuser abstractbaseuser auth_user_model swappable_dependency useradmin password hashing django-environ secret_key database_url gitignore requirements env secrets fail loud">
+<details>
+  <summary>
+    <span class="num">01</span>
+    <span class="tagrow"><code class="tag">phase-1-foundation</code><span class="lanetag">foundations</span></span>
+    <h3>The irreversible one</h3>
+    <p class="ship">Custom user model, secrets out of source, venv out of the index — the three things that get more expensive every session you delay them.</p>
+    <span class="sig"><span>session 2</span><span>f180f13 · 448faea · b78bf8f</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>AbstractUser vs AbstractBaseUser</li><li>AUTH_USER_MODEL</li><li>migrations.swappable_dependency</li><li>subclassing UserAdmin</li><li>django-environ typed casting</li><li>fail-loud config defaults</li><li>DATABASE_URL</li><li>makemigrations --check --dry-run</li><li>git rm --cached vs git rm</li>
+    </ul>
+    <p class="note"><span class="kicker">The payoff moment</span>Switching <code>AUTH_USER_MODEL</code> required <b>zero changes</b> to <code>expenses/models.py</code> and zero to its initial migration — the model already used the indirection and the migration already used <code>swappable_dependency()</code>. Only the SQLite file had to be rebuilt. That <em>is</em> the argument for the indirection, and it is a good interview story.</p>
+    <p class="note trap"><span class="kicker">Security trap</span>A plain <code>ModelAdmin</code> on a user model stores <b>clear-text passwords</b>. <code>UserAdmin</code> must be subclassed, not replaced — Frappe hashes inside the User controller, so this never surfaces there.</p>
+    <p class="note trap"><span class="kicker">Fail loud, not safe</span><code>SECRET_KEY</code> has no default on purpose: unset, it raises <code>ImproperlyConfigured</code> at startup rather than silently falling back to a shared value. <code>DEBUG</code> is the opposite — it defaults to <code>False</code>, so forgetting it fails safe.</p>
+    <div class="ask"><span class="kicker">Answer cold</span><p>“When do you swap the user model, and what does it cost if you wait?” — after any row points at it, the answer is a data migration instead of a rebuild.</p></div>
+    <p class="files">accounts/models.py · accounts/admin.py · config/settings.py · .env.example</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 2 ===================== -->
+<article class="phase" data-lane="foundation" data-key="phase 2 auth authentication loginview logoutview passwordresetview passwordchangeview usercreationform set_password password_hashers auth_password_validators session fixation uidb64 token password_reset_timeout mail.outbox login_url redirect_authenticated_user open redirect next test_runner">
+<details>
+  <summary>
+    <span class="num">02</span>
+    <span class="tagrow"><code class="tag">phase-2-auth</code><span class="lanetag">foundations</span></span>
+    <h3>Assembling auth yourself</h3>
+    <p class="ship">Login, logout, signup, password change and the four-step reset — Django ships the views, you wire the URLs, templates and policy.</p>
+    <span class="sig"><span>session 5 — built <em>after</em> phases 3–4.5</span><span>28 tests</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>LoginView / LogoutView</li><li>PasswordChangeView</li><li>PasswordResetView ×4 steps</li><li>UserCreationForm.Meta.model</li><li>set_password</li><li>PASSWORD_HASHERS</li><li>AUTH_PASSWORD_VALIDATORS</li><li>session fixation + key rotation</li><li>uidb64 + token</li><li>PASSWORD_RESET_TIMEOUT</li><li>email backends</li><li>mail.outbox</li><li>LOGIN_URL</li><li>LOGIN_REDIRECT_URL</li><li>redirect_authenticated_user</li><li>open-redirect on ?next=</li><li>custom TEST_RUNNER</li>
+    </ul>
+    <p class="note"><span class="kicker">The bet that held</span>Auth was deliberately built <b>after</b> CRUD, and landing it changed <code>LOGIN_URL</code>, one test assertion, and <b>no view code in <code>expenses/</code></b> — because every view had been written against <code>request.user</code> from the start.</p>
+    <p class="note trap"><span class="kicker">Enumeration</span>Login and reset messages must not reveal whether an account exists. Frappe's messages are framework-provided; here the wording is yours to get right.</p>
+    <p class="note trap"><span class="kicker">Model change first</span>A unique, required <code>email</code> had to land <em>before</em> reset, because password reset looks users up by email and <code>AbstractUser</code> leaves it blank and non-unique.</p>
+    <div class="ask"><span class="kicker">Answer cold</span><p>“A user logs in — walk me from POST to the next request being authenticated.” What <code>login()</code> writes, where the session lives, what the cookie holds, how <code>AuthenticationMiddleware</code> puts <code>request.user</code> there.</p><p>“How would you add login-by-email without breaking username login?” — <code>AUTHENTICATION_BACKENDS</code>.</p></div>
+    <p class="files">accounts/urls.py · accounts/views.py · accounts/forms.py · config/test_runner.py</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 3 ===================== -->
+<article class="phase" data-lane="crud" data-key="phase 3 crud vertical slice cbv listview createview updateview deleteview mro mixin get_queryset get_object get_form_kwargs form_valid reverse_lazy app_name include modelchoicefield queryset clean csrf_token select_related n+1 paginate_by messages protectederror idor scoping owner">
+<details>
+  <summary>
+    <span class="num">03</span>
+    <span class="tagrow"><code class="tag">phase-3-crud</code><span class="lanetag">crud + forms</span></span>
+    <h3>The security boundary</h3>
+    <p class="ship">Category and expense CRUD, every queryset scoped to <code>request.user</code>. The phase that matters most for interviews.</p>
+    <span class="sig"><span>session 3</span><span>ddf74ad · 2a41c15 · 57b91d2</span><span>11-row list = 4 queries</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>ListView / CreateView / UpdateView / DeleteView</li><li>mixin MRO and ordering</li><li>get_queryset vs get_object</li><li>get_form_kwargs</li><li>form_valid</li><li>reverse_lazy vs reverse</li><li>app_name namespacing</li><li>include()</li><li>CBV template-name conventions</li><li>ModelChoiceField.queryset</li><li>clean_&lt;field&gt;</li><li>{% csrf_token %}</li><li>select_related</li><li>paginate_by</li><li>django.contrib.messages</li><li>ProtectedError</li><li>template inheritance</li>
+    </ul>
+    <h4>Four boundaries, four failure modes</h4>
+    <div class="tablewrap"><table class="order">
+      <thead><tr><th>Boundary</th><th>Mechanism</th><th>If you miss it</th></tr></thead>
+      <tbody>
+        <tr><td>Who sees the page</td><td>LoginRequiredMixin</td><td>anonymous access</td></tr>
+        <tr><td>Whose rows list</td><td>get_queryset().filter(user=…)</td><td>other users' data in the list</td></tr>
+        <tr><td>Whose row edits</td><td>scope get_queryset, not get_object</td><td><b>IDOR</b> — /expenses/3/edit/ edits someone else's row</td></tr>
+        <tr><td>What the dropdown offers</td><td>ModelChoiceField.queryset in the form</td><td>leaks names, <b>and</b> a crafted POST files against one</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note trap"><span class="kicker">The subtle one</span>A <code>ModelChoiceField</code> defaults to <b>every row in the table</b>. Frappe filters Link fields by permission automatically; Django gives you nothing. This trap returns in phases 5, 8 and 8 again.</p>
+    <p class="note"><span class="kicker">Two-layer validation</span>Constraints <b>guarantee</b>, form <code>clean_*</code> methods <b>explain</b>. Without the form layer a duplicate is an <code>IntegrityError</code> 500 instead of a field error. Note a ModelForm <em>cannot</em> validate <code>UniqueConstraint(user, name)</code> alone — Django skips constraints touching fields absent from the form, and <code>user</code> is absent by design.</p>
+    <p class="note"><span class="kicker">Refactor timing</span>The mixins were extracted <b>after</b> the duplication was real — 6 × <code>get_queryset</code>, 4 × <code>get_form_kwargs</code> — not in anticipation of it. views.py 147 → 101 lines.</p>
+    <div class="ask"><span class="kicker">Answer cold</span><p>“How do you restrict a view to only the rows the current user owns?” and “Why 404 rather than 403 for another user's record?” — you have built both.</p></div>
+    <p class="files">expenses/views.py · forms.py · mixins.py · urls.py</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 4 ===================== -->
+<article class="phase" data-lane="testing" data-key="phase 4 tests testcase setuptestdata setup assertraises integrityerror atomic savepoint subtest force_login assertredirects asserttemplateused assertcontains assertformerror assertnumqueries refresh_from_db mutation testing coverage">
+<details>
+  <summary>
+    <span class="num">04</span>
+    <span class="tagrow"><code class="tag">phase-4-tests</code><span class="lanetag">testing</span></span>
+    <h3>Tests as a deliverable</h3>
+    <p class="ship">59 tests across models, forms, views and ownership boundaries — including the one that proves phase 3 works.</p>
+    <span class="sig"><span>session 4</span><span>ad9e729 · e6da1e1 · c95e20a</span><span class="mark">found a real bug</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>TestCase transaction rollback</li><li>setUpTestData vs setUp</li><li>assertRaises(IntegrityError) + atomic()</li><li>subTest</li><li>force_login</li><li>assertRedirects</li><li>assertTemplateUsed</li><li>assertContains</li><li>assertFormError</li><li>assertNumQueries</li><li>refresh_from_db</li><li>test DB create/teardown</li><li>mutation testing</li>
+    </ul>
+    <p class="note blood"><span class="kicker">Drew blood</span><b>CASCADE meeting PROTECT.</b> Deleting a user cascades to their expenses, but a category's <code>PROTECT</code> refuses — the two policies collided and the delete failed. Found by a test, and it stayed open as issue 10 until phase 16 solved it with an <em>ordered</em> delete rather than by weakening either policy.</p>
+    <p class="note trap"><span class="kicker">Savepoints</span><code>assertRaises(IntegrityError)</code> needs its own <code>transaction.atomic()</code> around it. Without that savepoint the error poisons the outer transaction and every later query in the test fails. The <code>atomic()</code> is the savepoint, not decoration — a rule phase 13 has to restate.</p>
+    <p class="note"><span class="kicker">Honest note</span>In a real team these are written in the same commit as the feature. Splitting them out is a learning-project concession so the whole test surface is visible at once.</p>
+    <div class="ask"><span class="kicker">Answer cold</span><p>“User A requests user B's expense — what should happen, and which test proves it?” <code>test_permissions.py</code>: 404, not 403.</p></div>
+    <p class="files">expenses/tests/test_models.py · test_forms.py · test_views.py · test_permissions.py</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 4.5 ===================== -->
+<article class="phase" data-lane="testing" data-key="phase 4.5 tooling ruff lint format coverage threshold pre-commit github actions ci readme fast password hasher test runner">
+<details>
+  <summary>
+    <span class="num">4.5</span>
+    <span class="tagrow"><code class="tag">phase-4.5-tooling</code><span class="lanetag">testing</span></span>
+    <h3>The machine that keeps it honest</h3>
+    <p class="ship">Ruff, coverage at 100% against a 95% gate, pre-commit hooks, GitHub Actions, README.</p>
+    <span class="sig"><span>session 4.5</span><span>fast hasher = 40× faster suite</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>ruff (replaces black + flake8 + isort)</li><li>coverage[toml] threshold</li><li>pre-commit hooks</li><li>GitHub Actions matrix</li><li>custom TEST_RUNNER</li><li>MD5PasswordHasher in tests</li>
+    </ul>
+    <p class="note"><span class="kicker">Why the hasher matters</span>Password hashers are <b>deliberately slow</b> — that is their job. A suite that creates users pays that cost per user, so the test runner swaps in a fast hasher: 40× faster, and it teaches what <code>PASSWORD_HASHERS</code> is for.</p>
+    <p class="note blood"><span class="kicker">Drew blood — four phases later</span>CI existed from here, but <b>there was no git remote, so it had never actually run</b>. Issue 24 sat open until session 18 pushed to GitHub — and the very first run failed on <code>No module named 'celery'</code>, a dependency missing from <code>requirements.txt</code> for ten sessions. A green local suite is not a green build.</p>
+    <div class="ask"><span class="kicker">Answer cold</span><p>“Your tests pass locally — what could still be broken?” The environment built from your manifest alone, which is exactly what this project got wrong.</p></div>
+    <p class="files">pyproject.toml · .pre-commit-config.yaml · .github/workflows/ci.yml</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 5 ===================== -->
+<article class="phase" data-lane="query" data-key="phase 5 dashboard read layer aggregation queryset as_manager values annotate group by sum count aggregate templateview forms get parameters icontains btree index querystring comment assertnumqueries mock patch frozen dataclass">
+<details>
+  <summary>
+    <span class="num">05</span>
+    <span class="tagrow"><code class="tag">phase-5-dashboard</code><span class="lanetag">queries + data</span></span>
+    <h3>Aggregation, written by hand</h3>
+    <p class="ship">A dashboard over a date range, with the aggregation extracted to a reusable layer up front — because phase 6's digest needs the same query.</p>
+    <span class="sig"><span>session 6</span><span>06ae873 · c41b0ee</span><span>46 tests</span><span class="mark">drew blood</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>custom QuerySet + as_manager()</li><li>values() before annotate() = the GROUP BY switch</li><li>Sum / Count</li><li>Sum returns None when empty</li><li>aggregate() vs annotate()</li><li>TemplateView</li><li>forms over GET parameters</li><li>icontains can't use a btree index</li><li>{% querystring %}</li><li>{% comment %} vs {# #}</li><li>assertNumQueries as a flatness property</li><li>mock.patch for dates</li><li>frozen dataclass as view-model</li>
+    </ul>
+    <p class="note"><span class="kicker">The one to memorise</span><code>values()</code> <b>before</b> <code>annotate()</code> groups by those fields; <code>annotate()</code> first annotates each row. Same two calls, different SQL. Frappe's report builder does this declaratively, so the ordering never has to be understood.</p>
+    <p class="note blood"><span class="kicker">Drew blood</span>Django's two comment syntaxes have different rules — <code>{# #}</code> <b>cannot span lines</b>, and a multi-line one silently leaks its text into the page. Jinja (so Frappe) handles it fine, which is exactly why it wasn't expected. This gap drew blood <b>three times</b> across the project.</p>
+    <p class="note trap"><span class="kicker">Designed for reuse</span>The dashboard takes a <b>date range</b> defaulting to the current month rather than a month picker, so one query shape serves both the UI and the monthly digest email. Aggregation lives in <code>managers.py</code> / <code>summaries.py</code>, never in the view.</p>
+    <div class="ask"><span class="kicker">Answer cold</span><p>“Total per category for one user, one query” — and why <code>Sum</code> comes back as <code>None</code>, not <code>0</code>, when there is nothing to add.</p></div>
+    <p class="files">expenses/managers.py · summaries.py · filters.py · views.py</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 6 ===================== -->
+<article class="phase" data-lane="infra" data-key="phase 6 async celery redis broker shared_task bind autoretry_for retry_backoff jitter max_retries acks_late prefetch_multiplier idempotency transaction.on_commit filefield upload_to contentfile iterator cursor testcase transactiontestcase basecommand add_arguments commandError call_command integrityerror fileresponse media_root csv export digest cron beat">
+<details>
+  <summary>
+    <span class="num">06</span>
+    <span class="tagrow"><code class="tag">phase-6-async</code><span class="lanetag">async + infra</span></span>
+    <h3>Queue or clock</h3>
+    <p class="ship">CSV export through Celery, monthly digest through a management command — and the argument for why they are different machines.</p>
+    <span class="sig"><span>session 7</span><span>a78713d · 15a9d2a · 5eedafc</span><span class="mark">the project's best bug</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>Celery app + config_from_object namespace</li><li>shared_task vs @app.task</li><li>bind=True</li><li>autoretry_for</li><li>retry_backoff + jitter</li><li>max_retries</li><li>acks_late</li><li>prefetch_multiplier = 1</li><li>autodiscover_tasks</li><li>transaction.on_commit</li><li>FileField with callable upload_to</li><li>ContentFile</li><li>queryset.iterator() + cursor lifetime</li><li>TestCase vs TransactionTestCase</li><li>BaseCommand / add_arguments / CommandError</li><li>call_command</li><li>IntegrityError as a concurrency primitive</li><li>FileResponse</li>
+    </ul>
+    <h4>The whole phase in one table</h4>
+    <div class="tablewrap"><table class="order">
+      <thead><tr><th></th><th>CSV export</th><th>Monthly digest</th></tr></thead>
+      <tbody>
+        <tr><td>Trigger</td><td>a user clicks</td><td>the 1st of the month</td></tr>
+        <tr><td>Machinery</td><td><b>Celery task</b></td><td><b>command + cron</b></td></tr>
+        <tr><td>Why</td><td>request-triggered — inline holds the connection open</td><td>clock-triggered — nobody is waiting</td></tr>
+        <tr><td>Runs twice?</td><td>yes, acks_late redelivers</td><td>yes, cron re-fires after a restart</td></tr>
+        <tr><td>Guard</td><td>status == COMPLETE early return</td><td>UniqueConstraint(user, month), claimed <em>before</em> sending</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note"><span class="kicker">Say this out loud in an interview</span>Reach for a queue when the trigger is a <b>request</b>. When the trigger is a <b>clock</b>, a command plus cron is usually the honest answer.</p>
+    <p class="note blood"><span class="kicker">Drew blood — and all 16 tests stayed green</span>The digest iterated users with <code>queryset.iterator()</code> (a server-side cursor) while <b>committing inside the loop</b>. The commit invalidates the cursor; user two raises <code>InterfaceError</code>. Every <code>TestCase</code> passed, because <code>TestCase</code> wraps each test in a transaction so <code>atomic()</code> is only a savepoint and never really commits. It surfaced only when the command was run for real. <code>TransactionTestCase</code> now pins it — the clearest demonstration in this project of why both base classes exist.</p>
+    <p class="note trap"><span class="kicker">Two rules that prevent the classic bugs</span><b>Tasks take primary keys, never model instances</b> — arguments are JSON on the broker, so an instance either fails to serialise or arrives stale. And dispatch with <code>transaction.on_commit</code>, never <code>.delay()</code> inline: the worker is fast enough to query for a row the web process has not committed.</p>
+    <p class="note trap"><span class="kicker">Each Celery setting is a failure mode</span>JSON-only serialisation (pickle turns broker write access into RCE on every worker) · <code>acks_late</code> (a killed worker redelivers — the price is that tasks must be idempotent) · <code>prefetch_multiplier=1</code> (with acks_late, a worker holding ten prefetched tasks redelivers all ten when it dies) · <code>autodiscover_tasks</code> (without it the worker starts fine and fails at call time with "unregistered task").</p>
+    <div class="ask"><span class="kicker">Answer cold</span><p>“You've used Celery — how do you stop a task running twice?” This is the question the whole phase exists for. Idempotency, claimed before the side effect, enforced by a unique constraint.</p></div>
+    <p class="files">config/celery.py · expenses/tasks.py · management/commands/</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 7 ===================== -->
+<article class="phase" data-lane="infra" data-key="phase 7 production readiness hsts secure cookies ssl redirect silenced_system_checks logging dict error pages 400 403 404 500 template syntax error deploy check ci gate override_settings subprocess import time debug">
+<details>
+  <summary>
+    <span class="num">07</span>
+    <span class="tagrow"><code class="tag">phase-7-production</code><span class="lanetag">async + infra</span></span>
+    <h3>Settings that only run in production</h3>
+    <p class="ship">HSTS, secure cookies, a logging dict, error pages — and the discovery that a <code>DEBUG</code> gate runs at <em>import</em> time.</p>
+    <span class="sig"><span>session 8</span><span>aa4fa4d · 61f9fc1 · 80e0fb0</span><span class="mark">two bugs nobody predicted</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>SECURE_SSL_REDIRECT</li><li>SECURE_HSTS_SECONDS + preload</li><li>SESSION_COOKIE_SECURE</li><li>CSRF_COOKIE_SECURE</li><li>SILENCED_SYSTEM_CHECKS</li><li>LOGGING dict</li><li>check --deploy --fail-level</li><li>404/500 handlers</li><li>override_settings and its limits</li><li>subprocess as the only honest assertion</li>
+    </ul>
+    <p class="note blood"><span class="kicker">Drew blood — 106 of 180 tests</span>Security settings are gated on <code>if not DEBUG</code>, and <b>that block is evaluated at import time</b>. CI runs tests with <code>DEBUG=False</code> so error pages are exercised — which switched on <code>SECURE_SSL_REDIRECT</code>, and every test-client request became a <code>301</code> before reaching a view. Fixed by relaxing that one setting in the test job only, with a separate <code>deploy-checks</code> job keeping the real config honest.</p>
+    <p class="note trap"><span class="kicker">The consequence nobody expects</span><b><code>override_settings</code> cannot test this.</b> By the time any test runs, the <code>if not DEBUG</code> block has already run or already been skipped — flipping the flag in a decorator changes the flag and nothing else. The only honest assertion is a <b>subprocess</b> started without DEBUG, asserting in both directions: the production config passes <code>check --deploy</code>, the development config deliberately fails it.</p>
+    <p class="note blood"><span class="kicker">Drew blood — the 500 page would have 500'd</span><code>500.html</code> is deliberately standalone (Django renders it with an empty context and no context processors). The comment explaining that rule <b>spelled the template tags out inside an HTML comment</b> — and an HTML comment is not a template comment. Django parsed them, the file raised <code>TemplateSyntaxError</code>, in production only. Second time this exact gap drew blood. <em>Django's parser does not care what wrapper your text is in.</em></p>
+    <p class="note trap"><span class="kicker">The test that missed it</span>It read the file as a string and asserted <code>"{% extends"</code> was absent — it matched the file's own documentation and failed for the wrong reason. It now asserts against the <b>compiled nodelist</b> and renders with an empty context. Test behaviour, not text.</p>
+    <p class="note"><span class="kicker">A silence with a reason</span><code>SILENCED_SYSTEM_CHECKS = ["security.W021"]</code> is an answer, not a suppression: HSTS preload bakes your domain into browser binaries, takes months to leave, and breaks any subdomain that cannot serve HTTPS.</p>
+    <p class="files">config/settings.py · templates/500.html · .github/workflows/ci.yml</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 8 ===================== -->
+<article class="phase" data-lane="crud" data-key="phase 8 splitting many to many through model itemshare manytomanyfield inlineformset_factory management_form formset clean commit=False save_m2m modelmultiplechoicefield largest remainder decimal quantize invariant checkconstraint protect cascade participants line items">
+<details>
+  <summary>
+    <span class="num">08</span>
+    <span class="tagrow"><code class="tag">phase-8-splitting</code><span class="lanetag">crud + forms</span></span>
+    <h3>Both halves of many-to-many</h3>
+    <p class="ship">Shared expenses: split evenly across participants, or itemise with each line shared by its own subset.</p>
+    <span class="sig"><span>session 9</span><span>6 commits</span><span>240 tests</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>ManyToManyField</li><li>explicit through= model</li><li>inlineformset_factory</li><li>formset management_form</li><li>BaseFormSet.clean()</li><li>commit=False + save_m2m()</li><li>ModelMultipleChoiceField scoping</li><li>form_kwargs on a formset</li><li>transaction.atomic in a mixin</li><li>Decimal quantize</li><li>largest-remainder allocation</li><li>property-based assertions</li>
+    </ul>
+    <h4>The comparison this phase exists for</h4>
+    <div class="tablewrap"><table class="order">
+      <thead><tr><th></th><th>Expense.participants</th><th>ItemShare</th></tr></thead>
+      <tbody>
+        <tr><td>Declared as</td><td>ManyToManyField</td><td>explicit through model</td></tr>
+        <tr><td>Join table</td><td>generated by Django</td><td>a model you wrote</td></tr>
+        <tr><td>Carries data</td><td>no</td><td>weight</td></tr>
+        <tr><td>Delete policy</td><td><b>CASCADE, hard-coded</b> — there is no on_delete to pass</td><td>your choice; here PROTECT</td></tr>
+        <tr><td>Delete a participant</td><td>silently drops their rows</td><td>refused</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note"><span class="kicker">The rule</span>The moment a relationship needs a <b>payload</b> or a <b>delete policy of its own</b>, it has to become a real model. A tag list would only ever have taught the easy half — which is why splitting replaced the planned tags-and-budgets feature.</p>
+    <p class="note trap"><span class="kicker">The invariant a database cannot hold</span>Line items must sum to the expense total. A <code>CheckConstraint</code> sees <b>one row</b> and cannot reach across siblings — so this lives in the formset's <code>clean()</code>, and the <b>transaction</b> is what makes it hold at rest rather than only at submit time. Deciding <em>which</em> invariants a schema can carry is the lesson; validate-in-the-form and constrain-in-the-database are not competing answers.</p>
+    <p class="note blood"><span class="kicker">Superseded in phase 17 — read this second</span>That rule was a <b>gate</b>: a breach refused the whole submission and threw away every other field the person had filled in. Phase 17 demoted it to a <b>fact</b>. The breach is recorded, the expense saves, the view warns — and nothing <em>consumes</em> an unbalanced expense, because <code>is_balanced()</code> is the predicate and <code>balances()</code> skips one rather than charging its items and leaving part of the bill owed by nobody. <b>A validation rule can be a fact rather than a gate</b> — Frappe has no idiom for that at all, which is why it never occurs to you until a user loses a form.</p>
+    <p class="note blood"><span class="kicker">Drew blood</span>Adding a formset <b>changed every existing POST to the view</b>. Without <code>{{ formset.management_form }}</code> Django cannot tell how many child forms came back and refuses the submission — which surfaces as the <em>parent</em> form apparently rejecting valid data. Nine test POSTs needed updating, and the symptom points nowhere near the cause.</p>
+    <p class="note trap"><span class="kicker">Money, properly</span><code>100.00</code> split three ways is <code>33.333…</code>, and no rounding of that number three times adds back to 100. Half-up loses a paisa at 99.99; rounding up invents one at 100.02. Neither is visible on one bill and <b>both accumulate</b>. <code>allocate()</code> floors every share then hands leftover paisas to whoever was rounded down hardest, ties to the earlier position so it is reproducible. Tests assert the property — the parts reconstitute the whole — across a grid, not one lucky example.</p>
+    <p class="note trap"><span class="kicker">Scoping, third and fourth time</span><code>ModelMultipleChoiceField</code> leaks exactly as <code>ModelChoiceField</code> does — unscoped, the "split with" boxes list every other user's people, and the per-item boxes multiply that leak by the number of rows.</p>
+    <div class="ask"><span class="kicker">Answer cold</span><p>“When do you need <code>through=</code>?” — and “where does an invariant live when no constraint can express it?”</p></div>
+    <p class="files">expenses/models.py · splitting.py · forms.py · mixins.py</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 9 ===================== -->
+<article class="phase" data-lane="query" data-key="phase 9 orm depth n+1 select_related prefetch_related nested prefetch distinct aggregate subquery outerref f() expression only defer exists count annotation filter query counts assertnumqueries q objects search audit bulk_create">
+<details>
+  <summary>
+    <span class="num">09</span>
+    <span class="tagrow"><code class="tag">phase-9-orm</code><span class="lanetag">queries + data</span></span>
+    <h3>One join, three different bugs</h3>
+    <p class="ship">Search across notes, items and people — which crosses a multi-valued relation, and that single fact breaks three things in three different ways.</p>
+    <span class="sig"><span>session 10</span><span>9f64811 · 4f05400</span><span>266 tests</span><span class="mark">two real bugs</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>select_related vs prefetch_related</li><li>nested Prefetch with a filtered queryset</li><li>Q objects</li><li>.distinct()</li><li>Subquery / OuterRef</li><li>F() expressions</li><li>only() / defer()</li><li>exists() vs count()</li><li>bulk_create</li><li>assertNumQueries</li><li>annotation vs re-traversal</li>
+    </ul>
+    <div class="tablewrap"><table class="order">
+      <thead><tr><th>Symptom</th><th>Why</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>One expense listed twice</td><td>the join produces a row per matching child</td><td>.distinct()</td></tr>
+        <tr><td>Total reads 1800 for a 900 expense</td><td>Sum() ate the duplicate rows before DISTINCT could remove them</td><td>aggregate over distinct <b>pks</b>, via a subquery</td></tr>
+        <tr><td>A query per row for “shared with”</td><td>select_related cannot follow a multi-valued relation</td><td>nested Prefetch</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note blood"><span class="kicker">Drew blood — the dangerous one</span><b><code>.distinct()</code> does not fix an aggregate.</b> DISTINCT removes duplicate rows from a result set; the aggregate has already eaten them. And the failure returns a <em>plausible wrong number</em>, not an error — nothing tells you it happened.</p>
+    <p class="note"><span class="kicker">State this properly, once</span>Forward FK or one-to-one → <code>select_related</code>: one query, a JOIN <b>widens</b> the row. Multi-valued (reverse FK, M2M) → <code>prefetch_related</code>: a second query, because a JOIN would <b>multiply</b> rows instead of widening them. The expense list uses both.</p>
+    <p class="note trap"><span class="kicker">Why Subquery, not Max</span>“Last spend: ₹120 on 1 Mar” cannot be two aggregates — <code>Max(spent_on)</code> and <code>Max(amount)</code> pair the latest date with the largest amount and print <b>a combination that never happened</b>. <code>Subquery</code> selects one row and reads fields off it; <code>OuterRef("pk")</code> is the correlation. Note a Subquery <b>inherits no scoping</b> from the queryset it annotates.</p>
+    <p class="note blood"><span class="kicker">Drew blood</span>Filtering on an annotation is not the same as filtering on the relation again. <code>.filter(items__isnull=False)</code> after <code>.annotate(Sum("items__amount"))</code> adds a <b>second join</b>, which multiplied rows and made every un-itemised expense report as broken. <code>Sum</code> over no rows is NULL, so <code>.filter(items_total__isnull=True)</code> already answers it with no extra join.</p>
+    <p class="note trap"><span class="kicker">Three more worth carrying</span><code>F()</code> keeps a comparison <b>in the database</b> — there is no Python value that means “this row's amount”. <code>only()</code>/<code>defer()</code> can <b>create</b> the N+1 they exist to avoid, because a deferred field is lazy, not missing. And <code>exists()</code> can stop at the first match where <code>count()</code> must scan, while <code>if queryset:</code> evaluates and caches every row.</p>
+    <p class="note"><span class="kicker">The other half of phase 8's trade</span>An invariant that moved into a form is one the database cannot hold — so the admin, a shell, a data migration or an older version of the code can violate it silently. <code>check_splits</code> is the audit command that reads the rows at rest.</p>
+    <div class="ask"><span class="kicker">Answer cold</span><p>“Spot the N+1 in this view” is table stakes. The one that separates you: “your total is double — why?”</p></div>
+    <p class="files">expenses/views.py · filters.py · managers.py · tests/test_orm.py</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 10 ===================== -->
+<article class="phase" data-lane="surface" data-key="phase 10 api drf django rest framework modelserializer validate has_object_permission get_queryset viewset router cursor pagination throttling versioning writable nested serializer n+1 data leak">
+<details>
+  <summary>
+    <span class="num">10</span>
+    <span class="tagrow"><code class="tag">phase-10-api</code><span class="lanetag">api + hardening</span></span>
+    <h3>The permission that never runs</h3>
+    <p class="ship">A versioned JSON API over the same data — and the DRF finding most tutorials make it easy to miss.</p>
+    <span class="sig"><span>session 11</span><span>ecc10d7</span><span>17 tests</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>ModelSerializer</li><li>validate_&lt;field&gt; mirroring clean_&lt;field&gt;</li><li>writable nested serializers</li><li>ViewSet + router</li><li>get_queryset as the boundary</li><li>has_object_permission</li><li>CursorPagination</li><li>throttling</li><li>URL path versioning</li><li>serializer N+1</li>
+    </ul>
+    <div class="tablewrap"><table class="order">
+      <thead><tr><th>Action</th><th>Calls get_object()</th><th>Object permission consulted</th></tr></thead>
+      <tbody>
+        <tr><td>retrieve / update / destroy</td><td>yes</td><td><b>yes</b></td></tr>
+        <tr><td>list</td><td><b>no</b></td><td><b>no</b></td></tr>
+        <tr><td>create</td><td>no</td><td>no</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note blood"><span class="kicker">The finding worth carrying into an interview</span>A ViewSet whose only protection is a <code>permission_classes</code> entry returns <b>every user's rows</b> from its collection endpoint while correctly refusing them one at a time. The boundary is <code>get_queryset()</code> — exactly as it is for the server-rendered views. <code>IsOwner</code> is defence in depth, not the defence.</p>
+    <p class="note trap"><span class="kicker">Cursor pagination has a price</span>It constrains the ordering column — the field it pages on must be stable and monotonic. Offset pagination doesn't, but it drifts when rows are inserted mid-scroll.</p>
+    <p class="note trap"><span class="kicker">Nested serializers re-query per row</span>Unless <code>get_queryset</code> prefetches, every nested representation is its own query — the phase 9 lesson, arriving again in a new costume.</p>
+    <div class="ask"><span class="kicker">Answer cold</span><p>“Your API has <code>IsOwner</code> on the ViewSet — is it safe?” No. Ask what <code>list</code> does.</p></div>
+    <p class="files">expenses/api/serializers.py · api/views.py · api/pagination.py</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 11 ===================== -->
+<article class="phase" data-lane="infra" data-key="phase 11 docker containerisation compose healthcheck service_healthy migrate race collectstatic whitenoise gunicorn static_root multi-stage non-root image">
+<details>
+  <summary>
+    <span class="num">11</span>
+    <span class="tagrow"><code class="tag">phase-11-docker</code><span class="lanetag">async + infra</span></span>
+    <h3>One command, not three terminals</h3>
+    <p class="ship">Web, worker, beat, Redis and Postgres in compose. The phase that looks most deferrable, sitting in the middle because phase 13 cannot exist without it.</p>
+    <span class="sig"><span>session 12</span><span>d052ac1</span><span>suite 3.6s → 14.6s → 3.7s</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>multi-stage build</li><li>non-root user</li><li>layer caching order</li><li>healthchecks + condition: service_healthy</li><li>collectstatic at build time</li><li>WhiteNoise</li><li>STATIC_ROOT</li><li>gunicorn replacing runserver</li>
+    </ul>
+    <p class="note trap"><span class="kicker">Three things that are load-bearing, not boilerplate</span><b>Healthchecks:</b> <code>depends_on</code> waits for a <em>container</em> to start, not for Postgres to accept connections — without <code>condition: service_healthy</code> the web container races the database on every cold start. <b>Exactly one service runs <code>migrate</code></b> — two at once is a race. <b><code>collectstatic</code> at build time</b> — otherwise every replica repeats it, and a start-up that writes into the image fails on a read-only filesystem.</p>
+    <p class="note blood"><span class="kicker">Drew blood — 11 seconds</span>WhiteNoise indexes every collected file when the middleware is constructed, and the test client builds a handler <b>per client instance</b> — so the suite rescanned hundreds of files hundreds of times. The fast test runner now points <code>STATIC_ROOT</code> at an empty temp directory, keeping the middleware in its real position while making the scan free.</p>
+    <p class="note"><span class="kicker">A won't-do, recorded as one</span>Settings were deliberately <b>not</b> split into base/dev/prod. Env injection already varies every setting across local, CI and container; a split would add files without adding a decision. Closed as won't-do, not fixed.</p>
+    <p class="files">Dockerfile · compose.yaml · .dockerignore</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 12 ===================== -->
+<article class="phase" data-lane="query" data-key="phase 12 postgres depth uniqueconstraint lower functional index gin to_tsvector searchvector full text search runpython connection.vendor composite index partial index explain analyze pg_indexes column order">
+<details>
+  <summary>
+    <span class="num">12</span>
+    <span class="tagrow"><code class="tag">phase-12-postgres</code><span class="lanetag">queries + data</span></span>
+    <h3>Where the database stops being generic</h3>
+    <p class="ship">Case-insensitive uniqueness, a composite index with its columns in the right order, and full-text search that exists on one backend only.</p>
+    <span class="sig"><span>session 13</span><span>97b1335</span><span>closes two issues open since session 3</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>UniqueConstraint(Lower("name"), …)</li><li>functional index</li><li>GinIndex</li><li>SearchVector / to_tsvector</li><li>RunPython for backend-specific DDL</li><li>connection.vendor branching</li><li>composite index column order</li><li>partial index</li><li>EXPLAIN ANALYZE</li><li>reading pg_indexes back</li>
+    </ul>
+    <p class="note blood"><span class="kicker">The silent failure worth knowing</span><code>to_tsvector(note)</code> and <code>to_tsvector('english', note)</code> are <b>different expressions</b>. An index on one is invisible to the other, <b>the query still returns correct results</b>, and nothing says the index was skipped. A test now reads the definition back out of <code>pg_indexes</code>. Frappe's <code>search_index</code> flag hides the expression entirely, so this class of miss never surfaces there.</p>
+    <p class="note trap"><span class="kicker">Full-text search is a trade, not a win</span>It matches whole words and their stems — so <code>dinners</code> now finds <code>dinner</code>, and <code>inn</code> no longer does. Searching for a fragment is exactly what someone does when they half-remember a note. Both directions are asserted, so the cost is recorded rather than discovered later.</p>
+    <p class="note trap"><span class="kicker">Column order decides everything</span>Equality columns first, range column last. An index is usable only up to and including the first range predicate — so <code>(user, category, spent_on)</code> serves the list view and <code>(user, spent_on, category)</code> would not use the category equality at all.</p>
+    <p class="note"><span class="kicker">The database finally agrees with the form</span><code>UniqueConstraint(Lower("name"), "user")</code> closed a six-session mismatch: the ORM, the shell, the admin <b>and the API</b> could each create <code>Food</code> beside <code>food</code> while the form refused. A model test that had asserted the mismatch now asserts the opposite.</p>
+    <p class="files">expenses/migrations/0004_*.py · 0005_*.py · filters.py · tests/test_postgres.py</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 13 ===================== -->
+<article class="phase" data-lane="infra" data-key="phase 13 concurrency transactions select_for_update lost update race condition transactiontestcase savepoint nested atomic get_or_create race transaction.on_commit settle up lock">
+<details>
+  <summary>
+    <span class="num">13</span>
+    <span class="tagrow"><code class="tag">phase-13-concurrency</code><span class="lanetag">async + infra</span></span>
+    <h3>The lost update, prevented</h3>
+    <p class="ship">Settling a balance is a read-then-write. Two requests read 150 outstanding, both write, and a 150 debt is repaid 300.</p>
+    <span class="sig"><span>session 14</span><span>858b503</span><span>race proved in both directions</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>select_for_update()</li><li>lost update</li><li>TransactionTestCase with concurrent writers</li><li>savepoints</li><li>nested atomic()</li><li>the get_or_create race</li><li>transaction.on_commit</li>
+    </ul>
+    <p class="note"><span class="kicker">Why no constraint can catch it</span>Two genuine settlements of the same amount on the same day are <b>perfectly legal</b>. The lock is the only answer. <code>select_for_update</code> goes on the <em>participant</em> row — which is not modified; it <b>is</b> the lock, because the thing needing protection is a number derived from four tables and has no row of its own.</p>
+    <p class="note blood"><span class="kicker">Verified in both directions</span>With the lock: one settlement of 150. With the line deleted: 300 repaid, and the test fails. <b>A concurrency test that has never been seen to fail is not evidence of anything.</b></p>
+    <p class="note trap"><span class="kicker">The savepoint rule, corrected mid-phase</span>Catching an exception <em>outside</em> an inner <code>atomic()</code> does <b>not</b> poison the outer block — that block is a savepoint and has already rolled back cleanly. What poisons a transaction is catching a <b>database</b> error with no savepoint between it and the outer block. Which is why every constraint test reads <code>with self.assertRaises(IntegrityError), transaction.atomic():</code>.</p>
+    <p class="note trap"><span class="kicker">Why phase 12 had to come first</span><code>select_for_update</code> is a <b>no-op on SQLite</b>, which locks the whole database rather than individual rows. Running this phase first would have taught the API without the behaviour, and the race test would have passed for the wrong reason.</p>
+    <div class="ask"><span class="kicker">Answer cold</span><p>“Two requests hit this endpoint at once — what breaks?” Then: which lock, on which row, and how did you prove it.</p></div>
+    <p class="files">expenses/settlements.py · models.py · tests/test_concurrency.py</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 14 ===================== -->
+<article class="phase" data-lane="query" data-key="phase 14 caching cache_page data leak low level cache api version stamped keys cache.incr atomic invalidation locmemcache redis db index stampede get_or_set gunicorn workers">
+<details>
+  <summary>
+    <span class="num">14</span>
+    <span class="tagrow"><code class="tag">phase-14-caching</code><span class="lanetag">queries + data</span></span>
+    <h3>The decorator that is a data breach</h3>
+    <p class="ship">Cache the dashboard aggregation — after building <code>@cache_page</code>, demonstrating it serving one user another's totals, and rejecting it.</p>
+    <span class="sig"><span>session 15</span><span>1788eba</span><span>13 tests</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>@cache_page and its key</li><li>low-level cache API</li><li>version-stamped keys</li><li>cache.incr (atomic on Redis)</li><li>invalidation strategy</li><li>LocMemCache vs Redis</li><li>separate Redis db index</li><li>cache stampede</li><li>get_or_set is not atomic</li>
+    </ul>
+    <p class="note blood"><span class="kicker">Built, demonstrated, rejected</span><code>@cache_page</code> keys on the <b>URL and nothing else</b> — so every signed-in user requesting <code>/</code> is served whatever the first one put there. There is a test that builds it and shows one user receiving another's page: <em>the view never runs for the second user</em>. Frappe's cache API is key-based, with no page-cache decorator to misuse.</p>
+    <p class="note"><span class="kicker">Why bump a version, not delete keys</span>Keys carry user id + date range + a version stamp. Deleting “the right keys” on write would mean knowing <b>every date range anyone has ever viewed</b>. Bumping a stamp invalidates them all in one atomic <code>incr</code>.</p>
+    <p class="note blood"><span class="kicker">Drew blood</span>Django does <b>not clear the cache between tests</b>. A cached dashboard survived into an unrelated test and made its pinned query count wrong — 2 queries where 8 were expected. <em>A test that caches by accident passes for a reason nobody chose.</em> Caching is now off in tests by default.</p>
+    <p class="note trap"><span class="kicker">LocMemCache is per-process</span>Which makes it <b>wrong under gunicorn with three workers</b>: each holds its own copy, and a bump in one never reaches the others. It stays the default only so a fresh clone runs without Redis. Compose gives the cache a <b>third Redis database index</b>, separate from broker and result backend, so flushing the cache cannot take the queue with it.</p>
+    <p class="files">expenses/cache.py · views.py · tests/test_cache.py</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 15 ===================== -->
+<article class="phase" data-lane="surface" data-key="phase 15 internals middleware ordering request id contextvar threading.local asgi templatetags custom filter context processor signals post_save bulk_create receiver">
+<details>
+  <summary>
+    <span class="num">15</span>
+    <span class="tagrow"><code class="tag">phase-15-internals</code><span class="lanetag">api + hardening</span></span>
+    <h3>The framework's own seams</h3>
+    <p class="ship">Request-id middleware, a currency template filter, a nav context processor — and one signal, argued for rather than assumed.</p>
+    <span class="sig"><span>session 16</span><span>7fcf180</span><span>17 tests</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>custom middleware + ordering</li><li>ContextVar vs threading.local</li><li>logging filters</li><li>templatetags package</li><li>custom template filter</li><li>context processors</li><li>post_save signals</li><li>bulk_create skips signals</li>
+    </ul>
+    <p class="note blood"><span class="kicker">The cautionary tale of the phase</span>The context processor's first version counted balances — which walks every expense. <b>A context processor runs on every single template render</b>, so that added four to six queries to <em>every request in the project</em> and broke three pinned query counts. It now only ever reads a cached value; the balances page populates it as a side effect of work it already does. The badge is absent until that page is visited once — the right price for a decoration.</p>
+    <p class="note"><span class="kicker">The signal rule this project settles on</span>A signal is right when the concern is <b>cross-cutting</b>, <b>invisible by nature</b>, and <b>must not be forgotten</b>. Cache invalidation and audit logging qualify. “Create a related row when this one is saved” does <b>not</b> — that is business logic hiding from its caller. Frappe's <code>doc_events</code> is the direct analogue and gets used far more freely.</p>
+    <p class="note trap"><span class="kicker">What the signal cannot see</span><code>bulk_create</code> <b>fires no signals</b> — it operates on rows, not instances. A test asserts that limit rather than leaving it to be discovered.</p>
+    <p class="note trap"><span class="kicker">ContextVar, not threading.local</span>Under ASGI one thread interleaves many requests, and a thread-local would leak one request's id into another's log lines. Frappe is WSGI-only, so the distinction never surfaces there.</p>
+    <p class="files">config/middleware.py · expenses/templatetags/money.py · context_processors.py · signals.py</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 16 ===================== -->
+<article class="phase" data-lane="surface" data-key="phase 16 hardening security rate limiting ratelimit keying credential stuffing email verification passwordresettokengenerator is_active ordered deletion protectederror purge exports beat retention">
+<details>
+  <summary>
+    <span class="num">16</span>
+    <span class="tagrow"><code class="tag">phase-16-hardening</code><span class="lanetag">api + hardening</span></span>
+    <h3>The four longest-open issues</h3>
+    <p class="ship">Rate limiting, email verification, account deletion and export retention — the oldest entries in the issue log, closed in one phase.</p>
+    <span class="sig"><span>session 17</span><span>81c5f27</span><span>18 tests</span><span>closes issues 10, 15, 16, 19</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>cache-backed rate limiting</li><li>fixed window vs sliding window</li><li>PasswordResetTokenGenerator subclassing</li><li>self-invalidating signed links</li><li>is_active as the gate</li><li>ordered deletion under PROTECT</li><li>retention as a beat schedule</li>
+    </ul>
+    <div class="tablewrap"><table class="order">
+      <thead><tr><th>Issue</th><th>Open since</th><th>Closed by</th></tr></thead>
+      <tbody>
+        <tr><td>15 — no rate limiting</td><td>session 5</td><td>limiter keyed on (address, identifier)</td></tr>
+        <tr><td>16 — no email verification</td><td>session 5</td><td>inactive user + signed link, no new model</td></tr>
+        <tr><td>10 — deletion raised</td><td>session 4</td><td>ordered delete, protection kept intact</td></tr>
+        <tr><td>19 — exports never deleted</td><td>session 7</td><td>purge_exports + beat schedule</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note"><span class="kicker">Hand-written, because the key is the design</span>A library hides the one decision that matters. By <b>address alone</b>, one office behind one NAT is one blocked building. By <b>username alone</b>, an attacker locks any account out of its own login for free. By <b>both</b>, a single source against a single account is slowed — which is the shape of credential stuffing. (<code>django-axes</code> is the right answer in production; this is the right answer for learning.)</p>
+    <p class="note trap"><span class="kicker">What it does not do — written in the module</span>It does not stop a <b>distributed</b> attack, and its <b>fixed window</b> allows up to 2× the limit across a boundary. A sliding window costs a sorted set per key and is not worth it at this scale. <em>Stating the limits is part of shipping the feature.</em></p>
+    <p class="note"><span class="kicker">Verification with no model and no column</span><code>PasswordResetTokenGenerator</code> subclassed with <code>is_active</code> mixed into the hash, so the link <b>self-invalidates on use</b> with nothing stored. Subclassing rather than reusing is what stops a verification link being replayed as a password-reset link.</p>
+    <p class="note"><span class="kicker">Why not just change on_delete</span><code>CASCADE</code> would remove the protection that stops a category being deleted out from under a year of expenses. <code>SET_NULL</code> would make the column nullable, so every query and template handles a category-less expense <b>forever</b>, to solve a problem that happens once per account. The test asserting that plain <code>user.delete()</code> still raises is kept, so nobody deletes this module as redundant.</p>
+    <p class="files">accounts/ratelimit.py · verification.py · deletion.py · tests/test_hardening.py</p>
+  </div>
+</details>
+</article>
+
+<!-- ===================== PHASE 17 ===================== -->
+<article class="phase" data-lane="crud" data-key="phase 17 explicit splits paid_by self participant is_self misc amount rounding tolerance signed settlements chip select widget split tab dynamic line items formset empty_form prefix total_forms delete flag has_changed form_valid form_invalid data migration backfill editing applied migration progressive enhancement javascript appdirectoriesfinder css has required asterisk validation fact not gate">
+<details>
+  <summary>
+    <span class="num">17</span>
+    <span class="tagrow"><code class="tag untagged">built · not yet tagged</code><span class="lanetag">crud + forms</span></span>
+    <h3>Who paid, and who actually ate</h3>
+    <p class="ship">The domain grows up: a bill can be paid by someone else, you are no longer an implicit share, and tax and tip get a home. Plus the project's first JavaScript.</p>
+    <span class="sig"><span>sessions 19–23</span><span>17 commits</span><span>432 tests</span><span class="mark">four real bugs</span></span>
+    <svg class="chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </summary>
+  <div class="body">
+    <h4>Concepts</h4>
+    <ul class="chips">
+      <li>formset empty_form + __prefix__</li><li>TOTAL_FORMS</li><li>DELETE flag vs blanking</li><li>has_changed()</li><li>form_valid vs form_invalid</li><li>data migration + backfill</li><li>editing an applied migration</li><li>signed column vs direction field</li><li>validation as fact, not gate</li><li>AppDirectoriesFinder</li><li>progressive enhancement</li><li>CSS :has() on [required]</li><li>write-on-read</li>
+    </ul>
+    <p class="note"><span class="kicker">The modelling decision</span><b>Self is a <code>Participant(is_self=True)</code> row, not a boolean on <code>Expense</code>.</b> A boolean answers only “is the owner in this split” — it cannot answer “who paid”, because a payer needs an <em>identity</em> and a boolean has none. Making self a participant unifies payer and consumer into one model: one dropdown, one set of validation rules, one balance engine, zero special cases. The reversal test is written down — go back to the boolean if the <code>is_self</code> special-cases ever exceed three or four.</p>
+    <p class="note"><span class="kicker">Signed, not directional</span><code>Settlement.amount</code> is now <b>signed</b> with a <code>!= 0</code> constraint: positive means they paid you, negative means you paid them. The alternative — a <code>direction</code> field — makes <em>every</em> aggregate branch on it, and one missed branch silently double-counts. Outstanding stays a single expression: <code>balance − sum(settlements)</code>.</p>
+    <p class="note blood"><span class="kicker">Drew blood — every line item vanished</span>Fill in line items, tick who shared each, leave the note blank, submit: the error came back and <b>all the items were gone</b>. The POST carried them; the server threw them away. A <code>CreateView</code> has <b>two exits that share no code</b> — <code>form_valid()</code> got the bound formset, <code>form_invalid()</code> fell through to <code>get_context_data</code>, whose fallback built a fresh empty one. The comment beside that fallback <em>claimed</em> <code>form_invalid</code> passed a bound formset, which is how the bug survived review from phase 8 until now.</p>
+    <p class="note trap"><span class="kicker">And the fix that was refused</span><b>No persistence was added, and adding some would have been wrong.</b> Session storage, <code>localStorage</code> or a draft table would each be a second copy of state that already exists in the POST — and a second copy can disagree with what was submitted. <em>Re-render from the request.</em></p>
+    <p class="note blood"><span class="kicker">Drew blood — the migration that crashed</span>The self participant was first named <code>"You"</code>, which collides with the case-insensitive unique name constraint for anyone who already had a contact called that — and in a <b>data migration</b> that collision stops the whole upgrade. Renamed to <code>FirstName (self)</code> with a numeric suffix. Migration 0008 was corrected <em>in place</em> and 0010 renames the rows the old one created: normally editing an applied migration is wrong, and the reasoning for why it was acceptable here is written down.</p>
+    <p class="note blood"><span class="kicker">Drew blood — the scoping lesson, sixth appearance</span>The API accepted <b>another user's participant</b> as <code>paid_by</code>. Same lesson as phase 3's dropdown, phase 8's multi-select and phase 10's list action — a new entry point is a new place to forget the filter. Alongside it: ticking only Rahul charged him the <em>whole</em> bill, because the owner was no longer counted by default; the API now adds self unless <code>include_self=false</code>.</p>
+    <p class="note trap"><span class="kicker">A has_changed() trap, caught before shipping</span>Pre-selecting the owner on blank line rows makes <b>every blank row differ from “nothing”</b> — so a removed or untouched row would count as filled in and fail on its empty name. <code>has_changed()</code> now looks only at name and amount for unsaved rows. A formset skips an extra form that comes back unchanged, so an empty row is no row.</p>
+    <p class="note"><span class="kicker">Formsets, the interesting half</span>A <b>saved</b> row cannot be torn out of the DOM — Django deletes it only if its <code>DELETE</code> flag comes back ticked and its hidden <code>id</code> is posted, so the row is hidden, not removed. An <b>unsaved</b> row is blanked instead, because removing it leaves a hole in the index sequence, and closing that hole means rewriting the name, id and label of every field on every surviving row.</p>
+    <p class="note"><span class="kicker">The first JavaScript</span>90 lines, no dependency, no build step, one IIFE per file, in the <b>app's</b> <code>static/</code> so <code>AppDirectoriesFinder</code> picks it up with no settings change. Every script enhances markup that already works without it. Two tooling slips worth keeping: <code>pkill -f</code> killed the shell running the server (its own command line matched), and a browser script clicked <code>form button[type=submit]</code> and <b>logged the user out</b> — the nav's log-out form is the first form on every page.</p>
+    <div class="ask"><span class="kicker">Answer cold</span><p>“Your form re-renders with errors and the user's work is gone — where do you look?” <code>form_invalid</code>, and whether anything re-binds the formset to the POST.</p><p>“When is a validation rule a warning rather than a refusal?” — this phase is the whole answer.</p></div>
+    <p class="files">expenses/models.py · mixins.py · balances.py · widgets.py · static/expenses/*.js · migrations 0007–0011</p>
+  </div>
+</details>
+</article>
+
+</main>
+
+<p class="empty" id="empty">No phase matches that. Try <code>prefetch</code>, <code>formset</code>, <code>lock</code>, <code>idempotency</code> or <code>scoping</code>.</p>
+
+<!-- ===================== DEPENDENCY GRAPH ===================== -->
+<section class="section">
+  <h2>What had to come first</h2>
+  <p class="lede">Phases 8–16 are ordered by dependency, not by appetite. The non-obvious edge is <b>12 → 13</b>: <code>select_for_update</code> is a no-op on SQLite, so the concurrency phase would have taught the API without the behaviour. Postgres had to land first, and compose was the cheapest way to get it — which is why containerisation, the phase that looks most deferrable, sits in the middle.</p>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+    P7["7 · production"] --> P8["8 · splitting"]
+    P8 --> P9["9 · ORM depth"]
+    P9 --> P10["10 · DRF API"]
+    P9 --> P14["14 · caching"]
+    P11["11 · docker"] --> P12["12 · postgres"]
+    P11 --> P14
+    P12 --> P13["13 · concurrency"]
+    P8 --> P13
+    P15["15 · internals"]
+    P16["16 · hardening"]
+</pre>
+  </div>
+</section>
+
+<!-- ===================== THREADS ===================== -->
+<section class="section">
+  <h2>Threads that recur</h2>
+  <p class="lede">The same lesson arriving in a new costume is what makes it stick. These four crossed phase boundaries — each one drew blood more than once.</p>
+
+  <div class="threads">
+    <div class="thread blood-thread">
+      <h3>Scoping is never automatic — six times now</h3>
+      <p>Frappe applies <code>User Permission</code> for you. Django gives you nothing, and the leak moves: the queryset, then the dropdown, then the multi-select, then the API's <code>list</code> action, then the API's <code>paid_by</code> field. <b>Every new entry point is a new place to forget the filter</b> — which is the real lesson, not any one of the fixes.</p>
+      <div class="hits"><code>phase-3-crud</code><code>phase-5-dashboard</code><code>phase-8-splitting ×2</code><code>phase-10-api</code><code>phase 17</code></div>
+    </div>
+
+    <div class="thread blood-thread">
+      <h3>TestCase can hide the bug you are testing for</h3>
+      <p>It wraps every test in a transaction, so nothing ever really commits — which hides a cursor invalidated by a commit, and makes a second thread unable to see the first's rows. <code>TransactionTestCase</code> is the answer both times, and the cache surfaced the mirror image: state that <em>survives</em> a test it shouldn't.</p>
+      <div class="hits"><code>phase-6-async</code><code>phase-13-concurrency</code><code>phase-14-caching</code></div>
+    </div>
+
+    <div class="thread blood-thread">
+      <h3>Django's parser does not care what wrapper your text is in</h3>
+      <p>A multi-line <code>{# #}</code>, template tags spelled out inside an <b>HTML</b> comment, then a third in a hardening template — and a fourth in phase 17's new templates, this time rejected by the project's own <code>test_no_multiline_hash_comments</code> before it could render as visible text. Jinja — so Frappe — tolerates all of it.</p>
+      <div class="hits"><code>phase-5-dashboard</code><code>phase-7-production</code><code>phase-16-hardening</code><code>phase 17</code></div>
+    </div>
+
+    <div class="thread blood-thread">
+      <h3>A comment is not a test</h3>
+      <p>The formset fallback carried a comment claiming <code>form_invalid</code> passed a bound formset. It didn't, and hadn't since phase 8 — but the comment read like a guarantee, so nine sessions of review skipped past it and users lost their line items. The same shape appeared in phase 7: a test asserted <code>"{% extends"</code> was <em>absent</em> from a string, matched the file's own documentation, and would have passed a genuinely broken file. <b>Assert against behaviour — the compiled nodelist, the rendered response — never against text that describes intent.</b></p>
+      <div class="hits"><code>phase-7-production</code><code>phase 17</code></div>
+    </div>
+
+    <div class="thread">
+      <h3>The wrong answer that looks right</h3>
+      <p>The failures worth fearing here never raised: a total that doubled, an index silently skipped, a cached page served to the wrong user, two aggregates printing a combination that never happened. Each returned a <b>plausible value</b>. Every one of them is now pinned by a test that asserts the mechanism, not the output.</p>
+      <div class="hits"><code>phase-9-orm</code><code>phase-12-postgres</code><code>phase-14-caching</code></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== BUILD ORDER ===================== -->
+<section class="section">
+  <h2>Phase order ≠ session order</h2>
+  <p class="lede">Worth knowing when you read the build log: the tags are in dependency order, the sessions are in calendar order, and they are not the same list. Auth was built <b>fifth</b>, after CRUD and tests, on the bet that writing every view against <code>request.user</code> from day one would make retrofitting free. It was — the phase changed one setting and one assertion.</p>
+  <div class="tablewrap"><table class="order">
+    <thead><tr><th>Session</th><th>Phase</th><th>What landed</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>0</td><td>models + admin</td></tr>
+      <tr><td>2</td><td>1</td><td>custom user, env secrets</td></tr>
+      <tr><td>3</td><td>3</td><td>CRUD, user-scoped</td></tr>
+      <tr><td>4</td><td>4 + 4.5</td><td>tests, tooling, CI</td></tr>
+      <tr><td>5</td><td><b>2</b></td><td>auth — out of order, deliberately</td></tr>
+      <tr><td>6</td><td>5</td><td>dashboard</td></tr>
+      <tr><td>7</td><td>6</td><td>async</td></tr>
+      <tr><td>8</td><td>7</td><td>production readiness</td></tr>
+      <tr><td>9–17</td><td>8–16</td><td>one phase per session, in order</td></tr>
+      <tr><td>18</td><td>—</td><td>pushed to GitHub; CI ran for the first time and caught a missing dependency</td></tr>
+      <tr><td>19–23</td><td><b>17</b></td><td>explicit splits, paid-by, misc amount, the first JavaScript — then frozen</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<footer>
+  Source: docs/BUILD_LOG.md · COMMIT_PLAN.md · DECISIONS.md · HANDOFF_PLAN.md in Vatsal-Kanojiya/expense_management<br>
+  Verified at <code>63956f6</code> — 432 tests green, 9 skipped, 95% coverage · 17 tags + phase 17 awaiting its click-through<br>
+  72 logged Frappe-to-Django gaps · 27 decisions, each with its rejected alternative<br>
+  Tags are history, not a workspace — branch off one to re-implement a phase by hand.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  var list = document.getElementById('list');
+  var items = Array.prototype.slice.call(list.querySelectorAll('.phase'));
+  var q = document.getElementById('q');
+  var count = document.getElementById('count');
+  var empty = document.getElementById('empty');
+  var toggle = document.getElementById('toggle-all');
+  var laneBtns = Array.prototype.slice.call(document.querySelectorAll('.lane'));
+  var lane = 'all';
+
+  items.forEach(function(el){
+    var d = el.querySelector('details');
+    el._details = d;
+    el._wasOpen = d.open;
+    el._text = (el.getAttribute('data-key') + ' ' + el.textContent).toLowerCase();
+  });
+
+  function apply(){
+    var term = q.value.trim().toLowerCase();
+    var shown = 0;
+    items.forEach(function(el){
+      var laneOk = (lane === 'all') || (el.getAttribute('data-lane') === lane);
+      var termOk = !term || el._text.indexOf(term) !== -1;
+      var show = laneOk && termOk;
+      el.hidden = !show;
+      el.setAttribute('data-hit', (term && show) ? 'true' : 'false');
+      if (term && show) { el._details.open = true; }
+      if (!term) { el._details.open = el._wasOpen; }
+      if (show) shown++;
+    });
+    count.textContent = shown + (shown === 1 ? ' phase' : ' phases');
+    empty.classList.toggle('show', shown === 0);
+  }
+
+  q.addEventListener('input', apply);
+
+  laneBtns.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      lane = btn.getAttribute('data-lane');
+      laneBtns.forEach(function(b){ b.setAttribute('aria-pressed', String(b === btn)); });
+      apply();
+    });
+  });
+
+  toggle.addEventListener('click', function(){
+    var visible = items.filter(function(el){ return !el.hidden; });
+    var anyClosed = visible.some(function(el){ return !el._details.open; });
+    visible.forEach(function(el){ el._details.open = anyClosed; el._wasOpen = anyClosed; });
+    toggle.textContent = anyClosed ? 'collapse all' : 'expand all';
+  });
+
+  items.forEach(function(el){
+    el._details.addEventListener('toggle', function(){
+      if (!q.value.trim()) el._wasOpen = el._details.open;
+    });
+  });
+})();
+</script>
