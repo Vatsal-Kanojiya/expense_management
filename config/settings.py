@@ -247,6 +247,21 @@ CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
 CELERY_TASK_EAGER_PROPAGATES = True
 
 
+# Bill scanning (expenses/extraction/)
+#
+# "fake" needs no API key and no network, so a fresh clone -- and CI --
+# scans bills successfully with nothing configured. Each provider reads its
+# own key from its SDK's own env var (ANTHROPIC_API_KEY, GEMINI_API_KEY,
+# OPENAI_API_KEY), never a BILL_SCAN_* setting: an API key is a secret, not
+# a piece of app configuration, and this keeps it out of this file entirely.
+BILL_SCAN_PROVIDER = env("BILL_SCAN_PROVIDER", default="fake")
+BILL_SCAN_MODELS = {
+    "claude": env("BILL_SCAN_CLAUDE_MODEL", default="claude-sonnet-5"),
+    "gemini": env("BILL_SCAN_GEMINI_MODEL", default="gemini-2.5-flash-lite"),
+    "openai": env("BILL_SCAN_OPENAI_MODEL", default="gpt-5-mini"),
+}
+
+
 # Media files (generated exports)
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"

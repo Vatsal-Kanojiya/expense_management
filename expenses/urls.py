@@ -16,6 +16,13 @@ urlpatterns = [
     path("exports/", views.ExportListView.as_view(), name="export_list"),
     path("exports/new/", views.ExportCreateView.as_view(), name="export_create"),
     path("exports/<int:pk>/download/", views.ExportDownloadView.as_view(), name="export_download"),
+    path("bills/", views.BillScanListView.as_view(), name="bill_list"),
+    path("bills/upload/", views.BillScanCreateView.as_view(), name="bill_upload"),
+    path(
+        "bills/<int:scan_pk>/review/",
+        views.BillScanReviewView.as_view(),
+        name="bill_review",
+    ),
     path("balances/", views.BalanceView.as_view(), name="balances"),
     path(
         "balances/<int:pk>/settle/",
