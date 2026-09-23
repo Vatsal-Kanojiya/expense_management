@@ -151,6 +151,7 @@
       <a href="{% url 'expenses:balances' %}">{{ nav_owed_count|owed_label }}</a>
       <a href="{% url 'expenses:participant_list' %}">People</a>
       <a href="{% url 'expenses:export_list' %}">Exports</a>
+      <a href="{% url 'expenses:bill_list' %}">Scan a bill</a>
       <span class="spacer"></span>
       {% if user.is_authenticated %}
         <a class="who" href="{% url 'accounts:password_change' %}">{{ user.get_username }}</a>

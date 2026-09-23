@@ -95,6 +95,28 @@ All configuration comes from the environment via `django-environ`; see `.env.exa
 
 ---
 
+## Bill scanning
+
+Photograph a bill, and a vision LLM reads it into a form the user still has to confirm — nothing
+is ever saved from a model's output without a human pressing Save. See `expenses/extraction/` for
+the code and `docs/HANDOFF_BILL_SCAN.md` for how it was built.
+
+The provider is a runtime toggle, not a code change:
+
+| Variable | Required | Default | Notes |
+|---|---|---|---|
+| `BILL_SCAN_PROVIDER` | no | `fake` | `fake` \| `claude` \| `gemini` \| `openai` |
+| `BILL_SCAN_CLAUDE_MODEL` | no | `claude-sonnet-5` | Used when `BILL_SCAN_PROVIDER=claude` |
+| `BILL_SCAN_GEMINI_MODEL` | no | `gemini-2.5-flash-lite` | Used when `BILL_SCAN_PROVIDER=gemini` |
+| `BILL_SCAN_OPENAI_MODEL` | no | `gpt-5-mini` | Used when `BILL_SCAN_PROVIDER=openai` |
+
+The default, `fake`, returns a fixed sample bill — no API key, no network call, no cost — which is
+why the feature works out of the box in development and in CI. To use a real provider, also set
+that provider's own API key as its SDK expects (`ANTHROPIC_API_KEY`, `GEMINI_API_KEY` or
+`OPENAI_API_KEY`) — these are read directly by each SDK, not through a Django setting.
+
+---
+
 ## Project layout
 
 ```
