@@ -100,13 +100,13 @@ class RegistryTests(SimpleTestCase):
     def test_registry_does_not_import_unused_providers(self):
         # The point of resolving providers by string path: a server
         # configured for one provider never needs another's SDK installed.
-        # If "fake" resolving drags in "anthropic", the laziness is fake.
-        if "anthropic" in sys.modules:
-            self.skipTest("anthropic already imported by another test")
+        # A None entry in sys.modules makes that import raise ImportError, so
+        # this holds regardless of which earlier test already loaded an SDK.
+        blocked = {"anthropic": None, "google.genai": None, "openai": None}
+        with patch.dict(sys.modules, blocked):
+            provider = get_provider("fake")
 
-        get_provider("fake")
-
-        self.assertNotIn("anthropic", sys.modules)
+        self.assertEqual(provider.name, "fake")
 
 
 class ProviderToggleTests(SimpleTestCase):

@@ -2,8 +2,8 @@
 
 Written against the installed openai SDK's own source (its README's
 structured-output example targets `json_object`, the old unstructured
-mode -- `text.format.type: "json_schema"` needs `ResponseFormatText
-JSONSchemaConfigParam`, only in the installed package's type defs) plus
+mode -- `text.format.type: "json_schema"` needs
+`ResponseFormatTextJSONSchemaConfigParam`, only in the installed package's type defs) plus
 `Response`'s own fields (`status`, `incomplete_details`, `output_text`),
 per this plan's G11. Nothing here is guessed. Error classes mirror
 Claude's one-for-one -- both SDKs split rate limits into their own class.
@@ -19,9 +19,14 @@ from ..normalize import to_extracted_bill
 from ..prompt import JSON_SCHEMA, PROMPT
 from ..types import ExtractedBill
 
-# The response is one small JSON object -- a few hundred tokens at most --
-# so a generous-but-bounded ceiling catches a runaway response.
-MAX_OUTPUT_TOKENS = 2048
+# max_output_tokens counts reasoning tokens as well as the visible answer
+# (see its docstring in the SDK), and the default gpt-5-mini is a reasoning
+# model. Low effort keeps the reasoning short -- this is transcription, not
+# problem solving -- and the ceiling leaves room for it on top of the small
+# JSON answer. Hitting the ceiling is an "incomplete" response, which is an
+# ExtractionError and never retried, so erring low here fails scans for good.
+REASONING_EFFORT = "low"
+MAX_OUTPUT_TOKENS = 4096
 
 
 class OpenAIProvider:
@@ -35,6 +40,7 @@ class OpenAIProvider:
             response = client.responses.create(
                 model=model,
                 max_output_tokens=MAX_OUTPUT_TOKENS,
+                reasoning={"effort": REASONING_EFFORT},
                 input=[
                     {
                         "role": "user",
