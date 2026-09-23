@@ -4,6 +4,7 @@ from django import forms
 from django.forms import BaseInlineFormSet, inlineformset_factory
 from django.utils import timezone
 
+from .extraction import ACCEPTED_MIME_TYPES, MAX_UPLOAD_SIZE
 from .models import (
     ROUNDING_TOLERANCE,
     Category,
@@ -458,3 +459,26 @@ ExpenseItemFormSet = inlineformset_factory(
     extra=1,
     can_delete=True,
 )
+
+
+class BillScanForm(forms.Form):
+    """Upload a bill photo for scanning.
+
+    A plain Form, not a ModelForm: BillScan needs `user` set from the
+    request before it can be created, which the view does, not the form.
+    FileField rather than ImageField -- ImageField needs Pillow, and this
+    project does not depend on it.
+    """
+
+    image = forms.FileField()
+
+    def clean_image(self):
+        image = self.cleaned_data["image"]
+
+        if image.content_type not in ACCEPTED_MIME_TYPES:
+            raise forms.ValidationError("Please upload a JPEG, PNG or WebP photo.")
+
+        if image.size > MAX_UPLOAD_SIZE:
+            raise forms.ValidationError("That photo is too large -- the limit is 5 MB.")
+
+        return image

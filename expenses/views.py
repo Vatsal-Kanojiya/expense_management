@@ -7,7 +7,7 @@ from django.db import transaction
 from django.db.models import Count, OuterRef, Prefetch, Subquery, Sum
 from django.db.models.deletion import ProtectedError
 from django.http import FileResponse, Http404
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import (
@@ -21,13 +21,20 @@ from django.views.generic import (
 
 from .balances import balances, outstanding_balances, split_expense
 from .cache import cached_summary, owed_count_key
+from .extraction.prefill import initial_from_scan
 from .filters import DateRangeForm, ExpenseFilterForm
-from .forms import CategoryForm, ExpenseForm, ExpenseItemFormSet, ParticipantForm
+from .forms import (
+    BillScanForm,
+    CategoryForm,
+    ExpenseForm,
+    ExpenseItemFormSet,
+    ParticipantForm,
+)
 from .mixins import ItemFormSetMixin, OwnerFormMixin, OwnerScopedMixin
-from .models import Category, Expense, ExpenseItem, ExportJob, Participant
+from .models import BillScan, Category, Expense, ExpenseItem, ExportJob, Participant
 from .settlements import settle_up
 from .summaries import previous_period, summarise
-from .tasks import build_expense_export
+from .tasks import build_expense_export, scan_bill
 
 
 class DashboardView(LoginRequiredMixin, TemplateView):
@@ -461,3 +468,110 @@ class ExportDownloadView(OwnerScopedMixin, DetailView):
             as_attachment=True,
             filename=f"expenses-{job.start:%Y%m%d}-{job.end:%Y%m%d}.csv",
         )
+
+
+class BillScanCreateView(LoginRequiredMixin, View):
+    """Queue a bill photo for scanning and return immediately.
+
+    Same shape as ExportCreateView: write one row, dispatch, redirect. The
+    slow part -- calling a vision model -- happens on a worker, not here.
+    Nothing here creates an Expense (G13); that only ever happens when the
+    user confirms the review form.
+    """
+
+    def get(self, request, *args, **kwargs):
+        return render(request, "expenses/bill_upload.html", {"form": BillScanForm()})
+
+    def post(self, request, *args, **kwargs):
+        form = BillScanForm(request.POST, request.FILES)
+
+        if not form.is_valid():
+            return render(request, "expenses/bill_upload.html", {"form": form})
+
+        scan = BillScan.objects.create(user=request.user, image=form.cleaned_data["image"])
+
+        # transaction.on_commit, not .delay() directly -- the same race
+        # ExportCreateView guards against: a worker fast enough to query
+        # for a row the web process has not committed yet.
+        transaction.on_commit(lambda: scan_bill.delay(scan.pk))
+
+        messages.success(request, "Bill queued for scanning. Come back in a moment to review it.")
+        return redirect("expenses:bill_list")
+
+
+class BillScanListView(OwnerScopedMixin, ListView):
+    model = BillScan
+    context_object_name = "scans"
+    paginate_by = 20
+    template_name = "expenses/bill_list.html"
+
+
+class BillScanReviewView(OwnerScopedMixin, ItemFormSetMixin, OwnerFormMixin, CreateView):
+    """Turn a finished scan into an expense, once the user confirms it.
+
+    A CreateView, not an UpdateView: the scan pre-fills an *unsaved*
+    Expense, and this is the only path that ever creates one from a scan's
+    result. Nothing on upload or in the task itself saves an Expense (G13)
+    -- a person always presses Save on what the model actually read.
+    """
+
+    model = Expense
+    form_class = ExpenseForm
+    formset_class = ExpenseItemFormSet
+    template_name = "expenses/expense_form.html"
+    success_url = reverse_lazy("expenses:expense_list")
+
+    def dispatch(self, request, *args, **kwargs):
+        # Checked only when authenticated: querying BillScan with an
+        # AnonymousUser as `user=` raises before LoginRequiredMixin (further
+        # down the MRO, in OwnerScopedMixin) gets a chance to redirect it to
+        # login instead.
+        if request.user.is_authenticated:
+            self.scan = get_object_or_404(
+                BillScan,
+                pk=kwargs["scan_pk"],
+                user=request.user,
+                status=BillScan.Status.DONE,
+            )
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_initial(self):
+        initial, _line_initials = initial_from_scan(self.scan, self.request.user)
+        return initial
+
+    def get_context_data(self, **kwargs):
+        # Pre-fill line items on a plain GET only. ItemFormSetMixin's own
+        # get_context_data uses context.setdefault("formset", ...) rather
+        # than assignment specifically so a subclass can supply one first --
+        # see its docstring. Providing one here needs no change to the
+        # shared mixin.
+        if self.request.method == "GET" and "formset" not in kwargs:
+            _initial, line_initials = initial_from_scan(self.scan, self.request.user)
+            if line_initials:
+                kwargs["formset"] = self._formset_with_initial(line_initials)
+        return super().get_context_data(**kwargs)
+
+    def _formset_with_initial(self, line_initials):
+        participant_queryset = Participant.objects.filter(user=self.request.user)
+        formset = self.formset_class(
+            instance=None,
+            prefix=self.formset_prefix,
+            initial=line_initials,
+            form_kwargs={"user": self.request.user, "participant_queryset": participant_queryset},
+            participant_queryset=participant_queryset,
+        )
+        # initial= alone does not grow an unbound model formset: its form
+        # count comes from existing rows (none, on a fresh Expense) plus
+        # `extra`, which ExpenseItemFormSet bakes in as 1 for the "add a
+        # row" button. Raise it here, on this instance only, before .forms
+        # or .management_form is ever touched -- both are cached_property
+        # and read self.extra live, so this is enough to fit every line.
+        formset.extra = max(len(line_initials), formset.extra)
+        return formset
+
+    def form_valid(self, form):
+        messages.success(self.request, "Expense added from your scanned bill.")
+        response = super().form_valid(form)
+        self.scan.expense = self.object
+        self.scan.save(update_fields=["expense"])
+        return response
