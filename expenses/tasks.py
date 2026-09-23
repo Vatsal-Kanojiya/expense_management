@@ -8,8 +8,10 @@ database, which is also what makes a redelivered task see current state.
 """
 
 import csv
+import dataclasses
 import io
 import logging
+import mimetypes
 
 from celery import shared_task
 from django.core.files.base import ContentFile
@@ -18,7 +20,9 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import ExportJob
+from .extraction import extract_bill
+from .extraction.errors import ExtractionError
+from .models import BillScan, ExportJob
 
 logger = logging.getLogger(__name__)
 
@@ -145,3 +149,85 @@ def purge_exports(days=7):
     from django.core.management import call_command
 
     call_command("purge_exports", days=days)
+
+
+@shared_task(
+    bind=True,
+    # Same backoff shape as build_expense_export. A vision API rate-limiting
+    # us or timing out is exactly the transient failure this is for.
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    retry_jitter=True,
+    max_retries=3,
+)
+def scan_bill(self, scan_id: int) -> None:
+    """Read one bill photo and store what a vision model saw.
+
+    Unlike build_expense_export, a failure here does not always mean retry:
+    ExtractionError means the model looked and could not read the bill, and
+    trying the same image again costs money for no better odds. Any other
+    exception is treated as transient, exactly as the export task treats it.
+    """
+    scan = BillScan.objects.select_related("user").get(pk=scan_id)
+
+    # Idempotency guard, same reasoning as build_expense_export: a
+    # redelivery after a successful run must not re-spend on the same image.
+    if scan.status == BillScan.Status.DONE:
+        logger.info("Bill scan %s already done; skipping redelivery", scan_id)
+        return
+
+    BillScan.objects.filter(pk=scan_id).update(status=BillScan.Status.RUNNING)
+
+    with scan.image.open("rb") as f:
+        data = f.read()
+
+    # scan.image is being re-opened from storage here, not the upload-time
+    # InMemoryUploadedFile -- there is no .content_type to read off it.
+    # bill_upload_path (models.py) keeps the original extension for exactly
+    # this: guess_type() from the stored filename is reliable, guessing from
+    # the storage backend's file object is not.
+    mime_type, _ = mimetypes.guess_type(scan.image.name)
+    mime_type = mime_type or ""
+
+    try:
+        bill = extract_bill(data, mime_type)
+    except ExtractionError as exc:
+        # The model read the image and could not make sense of it. Not
+        # transient -- do not re-raise, or Celery retries a bill that will
+        # fail the same way three more times at three more times the cost.
+        BillScan.objects.filter(pk=scan_id).update(
+            status=BillScan.Status.FAILED, error=str(exc)[:500]
+        )
+        logger.info("Bill scan %s could not be read: %s", scan_id, exc)
+        return
+    except Exception as exc:
+        # Anything else -- a network error, a bug -- is transient until
+        # proven otherwise, so record it and let Celery's retry logic run.
+        BillScan.objects.filter(pk=scan_id).update(
+            status=BillScan.Status.FAILED, error=str(exc)[:500]
+        )
+        logger.exception("Bill scan %s failed", scan_id)
+        raise
+
+    scan.result = _bill_to_json(bill)
+    scan.provider = bill.provider
+    scan.status = BillScan.Status.DONE
+    scan.completed_at = timezone.now()
+    scan.save(update_fields=["result", "provider", "status", "completed_at"])
+
+
+def _bill_to_json(bill) -> dict:
+    """dataclasses.asdict(), with the two types a JSONField cannot hold
+    turned into strings first: Decimal (amounts) and date (bill_date).
+
+    Amounts stay strings rather than floats so paise are never rounded by
+    the JSON encoder -- the same reason expenses/extraction/normalize.py
+    (S4) will parse them back into Decimal on the way out.
+    """
+    raw = dataclasses.asdict(bill)
+    raw["total"] = str(bill.total) if bill.total is not None else None
+    raw["tax"] = str(bill.tax)
+    raw["bill_date"] = bill.bill_date.isoformat() if bill.bill_date else None
+    raw["lines"] = [{"name": line.name, "amount": str(line.amount)} for line in bill.lines]
+    return raw
