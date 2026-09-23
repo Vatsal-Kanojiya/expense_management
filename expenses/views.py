@@ -527,11 +527,16 @@ class BillScanReviewView(OwnerScopedMixin, ItemFormSetMixin, OwnerFormMixin, Cre
         # down the MRO, in OwnerScopedMixin) gets a chance to redirect it to
         # login instead.
         if request.user.is_authenticated:
+            # expense__isnull=True: a scan that already made an expense is
+            # not up for review again. Without this, re-opening the review
+            # URL after saving -- a double-click, the back button, a second
+            # tab -- creates a second expense from the same bill.
             self.scan = get_object_or_404(
                 BillScan,
                 pk=kwargs["scan_pk"],
                 user=request.user,
                 status=BillScan.Status.DONE,
+                expense__isnull=True,
             )
         return super().dispatch(request, *args, **kwargs)
 
@@ -570,8 +575,17 @@ class BillScanReviewView(OwnerScopedMixin, ItemFormSetMixin, OwnerFormMixin, Cre
         return formset
 
     def form_valid(self, form):
-        messages.success(self.request, "Expense added from your scanned bill.")
         response = super().form_valid(form)
+
+        if self.object is None:
+            # The parent form validated but the line-item formset did not.
+            # ItemFormSetMixin.form_valid short-circuits before saving in
+            # that case, so self.object is still None here -- nothing was
+            # created, and neither the scan link nor the success message
+            # below should happen.
+            return response
+
         self.scan.expense = self.object
         self.scan.save(update_fields=["expense"])
+        messages.success(self.request, "Expense added from your scanned bill.")
         return response
