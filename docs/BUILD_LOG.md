@@ -40,6 +40,10 @@
 > 3. **Issue 34 is the only open item that can break something.** The API lets the self participant
 >    be listed, renamed and deleted. Under D26 that is a fix, not polish, if it is ever picked up.
 >
+> **Phase 18 in progress — bill scanning.** Spec and live progress table:
+> `docs/HANDOFF_BILL_SCAN.md` §P. Decisions D28–D30. Executed one task per session: open a session,
+> say *go*, the implementer does the next `todo` row and stops.
+>
 > **Study material (session 24).** Two pages built from these docs, for revising away from the
 > laptop. Both are committed here and also published as private pages:
 >
