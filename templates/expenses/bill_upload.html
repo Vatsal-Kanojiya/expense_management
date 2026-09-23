@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Scan a bill · Expense Tracker{% endblock %}
+
+{% block content %}
+  <h1>Scan a bill</h1>
+
+  <div class="card">
+    <p class="muted">
+      Upload a photo of a bill or receipt (JPEG, PNG or WebP, up to 5 MB). We'll read it and
+      let you review the details before anything is saved.
+    </p>
+    {# csrf_token is mandatory on every POST form; Django rejects the request without it. #}
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button class="btn btn-primary" type="submit">Upload and scan</button>
+      <a class="btn" href="{% url 'expenses:bill_list' %}">Cancel</a>
+    </form>
+  </div>
+{% endblock %}

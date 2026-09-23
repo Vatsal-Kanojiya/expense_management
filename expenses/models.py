@@ -1,5 +1,6 @@
 # Create your models here.
 from decimal import Decimal
+from pathlib import Path
 from uuid import uuid4
 
 from django.conf import settings
@@ -456,3 +457,58 @@ class Settlement(models.Model):
 
     def __str__(self):
         return f"{self.participant} settled {self.amount}"
+
+
+def bill_upload_path(instance, filename):
+    """Unguessable path for an uploaded bill photo.
+
+    Same reasoning as export_upload_path: the review view checks ownership,
+    so this is defence in depth if the file is ever served directly.
+    """
+    ext = Path(filename).suffix
+    return f"bills/{instance.user_id}/{uuid4().hex}{ext}"
+
+
+class BillScan(models.Model):
+    """A user's upload of a bill photo, and what a vision model read from it.
+
+    Mirrors ExportJob's shape: a row for progress and status, a task that
+    updates it, nothing else writes status. The difference is the outcome --
+    a scan's result only ever pre-fills a form the user confirms; it never
+    creates an Expense by itself.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        RUNNING = "running", "Running"
+        DONE = "done", "Done"
+        FAILED = "failed", "Failed"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="bill_scans",
+    )
+    image = models.FileField(upload_to=bill_upload_path)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    provider = models.CharField(max_length=20, blank=True)
+    result = models.JSONField(default=dict, blank=True)
+    error = models.TextField(blank=True)
+    # SET_NULL, not CASCADE: deleting the expense must not delete the record
+    # that a scan happened, and a scan with no expense yet is a normal state.
+    expense = models.ForeignKey(
+        Expense,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="bill_scans",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["user", "-created_at"])]
+
+    def __str__(self):
+        return f"Bill scan {self.pk} ({self.status})"

@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 # Register your models here.
-from .models import Category, Expense
+from .models import BillScan, Category, Expense
 
 
 @admin.register(Category)
@@ -18,3 +18,10 @@ class ExpenseAdmin(admin.ModelAdmin):
     search_fields = ("note",)
     date_hierarchy = "spent_on"
     list_select_related = ("category", "user")
+
+
+@admin.register(BillScan)
+class BillScanAdmin(admin.ModelAdmin):
+    list_display = ("user", "status", "provider", "created_at")
+    list_filter = ("status", "provider")
+    list_select_related = ("user",)

@@ -487,3 +487,42 @@ worth being able to explain.
 
 **Reverse it if:** this project is ever turned into a real product. Then the backlog becomes the
 roadmap. Until then, it is a reference, not a work in progress.
+
+---
+
+## Session 25 — bill scanning
+
+### D28. The freeze is lifted for one feature: bill scanning
+
+**Decided:** D27 stands for polish. Bill scanning is admitted as phase 18 because it is not
+polish — it adds an external API integration, a provider abstraction and a second async job type,
+none of which the project had.
+
+**Reverse it if:** the work drifts into UI refinement. Then D27 applies again.
+
+### D29. A vision LLM, not a dedicated invoice parser
+
+**Decided:** extraction goes to a vision LLM with a JSON schema we define.
+
+**Alternatives:** Azure Document Intelligence (500 free pages a month), AWS Textract
+AnalyzeExpense, Google Document AI.
+
+**Why:** parsers return *their* schema — vendor, total, items, tax — and are strongest on formal
+typed invoices. This app's bills are mostly restaurant and shop receipts, and its schema has
+things a parser cannot fill: a category from the user's own list, and `misc_amount` for tax, tip
+and service charge together. A vision LLM returns our shape directly.
+
+**Reverse it if:** a bake-off on real bills shows a parser needs fewer corrections.
+
+### D30. One provider layer, three providers, one setting
+
+**Decided:** the app calls `extract_bill(data, mime_type)` and receives a plain `ExtractedBill`.
+Claude, Gemini and OpenAI sit behind a registry keyed by `BILL_SCAN_PROVIDER`; a `fake` provider
+is the default so the feature works in development and CI with no keys.
+
+**Why:** prices and quality in this market move monthly. Switching must be a config change, not a
+code change. Lazy imports mean a deployment only installs the SDK it uses. Every provider funnels
+through one normaliser, so money and date parsing is written once.
+
+**The rule that makes it safe:** model output only ever fills a form a human confirms. No expense
+is created from a scan without the user pressing Save.
