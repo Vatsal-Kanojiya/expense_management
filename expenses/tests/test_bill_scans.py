@@ -199,6 +199,47 @@ class BillScanReviewViewTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
+    def test_review_of_an_already_linked_scan_is_404(self):
+        # A scan that already made an expense is not up for review again --
+        # reopening the URL (a double-click, the back button, a second tab)
+        # must not be able to create a second expense from the same bill.
+        expense = Expense.objects.create(
+            user=self.alice,
+            category=self.food,
+            amount=Decimal("450.00"),
+            spent_on=date(2026, 9, 10),
+            note="Test Cafe",
+        )
+        scan = self._done_scan(self.alice)
+        scan.expense = expense
+        scan.save(update_fields=["expense"])
+
+        response = self.client.get(reverse("expenses:bill_review", args=[scan.pk]))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_two_scanned_lines_both_render(self):
+        # Locks in the fix for a real bug: initial= alone does not grow an
+        # unbound model formset's form count past the factory's extra=1, so
+        # a second scanned line silently failed to appear until this view
+        # raised formset.extra to fit every line.
+        scan = self._done_scan(
+            self.alice,
+            lines=[
+                {"name": "Coffee", "amount": "150.00"},
+                {"name": "Sandwich", "amount": "250.00"},
+            ],
+        )
+
+        response = self.client.get(reverse("expenses:bill_review", args=[scan.pk]))
+
+        formset = response.context["formset"]
+        self.assertEqual(len(formset.forms), 2)
+        self.assertEqual(formset.forms[0].initial["name"], "Coffee")
+        self.assertEqual(formset.forms[1].initial["name"], "Sandwich")
+        self.assertContains(response, "Coffee")
+        self.assertContains(response, "Sandwich")
+
     def test_review_prefills_amount_note_and_matching_category(self):
         scan = self._done_scan(self.alice)
 
@@ -236,3 +277,33 @@ class BillScanReviewViewTests(TestCase):
         self.assertIsNotNone(scan.expense)
         self.assertEqual(scan.expense.note, "Test Cafe")
         self.assertEqual(scan.expense.user, self.alice)
+
+    def test_invalid_line_item_does_not_link_the_scan_or_claim_success(self):
+        # The parent form can be valid while the formset is not (here: a
+        # line item with an amount but no name). ItemFormSetMixin.form_valid
+        # short-circuits before saving in that case, so self.object stays
+        # None -- nothing was created, and the scan must not be linked or
+        # reported as saved.
+        scan = self._done_scan(self.alice)
+
+        response = self.client.post(
+            reverse("expenses:bill_review", args=[scan.pk]),
+            {
+                "category": self.food.pk,
+                "amount": "450.00",
+                "spent_on": "2026-09-10",
+                "note": "Test Cafe",
+                "items-TOTAL_FORMS": "1",
+                "items-INITIAL_FORMS": "0",
+                "items-MIN_NUM_FORMS": "0",
+                "items-MAX_NUM_FORMS": "1000",
+                "items-0-name": "",
+                "items-0-amount": "10.00",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Expense.objects.exists())
+        scan.refresh_from_db()
+        self.assertIsNone(scan.expense)
+        self.assertNotContains(response, "Expense added from your scanned bill.")
