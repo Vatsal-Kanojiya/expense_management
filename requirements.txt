@@ -16,3 +16,8 @@ whitenoise==6.11.0
 gunicorn==23.0.0
 psycopg[binary]==3.2.10
 redis==5.2.1
+
+# Bill scanning (expenses/extraction/providers/claude.py). Only needed
+# when BILL_SCAN_PROVIDER=claude -- the registry resolves providers lazily
+# so a deployment using a different provider need not install this.
+anthropic==1.8.0
