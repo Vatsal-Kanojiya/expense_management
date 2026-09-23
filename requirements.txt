@@ -21,3 +21,8 @@ redis==5.2.1
 # when BILL_SCAN_PROVIDER=claude -- the registry resolves providers lazily
 # so a deployment using a different provider need not install this.
 anthropic==1.8.0
+
+# Bill scanning, same reasoning -- only needed for BILL_SCAN_PROVIDER=gemini
+# and BILL_SCAN_PROVIDER=openai respectively.
+google-genai==2.25.0
+openai==3.19.0
