@@ -17,7 +17,7 @@ where things stand.
 
 | Task | What | Status | Commit |
 |---|---|---|---|
-| S1 | `BillScan` model, migration, admin | todo | |
+| S1 | `BillScan` model, migration, admin | done | this commit |
 | S2 | Extraction contract + fake provider + Celery task | todo | |
 | S3 | Upload, status and review UI | todo | |
 | S4 | Provider registry, settings toggle, shared prompt and validation | todo | |
