@@ -733,7 +733,7 @@ multi-line ones would have rendered as visible text on the page.
 
 Two things happened that are worth more than the push itself.
 
-**Every commit was reauthored.** All 68 carried the *work* identity (`vatsal.k@360ithub.com`), which
+**Every commit was reauthored.** All 68 carried the *work* identity (a work email address), which
 would have published a work address 68 times on a public personal repository. `git filter-repo`
 rewrote author and committer to the GitHub noreply address, which also means the commits now count
 toward the right contribution graph.
