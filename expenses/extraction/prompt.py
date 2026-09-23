@@ -29,6 +29,10 @@ null."""
 # filled in by the caller, never by the model. Every amount is a string
 # (see PROMPT above): models round floats, and strings are what
 # normalize.to_extracted_bill expects to parse.
+#
+# additionalProperties: False on every object, not just the top level --
+# Claude's structured outputs require it on every nested object too (the
+# "lines" items included), or the request is rejected outright.
 JSON_SCHEMA = {
     "type": "object",
     "properties": {
@@ -44,6 +48,7 @@ JSON_SCHEMA = {
                     "amount": {"type": "string"},
                 },
                 "required": ["name", "amount"],
+                "additionalProperties": False,
             },
         },
         "tax": {"type": "string"},
@@ -51,4 +56,5 @@ JSON_SCHEMA = {
         "confidence": {"type": "number"},
     },
     "required": ["merchant", "bill_date", "total", "lines", "tax", "category_hint", "confidence"],
+    "additionalProperties": False,
 }
