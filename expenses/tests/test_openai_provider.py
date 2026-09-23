@@ -58,6 +58,9 @@ class OpenAIProviderTests(SimpleTestCase):
 
         call_kwargs = mock_client.responses.create.call_args.kwargs
         self.assertEqual(call_kwargs["model"], "gpt-5-mini")
+        # Reasoning tokens share max_output_tokens with the answer; without a
+        # low effort a reasoning model can spend the whole budget thinking.
+        self.assertEqual(call_kwargs["reasoning"], {"effort": "low"})
         image_block = call_kwargs["input"][0]["content"][1]
         self.assertEqual(image_block["type"], "input_image")
         self.assertEqual(
