@@ -12,10 +12,13 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
+from django.urls import reverse
 
 from expenses.extraction.errors import ExtractionError
+from expenses.extraction.prefill import initial_from_scan
 from expenses.models import BillScan, Category, Expense
 from expenses.tasks import scan_bill
+from expenses.tests.helpers import item_formset
 
 User = get_user_model()
 
@@ -120,3 +123,116 @@ class BillScanTaskTests(TestCase):
         scan.refresh_from_db()
         self.assertEqual(scan.status, BillScan.Status.FAILED)
         self.assertIn("blurry photo", scan.error)
+
+
+class BillScanUploadViewTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user(
+            "alice", email="alice@example.com", password="pw12345!"
+        )
+
+    def setUp(self):
+        self.client.force_login(self.alice)
+
+    def test_upload_rejects_a_pdf_and_an_oversized_file(self):
+        pdf = SimpleUploadedFile("bill.pdf", b"%PDF-1.4", content_type="application/pdf")
+        response = self.client.post(reverse("expenses:bill_upload"), {"image": pdf})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "JPEG, PNG or WebP")
+        self.assertFalse(BillScan.objects.exists())
+
+        oversized = SimpleUploadedFile(
+            "big.jpg", b"x" * (5 * 1024 * 1024 + 1), content_type="image/jpeg"
+        )
+        response = self.client.post(reverse("expenses:bill_upload"), {"image": oversized})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "too large")
+        self.assertFalse(BillScan.objects.exists())
+
+    def test_upload_queues_the_task_on_commit(self):
+        image = SimpleUploadedFile("bill.jpg", b"fake-bytes", content_type="image/jpeg")
+
+        with (
+            patch("expenses.views.scan_bill.delay") as mock_delay,
+            self.captureOnCommitCallbacks(execute=True),
+        ):
+            response = self.client.post(reverse("expenses:bill_upload"), {"image": image})
+
+        self.assertRedirects(response, reverse("expenses:bill_list"))
+        scan = BillScan.objects.get()
+        mock_delay.assert_called_once_with(scan.pk)
+
+
+class BillScanReviewViewTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user(
+            "alice", email="alice@example.com", password="pw12345!"
+        )
+        cls.bob = User.objects.create_user("bob", email="bob@example.com", password="pw12345!")
+        cls.food = Category.objects.create(user=cls.alice, name="Food")
+
+    def setUp(self):
+        self.client.force_login(self.alice)
+
+    def _done_scan(self, user, **result_overrides):
+        result = {
+            "merchant": "Test Cafe",
+            "bill_date": "2026-09-10",
+            "total": "450.00",
+            "lines": [],
+            "tax": "0",
+            "category_hint": "food",
+            "confidence": 0.9,
+            "provider": "fake",
+        }
+        result.update(result_overrides)
+        return _make_scan(user, status=BillScan.Status.DONE, provider="fake", result=result)
+
+    def test_review_of_someone_elses_scan_is_404(self):
+        scan = self._done_scan(self.bob)
+
+        response = self.client.get(reverse("expenses:bill_review", args=[scan.pk]))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_review_prefills_amount_note_and_matching_category(self):
+        scan = self._done_scan(self.alice)
+
+        response = self.client.get(reverse("expenses:bill_review", args=[scan.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        form = response.context["form"]
+        self.assertEqual(form.initial["note"], "Test Cafe")
+        self.assertEqual(form.initial["amount"], Decimal("450.00"))
+        self.assertEqual(form.initial["category"], self.food)
+
+    def test_prefill_matches_category_case_insensitively(self):
+        scan = self._done_scan(self.alice, category_hint="FOOD")
+
+        initial, _line_initials = initial_from_scan(scan, self.alice)
+
+        self.assertEqual(initial["category"], self.food)
+
+    def test_saving_the_review_links_the_expense(self):
+        scan = self._done_scan(self.alice)
+
+        response = self.client.post(
+            reverse("expenses:bill_review", args=[scan.pk]),
+            {
+                "category": self.food.pk,
+                "amount": "450.00",
+                "spent_on": "2026-09-10",
+                "note": "Test Cafe",
+                **item_formset(),
+            },
+        )
+
+        self.assertRedirects(response, reverse("expenses:expense_list"))
+        scan.refresh_from_db()
+        self.assertIsNotNone(scan.expense)
+        self.assertEqual(scan.expense.note, "Test Cafe")
+        self.assertEqual(scan.expense.user, self.alice)

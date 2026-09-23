@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Scanned bills · Expense Tracker{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Scanned bills</h1>
+    <a class="btn btn-primary" href="{% url 'expenses:bill_upload' %}">Scan a bill</a>
+  </div>
+
+  {% if scans %}
+    <table style="margin-top:1rem">
+      <thead>
+        <tr>
+          <th>Uploaded</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for scan in scans %}
+          <tr>
+            <td>{{ scan.created_at|date:"j M Y, H:i" }}</td>
+            <td>
+              {% if scan.status == "done" %}
+                <span style="color:var(--ok)">Done</span>
+              {% elif scan.status == "failed" %}
+                <span style="color:var(--danger)" title="{{ scan.error }}">Failed</span>
+              {% else %}
+                <span class="muted">{{ scan.get_status_display }}…</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if scan.status == "done" and not scan.expense_id %}
+                <a class="btn" href="{% url 'expenses:bill_review' scan.pk %}">Review</a>
+              {% elif scan.expense_id %}
+                <a class="btn" href="{% url 'expenses:expense_update' scan.expense_id %}">View expense</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="card empty" style="margin-top:1rem">
+      No bills scanned yet.
+    </div>
+  {% endif %}
+{% endblock %}
