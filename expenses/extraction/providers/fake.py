@@ -13,7 +13,7 @@ from ..types import ExtractedBill, ExtractedLine
 class FakeProvider:
     name = "fake"
 
-    def extract(self, data: bytes, mime_type: str) -> ExtractedBill:
+    def extract(self, data: bytes, mime_type: str, model: str = "") -> ExtractedBill:
         # Fixed on purpose -- deterministic, no clock, no randomness, so a
         # test asserting on this result cannot flake.
         return ExtractedBill(

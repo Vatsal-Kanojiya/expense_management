@@ -20,7 +20,7 @@ where things stand.
 | S1 | `BillScan` model, migration, admin | done | this commit |
 | S2 | Extraction contract + fake provider + Celery task | done | this commit |
 | S3 | Upload, status and review UI | done | this commit |
-| S4 | Provider registry, settings toggle, shared prompt and validation | todo | |
+| S4 | Provider registry, settings toggle, shared prompt and validation | done | this commit |
 | S5 | Claude provider | todo | |
 | S6 | Gemini and OpenAI providers | todo | |
 
