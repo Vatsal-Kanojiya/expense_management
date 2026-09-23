@@ -23,6 +23,7 @@ where things stand.
 | S4 | Provider registry, settings toggle, shared prompt and validation | done | this commit |
 | S5 | Claude provider | done | this commit |
 | S6 | Gemini and OpenAI providers | done | this commit |
+| S7 | Review warnings (vendor-agnostic sanity checks) | done | this commit |
 
 Statuses: `todo` · `done` · `blocked — <one line why>`.
 
@@ -284,6 +285,23 @@ provider's client mocked and asserts `extract_bill` returns an `ExtractedBill` w
 
 Finish by adding a short "Bill scanning" section to `README.md`: the env vars, the toggle, and
 that the default `fake` provider means the feature works in development with no keys.
+
+### S7 — Review warnings
+
+Added after S6, at the owner's request. Every scan is still confirmed by a person (G13); this only
+tells them where to look.
+
+**Change.** `expenses/extraction/checks.py`: `review_warnings(bill: ExtractedBill, today) -> list[str]`.
+Reads only the `ExtractedBill` contract, so it judges every provider by the same rules. Checks,
+strongest first: lines + tax vs total (tolerance ₹1, skipped when there are no lines); missing or
+zero total; missing, future or over-a-year-old date; missing merchant; the model's own confidence
+below 0.5 (weakest signal). `BillScanReviewView` rebuilds the bill from `scan.result` with
+`to_extracted_bill` and passes `scan_warnings` to `expense_form.html`, which shows them in a banner.
+Nothing is ever corrected automatically.
+
+**Acceptance.** `ReviewWarningTests` in `test_extraction.py` (pure, fixed `today`) and three view
+tests in `test_bill_scans.py`: a mismatched scan shows the banner, a consistent scan shows none, and
+the plain expense form never shows it.
 
 ---
 

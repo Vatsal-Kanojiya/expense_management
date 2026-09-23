@@ -91,7 +91,9 @@ All configuration comes from the environment via `django-environ`; see `.env.exa
 
 Photograph a bill, and a vision LLM reads it into a form the user still has to confirm — nothing
 is ever saved from a model's output without a human pressing Save. See `expenses/extraction/` for
-the code and `docs/HANDOFF_BILL_SCAN.md` for how it was built.
+the code and `docs/HANDOFF_BILL_SCAN.md` for how it was built. The review screen flags what the
+scan most likely misread (items and tax not adding up to the total, a missing or implausible
+date), using the same checks whichever provider read the bill.
 
 The provider is a runtime toggle, not a code change:
 

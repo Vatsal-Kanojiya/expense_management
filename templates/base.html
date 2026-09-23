@@ -9,11 +9,13 @@
     :root {
       --bg: #f7f7f8; --surface: #fff; --text: #1b1b1f; --muted: #6b6b76;
       --border: #e3e3e8; --accent: #2f5fe0; --danger: #c0392b; --ok: #1e7d4f;
+      --warn: #b7791f;
     }
     @media (prefers-color-scheme: dark) {
       :root {
         --bg: #16161a; --surface: #1f1f25; --text: #ececf1; --muted: #9a9aa6;
         --border: #32323b; --accent: #7aa2ff; --danger: #ff7b6b; --ok: #56c98d;
+        --warn: #f0b429;
       }
     }
     * { box-sizing: border-box; }
@@ -85,6 +87,9 @@
     .messages { list-style: none; padding: 0; margin: 0 0 1rem; }
     .messages li { padding: 0.6rem 0.85rem; border-radius: 6px; background: var(--surface); border-left: 3px solid var(--ok); }
     .messages li.error { border-left-color: var(--danger); }
+    .scan-warnings { padding: 0.6rem 0.85rem; margin: 0 0 1rem; border-radius: 6px; background: var(--surface); border-left: 3px solid var(--warn); }
+    .scan-warnings p { margin: 0 0 0.35rem; }
+    .scan-warnings ul { margin: 0; padding-left: 1.2rem; }
 
     /* Chip multiselect widget */
     .chip-select-ui { display: flex; flex-direction: column; gap: 0.35rem; position: relative; }

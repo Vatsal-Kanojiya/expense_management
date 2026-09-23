@@ -9,6 +9,7 @@ from django.db.models.deletion import ProtectedError
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.views import View
 from django.views.generic import (
     CreateView,
@@ -21,6 +22,8 @@ from django.views.generic import (
 
 from .balances import balances, outstanding_balances, split_expense
 from .cache import cached_summary, owed_count_key
+from .extraction.checks import review_warnings
+from .extraction.normalize import to_extracted_bill
 from .extraction.prefill import initial_from_scan
 from .filters import DateRangeForm, ExpenseFilterForm
 from .forms import (
@@ -554,6 +557,12 @@ class BillScanReviewView(OwnerScopedMixin, ItemFormSetMixin, OwnerFormMixin, Cre
             _initial, line_initials = initial_from_scan(self.scan, self.request.user)
             if line_initials:
                 kwargs["formset"] = self._formset_with_initial(line_initials)
+        # On every render, including a POST that failed validation: the
+        # warnings describe what the scan read, not what the user has typed.
+        # scan.result is _bill_to_json output, which to_extracted_bill
+        # parses straight back into the typed bill the checks expect.
+        bill = to_extracted_bill(self.scan.result or {}, self.scan.provider)
+        kwargs["scan_warnings"] = review_warnings(bill, timezone.localdate())
         return super().get_context_data(**kwargs)
 
     def _formset_with_initial(self, line_initials):

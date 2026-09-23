@@ -15,6 +15,15 @@
     {% if form.note.value %}{{ form.note.value }}{% elif form.instance.pk %}Edit expense{% else %}New expense{% endif %}
   </h1>
 
+  {% if scan_warnings %}
+    <div class="scan-warnings" role="status">
+      <p><strong>Check these before saving.</strong> The scan may have misread the bill.</p>
+      <ul>
+        {% for warning in scan_warnings %}<li>{{ warning }}</li>{% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
   {% if split %}
     <nav class="tab-bar" role="tablist" aria-label="Expense views" hidden>
       <button type="button" role="tab" class="tab-btn is-active" id="tab-details"

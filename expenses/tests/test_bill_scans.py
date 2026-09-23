@@ -13,6 +13,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from expenses.extraction.errors import ExtractionError
 from expenses.extraction.prefill import initial_from_scan
@@ -307,3 +308,40 @@ class BillScanReviewViewTests(TestCase):
         scan.refresh_from_db()
         self.assertIsNone(scan.expense)
         self.assertNotContains(response, "Expense added from your scanned bill.")
+
+    def test_review_warns_when_items_and_tax_do_not_match_the_total(self):
+        scan = self._done_scan(
+            self.alice,
+            bill_date=timezone.localdate().isoformat(),
+            lines=[
+                {"name": "Coffee", "amount": "150.00"},
+                {"name": "Sandwich", "amount": "150.00"},
+            ],
+            tax="50.00",
+        )
+
+        response = self.client.get(reverse("expenses:bill_review", args=[scan.pk]))
+
+        self.assertContains(response, "Check these before saving.")
+        self.assertContains(response, "Items plus tax come to ₹350.00")
+
+    def test_review_of_a_consistent_scan_shows_no_warnings(self):
+        scan = self._done_scan(
+            self.alice,
+            bill_date=timezone.localdate().isoformat(),
+            lines=[
+                {"name": "Coffee", "amount": "150.00"},
+                {"name": "Sandwich", "amount": "250.00"},
+            ],
+            tax="50.00",
+        )
+
+        response = self.client.get(reverse("expenses:bill_review", args=[scan.pk]))
+
+        self.assertEqual(response.context["scan_warnings"], [])
+        self.assertNotContains(response, 'class="scan-warnings"')
+
+    def test_plain_expense_form_has_no_scan_warnings(self):
+        response = self.client.get(reverse("expenses:expense_create"))
+
+        self.assertNotContains(response, 'class="scan-warnings"')

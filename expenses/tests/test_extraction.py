@@ -15,9 +15,11 @@ from unittest.mock import MagicMock, patch
 from django.test import SimpleTestCase, override_settings
 
 from expenses.extraction import extract_bill
+from expenses.extraction.checks import review_warnings
 from expenses.extraction.errors import ExtractionError
 from expenses.extraction.normalize import to_extracted_bill
 from expenses.extraction.registry import get_provider
+from expenses.extraction.types import ExtractedBill, ExtractedLine
 
 RAW_BILL = {
     "merchant": "Test Cafe",
@@ -159,3 +161,63 @@ class ProviderToggleTests(SimpleTestCase):
         bill = extract_bill(b"data", "image/jpeg")
 
         self.assertEqual(bill.provider, "openai")
+
+
+class ReviewWarningTests(SimpleTestCase):
+    """The vendor-agnostic checks. Pure: no database, no provider, fixed today."""
+
+    TODAY = date(2026, 9, 23)
+
+    def _bill(self, **overrides):
+        fields = {
+            "merchant": "Test Cafe",
+            "bill_date": self.TODAY,
+            "total": Decimal("450.00"),
+            "lines": [
+                ExtractedLine(name="Coffee", amount=Decimal("150.00")),
+                ExtractedLine(name="Sandwich", amount=Decimal("250.00")),
+            ],
+            "tax": Decimal("50.00"),
+            "category_hint": "food",
+            "confidence": 0.9,
+            "provider": "claude",
+        }
+        fields.update(overrides)
+        return ExtractedBill(**fields)
+
+    def test_a_consistent_bill_has_no_warnings(self):
+        self.assertEqual(review_warnings(self._bill(), self.TODAY), [])
+
+    def test_items_plus_tax_not_matching_total_warns(self):
+        warnings = review_warnings(self._bill(total=Decimal("500.00")), self.TODAY)
+
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("₹450.00", warnings[0])
+        self.assertIn("₹500.00", warnings[0])
+
+    def test_a_round_off_within_one_rupee_does_not_warn(self):
+        self.assertEqual(review_warnings(self._bill(total=Decimal("451.00")), self.TODAY), [])
+
+    def test_a_bill_with_no_lines_skips_the_arithmetic_check(self):
+        # Lines are optional -- a total-only bill has nothing to add up.
+        self.assertEqual(review_warnings(self._bill(lines=[]), self.TODAY), [])
+
+    def test_missing_or_zero_total_warns(self):
+        self.assertIn("No bill total", review_warnings(self._bill(total=None), self.TODAY)[0])
+        self.assertIn("₹0.00", review_warnings(self._bill(total=Decimal("0.00")), self.TODAY)[0])
+
+    def test_implausible_dates_warn(self):
+        future = review_warnings(self._bill(bill_date=date(2026, 10, 1)), self.TODAY)
+        stale = review_warnings(self._bill(bill_date=date(2025, 1, 5)), self.TODAY)
+        missing = review_warnings(self._bill(bill_date=None), self.TODAY)
+
+        self.assertIn("in the future", future[0])
+        self.assertIn("over a year ago", stale[0])
+        self.assertIn("No date was read", missing[0])
+
+    def test_missing_merchant_and_low_confidence_warn(self):
+        warnings = review_warnings(self._bill(merchant="", confidence=0.2), self.TODAY)
+
+        self.assertEqual(len(warnings), 2)
+        self.assertIn("No shop name", warnings[0])
+        self.assertIn("unsure", warnings[1])
