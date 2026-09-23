@@ -15,6 +15,14 @@ Sixteen build phases, each ending in a git tag. `docs/COMMIT_PLAN.md` is the bui
 `docs/BUILD_LOG.md` records what each phase actually cost, and `docs/DECISIONS.md` lists every
 judgement call with the alternative that was rejected.
 
+### How this was built
+
+A learning project, built with heavy use of an AI coding assistant (Claude Code). I set the scope
+and the order in which concepts were introduced, and reviewed each change. Every judgement call,
+whether mine or the assistant's, is recorded in `docs/DECISIONS.md` with the alternative that was
+rejected. I am now re-implementing the core mechanisms by hand, so that they are things I know
+rather than things the tool knew.
+
 ---
 
 ## Setup
@@ -64,7 +72,7 @@ pre-commit install
 | Command | Purpose |
 |---|---|
 | `python manage.py runserver` | Development server |
-| `python manage.py test` | Run the test suite (169 tests) |
+| `python manage.py test` | Run the test suite |
 | `celery -A config worker -l info` | Start the background worker (needs Redis) |
 | `python manage.py send_monthly_digests --dry-run` | Rehearse the monthly digest |
 | `coverage run manage.py test && coverage report` | Tests with coverage, fails under 95% |
