@@ -50,6 +50,10 @@
 > CI/CD is the next request. Its first job is issue 43: coverage has been at 94%, below the 95%
 > gate, since phase 18.
 >
+> **Phase 20 in progress — an API for a remote frontend, session 27, branch `frontend-api`** (built
+> on `project-dockerization`). Plan, parity table and progress: COMMIT_PLAN phase 20. Decisions
+> D40–D46. Phase 21 then writes the business-requirements document and the Postman collection.
+>
 > **Study material (session 24).** Two pages built from these docs, for revising away from the
 > laptop. Both are committed here and also published as private pages:
 >
@@ -1692,3 +1696,5 @@ interview-gap list.
 | 34 | The self participant is unprotected in the API | The web People pages filter out `is_self`, but the API participant endpoints list, rename and delete it like any contact. Renaming it makes the owner appear under a friend's name; deleting it strands `paid_by` on every expense the owner paid | **Parked for better design, session 21.** Proposed: keep it listed with an `is_self` marker, since API clients need its id to set `paid_by` and participation, and refuse rename and delete. The owner judged the self-participant design itself may need rethinking before patching it, so no fix was applied. **Same design review should cover:** `balances()` calling `get_or_create_self` on every read (fixed tactically in session 21 by treating a null `paid_by` as the owner, but the owner judged the self-participant data model as a whole needs a better design), and self naming, now `FirstName (self)` with a numeric suffix on collision |
 | 35 | The expense form wastes vertical space | `{{ form.as_p }}` gives every field a full-width row | **Parked by the owner, session 20.** Presentation rather than function, and the UI may move to a separate frontend such as React. Was T7 in the first handoff plan |
 | 43 | Coverage is 94%, under the 95% gate | Found in session 26, and already true on `master`: phase 18's `extraction/providers/base.py` (0%), `prefill.py` (80%), `openai.py`, `registry.py` and `claude.py` pulled the total under. CI's coverage step fails for a reason no current branch caused | Tests for the uncovered prefill and provider error paths, as part of the CI/CD work that comes next |
+| 44 | Deleting a category or person that is in use through the API is a 500 | The web views catch `ProtectedError` and explain; the API let it escape. Found in session 27 by probing the API | Phase 20.2: a 409 with the reason, for every protected delete |
+| 45 | The API skipped the web's expense rules | A tax/tip with no description or no line items, and unshared items when you are not on the expense, were accepted. A share on someone outside the expense's participants was also accepted, and the web edit form, which offers only the participants, would drop that share on the next save | Phase 20.4: the rules restated in the serializer; line-item people added to the participants |
