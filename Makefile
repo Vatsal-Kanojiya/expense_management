@@ -101,7 +101,7 @@ test: ## Run the test suite on Postgres, in a throwaway container (ARGS=...)
 
 lint: ## ruff check and ruff format --check, in the dev image
 	$(DEV) build web
-	$(DEV) run --rm --no-deps web sh -c "ruff check . && ruff format --check ."
+	$(DEV) run --rm --no-deps web sh -c "ruff check --no-cache . && ruff format --check --no-cache ."
 
 psql: ## Open psql on the database
 	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'

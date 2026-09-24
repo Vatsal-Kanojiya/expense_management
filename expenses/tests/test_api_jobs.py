@@ -56,6 +56,7 @@ class ExportTests(JobTestCase):
         self.assertIn("expenses-20260301-20260331.csv", download["Content-Disposition"])
         self.assertIn(b"Lunch", b"".join(download.streaming_content))
 
+    @override_settings(FRONTEND_URL="")  # the default, whatever the environment says
     def test_the_email_links_to_the_django_page_by_default(self):
         job_id = self.request_export().json()["id"]
 
