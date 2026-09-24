@@ -641,6 +641,10 @@ D33 — the browser drops a Secure cookie, so the session never sticks and every
 Defaults stay `True` everywhere else. A test asserts that switching them off fails `check --deploy`,
 and CI's deploy job never sets them, so a real deployment cannot pick the switch up quietly.
 
+**Measured after the change (BUILD_LOG session 26, V13):** with the site opened on a non-loopback
+address, login works with the switches off. With them on — Django's secure default — the same
+login fails with 403 CSRF, while `127.0.0.1` still works.
+
 **Reverse it if:** the local stack gains TLS, for example Caddy in front. Then the switches go back
 to their defaults.
 
@@ -692,3 +696,31 @@ stay thin on purpose so that Make does not become a second place where the stack
 
 **Reverse it if:** targets start to grow logic. That logic belongs in Compose or in a management
 command.
+
+### D39. Only web builds the image, and local builds skip the default attestations
+
+*Taken during verification, after D31–D38 were written.*
+
+**Decided:** in both compose files only `web` has a `build`. Worker and beat name the image web
+builds, with `pull_policy: never`. The Makefile exports `BUILDX_NO_DEFAULT_ATTESTATIONS=1`.
+
+**Alternatives:** a `build` on all three services, which the phase 19 plan had; setting
+`provenance: false` in the compose file.
+
+**Why:** measured, not assumed. With the plan's layout, every `make up` recreated all three app
+containers even when nothing had changed, and it had two causes. First, Compose writes the building
+service's name into the image as a label, so three `build` sections produce three images that
+differ only by that label, and the last one to finish takes the tag. Second, Docker 29's
+containerd image store attaches a provenance attestation stamped with the build time, so even a
+fully cached build gets a new image ID. Building once removes the first cause, and the variable
+removes the second. `provenance: false` in the compose file was tried and did not make the ID
+stable. `pull_policy: never` stops a first run from asking Docker Hub for an image that only
+exists locally, which printed "not found" errors before web's build created it.
+
+**Cost:** local images carry no provenance attestation, the record of how an image was built.
+That record matters for images pulled from a registry, not for images that never leave the
+machine. Raw `docker compose up --build`, without the variable, still works; it just recreates
+the app containers each time.
+
+**Reverse it if:** CI/CD starts building images for a registry. Build those with the default
+attestations, or more.

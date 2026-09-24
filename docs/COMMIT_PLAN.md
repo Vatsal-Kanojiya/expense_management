@@ -418,7 +418,7 @@ project 2, done solo.
 Planned and tracked in its own handoff document, `docs/HANDOFF_BILL_SCAN.md`: six tasks, S1–S6,
 with a progress table in its §P. D28 lifted the freeze for it.
 
-### Phase 19 — Docker for daily use 🔜 *(session 26, branch `project-dockerization`)*
+### Phase 19 — Docker for daily use ✅ *(session 26, built and verified on branch `project-dockerization`; not merged, not tagged)*
 
 > **Prerequisite:** `master` at `9371cc5`. This phase touches the Docker files, a new `Makefile`,
 > two settings, the test runner and the docs. It does **not** touch models, views, templates or
@@ -427,7 +427,7 @@ with a progress table in its §P. D28 lifted the freeze for it.
 Phase 11 containerised the stack. Running it before starting this phase showed that, in Docker,
 the app could not upload a bill, export a CSV or keep beat alive (BUILD_LOG issues 38–40). The
 rest of the brief: two modes, state in volumes, ports that do not collide with the owner's other
-projects, and documentation first. Decisions D31–D38; runbook `docs/DOCKER.md`.
+projects, and documentation first. Decisions D31–D39; runbook `docs/DOCKER.md`.
 
 | # | Commit | Files | Architecture note |
 |---|---|---|---|
@@ -463,13 +463,21 @@ session 26:
 
 | Task | Status | Commit |
 |---|---|---|
-| 19.1 | done | *(this commit)* |
-| 19.2 | todo | |
-| 19.3 | todo | |
-| 19.4 | todo | |
-| 19.5 | todo | |
-| 19.6 | todo | |
-| 19.7 | todo | |
+| 19.1 | done | `7abddb9` |
+| 19.2 | done | `e15f2f2` |
+| 19.3 | done | `cea809c` |
+| 19.4 | done | `6db7734` |
+| 19.5 | done | `37a8869` |
+| 19.6 | done | `21ced62` |
+| — | done, found by verification | `9e69951` `fix(docker): build the app image once, and keep an idle make up idle` |
+| 19.7 | done | the commit that records session 26 |
+
+**As built.** V1–V14 all pass; the results are in BUILD_LOG session 26. The plan held apart from
+one commit that running it forced. Every `make up` recreated the app containers with nothing
+changed, and that had two causes: Compose labels each service's build differently, and Docker 29
+stamps build time into an attestation. So now only web builds the image, and the Makefile turns
+the default attestations off (D39). `.env` is also created with mode 600 rather than
+world-readable.
 
 **Out of scope:** CI/CD (the owner's next request) · TLS in front of the stack · a mail catcher
 such as Mailpit (settings would need `EMAIL_HOST`/`EMAIL_PORT` first) · deploying to a server ·

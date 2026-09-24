@@ -19,7 +19,9 @@ saying that in an interview is worth more than saying "I've used Celery".
 
 ## Development
 
-Three processes. Redis must be running first.
+With Docker, `make dev` runs all of this — web, worker, beat, Redis and Postgres — and restarts
+the worker when its code changes. See [DOCKER.md](DOCKER.md). Without Docker, it is three
+processes, and Redis must be running first.
 
 ```bash
 # 1. Broker
