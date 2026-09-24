@@ -80,8 +80,40 @@ def build_expense_export(self, job_id: int, site_url: str = "", download_url: st
     return row_count
 
 
+# Characters that make Excel, Google Sheets and others read a cell as a
+# formula to *evaluate* rather than text to display -- CSV injection. A
+# formula opened this way can call out to the internet or, with older
+# Excel, run further formulas from what it fetches. csv.writer already
+# quotes a value that contains a comma or a newline; it has no idea these
+# are dangerous, because to a CSV reader they are not -- the risk is only
+# in what a spreadsheet program does with the plain text afterwards.
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _csv_safe(text: str) -> str:
+    """A free-text cell, made to open as text even if it starts a formula.
+
+    Prefixing with a single quote is what every major spreadsheet program
+    itself uses to mean "this cell is text, not a formula", and a person
+    opening the file sees the value unchanged (only the underlying cell
+    content, not the display, carries the quote). Only free text a user
+    typed needs this -- see _write_csv's docstring for why Amount does not.
+    """
+    if text.startswith(_FORMULA_PREFIXES):
+        return f"'{text}"
+    return text
+
+
 def _write_csv(job: ExportJob) -> int:
-    """Stream the user's expenses into the job's FileField."""
+    """Stream the user's expenses into the job's FileField.
+
+    Category and Note are sanitised against CSV injection (_csv_safe): both
+    are free text a user chose, so either could start with a spreadsheet
+    formula character. Amount never is, even when negative: it is always
+    exactly a signed decimal number, formatted here, never user-typed --
+    and a cell that parses as a number opens as one, a leading "-" and all,
+    without ever being read as a formula.
+    """
     from .models import Expense
 
     expenses = (
@@ -103,9 +135,9 @@ def _write_csv(job: ExportJob) -> int:
         writer.writerow(
             [
                 expense.spent_on.isoformat(),
-                expense.category.name,
+                _csv_safe(expense.category.name),
                 f"{expense.amount:.2f}",
-                expense.note,
+                _csv_safe(expense.note),
             ]
         )
         row_count += 1

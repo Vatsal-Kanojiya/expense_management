@@ -115,7 +115,7 @@ Tick each task here as you finish it, and commit after each one.
       She needs the hosted URL, an account (a normal one, not a superuser), and her development
       origin (`http://localhost:5173` for Vite) added to `CORS_ALLOWED_ORIGINS`.
 
-- [ ] **Security pass 2 — files in and out of the app.** Each item: a fix, a test, one commit.
+- [x] **Security pass 2 — files in and out of the app.** Each item: a fix, a test, one commit.
   - [x] Bill photos: check the file's actual contents, not only the type the browser declares,
         and store and serve it with the verified type (`BillScanForm`, `bill_upload_path`,
         the scan `image` endpoint).
@@ -124,7 +124,7 @@ Tick each task here as you finish it, and commit after each one.
   - [x] A per-user limit on creating scans and exports, shared by the web pages and the API, in
         `accounts/ratelimit.py`'s style. Scans and exports each occupy a background worker,
         and scans can cost money with a real provider.
-  - [ ] CSV exports: make cells that start with `=`, `+`, `-` or `@` safe to open in
+  - [x] CSV exports: make cells that start with `=`, `+`, `-` or `@` safe to open in
         spreadsheet programs (`_write_csv` in `expenses/tasks.py`).
 
 - [ ] **Later — more security review.** Good free starting points:
