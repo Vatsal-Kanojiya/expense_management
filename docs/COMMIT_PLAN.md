@@ -621,6 +621,15 @@ The documents a frontend developer builds the React UI from (D47–D49), in `doc
 responses, rather than against the code, found three things worth fixing in the API itself. They are
 listed there.
 
+### Phase 22 — Security passes 🔜 *(session 29, branch `security-hardening`)*
+
+Themed passes, each confirmed, fixed, recorded and then paused for the owner's approval.
+
+| Pass | Theme | Commit | Status |
+|---|---|---|---|
+| 1 | Rate limits the caller could step around | `ea732e4`, `8208179` | Fixed; tests pending (HANDOVER task 1) |
+| 2+ | Next themes, to be chosen | — | Not started |
+
 ---
 
 ## 3. Practice branches — re-implementing a phase by hand
