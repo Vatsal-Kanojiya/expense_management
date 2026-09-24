@@ -26,3 +26,11 @@ anthropic==1.8.0
 # and BILL_SCAN_PROVIDER=openai respectively.
 google-genai==2.25.0
 openai==3.19.0
+
+# Phase 20: an API a remote frontend can use. Bearer tokens that a React
+# app on another origin, or a mobile app, can send (DECISIONS D41); CORS
+# for a UI served from another origin (D42); and an OpenAPI schema
+# generated from the serializers, so the API contract is the code (D43).
+djangorestframework-simplejwt==5.5.1
+django-cors-headers==4.9.0
+drf-spectacular==0.30.0
