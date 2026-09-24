@@ -1,17 +1,19 @@
 """Security pass 2 (docs/HANDOVER.md): files in and out of the app.
 
 Each item lands in its own commit; this file grows alongside them, in the
-order HANDOVER.md lists the items. This batch: verifying a bill photo's
-real type, not just the type the browser declares.
+order HANDOVER.md lists the items. So far: verifying a bill photo's real
+type, and refusing an oversized upload as early as Django allows.
 """
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import SimpleTestCase, TestCase
+from django.http import HttpResponse
+from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.urls import reverse
 
+from config.middleware import MaxUploadSizeMiddleware
 from expenses.extraction import (
     ACCEPTED_MIME_TYPES,
     IMAGE_EXTENSIONS,
@@ -135,3 +137,74 @@ class BillScanImageServingTests(TestCase):
         response = self.client.get(reverse("api:v1:bill-scan-image", args=[theirs.pk]))
 
         self.assertEqual(response.status_code, 404)
+
+
+# --- 2. Upload size: refused as early as Django allows --------------------
+
+
+class UploadSizeSettingsTests(SimpleTestCase):
+    def test_the_memory_limits_are_sized_from_max_upload_size_with_headroom(self):
+        from django.conf import settings
+
+        self.assertGreater(settings.DATA_UPLOAD_MAX_MEMORY_SIZE, MAX_UPLOAD_SIZE)
+        self.assertEqual(settings.DATA_UPLOAD_MAX_MEMORY_SIZE, MAX_UPLOAD_SIZE + 1024 * 1024)
+        self.assertEqual(settings.FILE_UPLOAD_MAX_MEMORY_SIZE, settings.DATA_UPLOAD_MAX_MEMORY_SIZE)
+
+
+class MaxUploadSizeMiddlewareTests(SimpleTestCase):
+    """The earliest check: Content-Length alone, before the view runs."""
+
+    def _call(self, content_length):
+        get_response = Mock(return_value=HttpResponse("ok"))
+        middleware = MaxUploadSizeMiddleware(get_response)
+        extra = {} if content_length is None else {"CONTENT_LENGTH": content_length}
+        request = RequestFactory().post("/", **extra)
+
+        return middleware(request), get_response
+
+    def test_a_declared_size_within_the_limit_reaches_the_view(self):
+        response, get_response = self._call("1000")
+
+        self.assertEqual(response.status_code, 200)
+        get_response.assert_called_once()
+
+    def test_a_declared_size_over_the_limit_is_refused_without_calling_the_view(self):
+        from django.conf import settings
+
+        response, get_response = self._call(str(settings.DATA_UPLOAD_MAX_MEMORY_SIZE + 1))
+
+        self.assertEqual(response.status_code, 413)
+        get_response.assert_not_called()
+
+    def test_no_content_length_passes_through(self):
+        response, get_response = self._call(None)
+
+        self.assertEqual(response.status_code, 200)
+        get_response.assert_called_once()
+
+    def test_a_malformed_content_length_fails_open_rather_than_crash(self):
+        response, get_response = self._call("not-a-number")
+
+        self.assertEqual(response.status_code, 200)
+        get_response.assert_called_once()
+
+
+class UploadSizeIntegrationTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+
+    def setUp(self):
+        self.client.force_login(self.alice)
+
+    def test_a_request_declaring_an_oversized_body_never_reaches_the_form(self):
+        image = SimpleUploadedFile("bill.jpg", JPEG, content_type="image/jpeg")
+
+        response = self.client.post(
+            reverse("expenses:bill_upload"),
+            {"image": image},
+            CONTENT_LENGTH=str(50 * 1024 * 1024),
+        )
+
+        self.assertEqual(response.status_code, 413)
+        self.assertFalse(BillScan.objects.exists())
