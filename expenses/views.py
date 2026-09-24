@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.cache import cache
 from django.db import transaction
-from django.db.models import Count, OuterRef, Prefetch, Subquery, Sum
+from django.db.models import Prefetch
 from django.db.models.deletion import ProtectedError
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -30,6 +30,7 @@ from .forms import (
     ExpenseItemFormSet,
     ParticipantForm,
 )
+from .managers import with_category_activity, with_participant_activity
 from .mixins import ItemFormSetMixin, OwnerFormMixin, OwnerScopedMixin
 from .models import BillScan, Category, Expense, ExpenseItem, ExportJob, Participant
 from .settlements import settle_up
@@ -83,29 +84,7 @@ class CategoryListView(OwnerScopedMixin, ListView):
     context_object_name = "categories"
 
     def get_queryset(self):
-        # The latest expense in each category, as a correlated subquery.
-        #
-        # An aggregate cannot do this. Max("expenses__spent_on") gives the
-        # latest *date*, but there is no aggregate that returns the amount
-        # belonging to that same row -- Max on both columns would happily
-        # pair the newest date with the largest amount from a different
-        # expense. Subquery selects one row and reads fields off it.
-        #
-        # OuterRef("pk") is the correlation: it resolves to the category
-        # row being annotated, which is why this cannot be evaluated on its
-        # own and only means anything inside annotate().
-        latest = Expense.objects.filter(category=OuterRef("pk")).order_by("-spent_on", "-id")
-
-        return (
-            super()
-            .get_queryset()
-            .annotate(
-                expense_count=Count("expenses"),
-                total=Sum("expenses__amount"),
-                last_spent_on=Subquery(latest.values("spent_on")[:1]),
-                last_amount=Subquery(latest.values("amount")[:1]),
-            )
-        )
+        return with_category_activity(super().get_queryset())
 
 
 class CategoryCreateView(OwnerScopedMixin, OwnerFormMixin, CreateView):
@@ -226,19 +205,8 @@ class ParticipantListView(OwnerScopedMixin, ListView):
     context_object_name = "participants"
 
     def get_queryset(self):
-        # Two counts in one query. Counting across two different relations in
-        # a single annotate() would multiply the join and inflate both, so
-        # each uses distinct=True.
         # Self ("You") is excluded: it is a split participant, not an address-book contact.
-        return (
-            super()
-            .get_queryset()
-            .filter(is_self=False)
-            .annotate(
-                shared_count=Count("shared_expenses", distinct=True),
-                item_count=Count("item_shares", distinct=True),
-            )
-        )
+        return with_participant_activity(super().get_queryset().filter(is_self=False))
 
 
 class ParticipantCreateView(OwnerScopedMixin, OwnerFormMixin, CreateView):
