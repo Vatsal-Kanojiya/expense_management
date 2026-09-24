@@ -15,11 +15,15 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    # ADMIN_URL moves the admin off the address every scanner tries first.
+    # Not a defence on its own -- the login is throttled -- but it keeps
+    # the noise out of the logs. Security pass 1.
+    path(settings.ADMIN_URL, admin.site.urls),
     path("accounts/", include("accounts.urls")),
     # Mounted above the app's own URLs so "/api/..." is never shadowed by a
     # future expenses route.
