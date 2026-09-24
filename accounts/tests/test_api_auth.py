@@ -80,6 +80,15 @@ class SignupTests(AuthApiTestCase):
         self.assertIn("password_confirm", response.json())
         self.assertFalse(User.objects.filter(username="bella").exists())
 
+    def test_password_rules_are_reported_on_the_password(self):
+        response = self.post(
+            "auth-signup", {**self.payload, "password": "12345", "password_confirm": "12345"}
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("This password is too short.", " ".join(response.json()["password"]))
+        self.assertNotIn("password_confirm", response.json())
+
     def test_an_email_already_in_use_is_refused(self):
         response = self.post("auth-signup", {**self.payload, "email": "ALICE@example.com"})
 

@@ -867,14 +867,16 @@ STEPS = [
         after=_after_signup,
         examples=[
             Example(
-                "Password too weak, and not repeated",
+                "Password too weak",
                 400,
                 body={
                     "username": "weak.user",
                     "email": "weak@example.com",
                     "password": "12345",
-                    "password_confirm": "123456",
+                    "password_confirm": "12345",
                 },
+                note="The password rules are checked once both copies match; a mismatch is "
+                "reported on `password_confirm` on its own.",
             )
         ],
     ),
