@@ -434,7 +434,7 @@ bar or a menu button), and **Add expense** must be available from every signed-i
 ## 7. Functional requirements
 
 Each module lists its requirements, the API it uses (details in [API_REFERENCE.md](API_REFERENCE.md)),
-and acceptance criteria. States common to every screen are in [7.12](#712-common-states-and-behaviour).
+and acceptance criteria. States common to every screen are in [7.12](#712-common-states-and-behaviour--fr-sys).
 
 ### 7.1 Authentication and session — FR-AUTH
 

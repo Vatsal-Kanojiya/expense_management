@@ -537,7 +537,7 @@ STEPS = [
         201,
         "No line items, several participants: the amount is split equally between them, "
         "rounded to the paisa without losing any. Send `include_self: false` with the exact "
-        "list the form shows (see the integration guide, section 7).",
+        "list the form shows (see the integration guide, section 9).",
         body={
             "category": V("category_id"),
             "amount": "900.00",

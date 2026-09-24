@@ -115,8 +115,8 @@ Ten failed attempts for one username from one address lock it for 15 minutes: 42
     "first_name": "",
     "last_name": "",
     "is_staff": false,
-    "date_joined": "2026-09-24T09:27:46.215903+05:30",
-    "last_login": "2026-09-24T09:27:46.244304+05:30",
+    "date_joined": "2026-09-24T09:30:31.637384+05:30",
+    "last_login": "2026-09-24T09:30:31.662542+05:30",
     "self_participant": {
       "id": 1,
       "name": "priya (self)"
@@ -179,8 +179,8 @@ The signed-in user. Call it when the app starts, to check that a stored token st
   "first_name": "",
   "last_name": "",
   "is_staff": false,
-  "date_joined": "2026-09-24T09:27:46.215903+05:30",
-  "last_login": "2026-09-24T09:27:46.244304+05:30",
+  "date_joined": "2026-09-24T09:30:31.637384+05:30",
+  "last_login": "2026-09-24T09:30:31.662542+05:30",
   "self_participant": {
     "id": 1,
     "name": "priya (self)"
@@ -223,8 +223,8 @@ Only `first_name` and `last_name` can change; `username` and `email` are read-on
   "first_name": "Priya",
   "last_name": "Sharma",
   "is_staff": false,
-  "date_joined": "2026-09-24T09:27:46.215903+05:30",
-  "last_login": "2026-09-24T09:27:46.244304+05:30",
+  "date_joined": "2026-09-24T09:30:31.637384+05:30",
+  "last_login": "2026-09-24T09:30:31.662542+05:30",
   "self_participant": {
     "id": 1,
     "name": "priya (self)"
@@ -260,7 +260,7 @@ Names are unique per user, ignoring case: `Food` and `food` are one category.
 {
   "id": 1,
   "name": "Food",
-  "created_at": "2026-09-24T09:27:46.262963+05:30",
+  "created_at": "2026-09-24T09:30:31.680276+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -308,7 +308,7 @@ A second category, used by the plain expense in folder 3.
 {
   "id": 2,
   "name": "Home",
-  "created_at": "2026-09-24T09:27:46.269808+05:30",
+  "created_at": "2026-09-24T09:30:31.686848+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -332,7 +332,7 @@ Alphabetical, with the Categories screen's usage columns: `expense_count`, `tota
     {
       "id": 2,
       "name": "Home",
-      "created_at": "2026-09-24T09:27:46.269808+05:30",
+      "created_at": "2026-09-24T09:30:31.686848+05:30",
       "expense_count": 0,
       "total": null,
       "last_spent_on": null,
@@ -341,7 +341,7 @@ Alphabetical, with the Categories screen's usage columns: `expense_count`, `tota
     {
       "id": 1,
       "name": "Food",
-      "created_at": "2026-09-24T09:27:46.262963+05:30",
+      "created_at": "2026-09-24T09:30:31.680276+05:30",
       "expense_count": 0,
       "total": null,
       "last_spent_on": null,
@@ -363,7 +363,7 @@ One category with its usage columns. Another user's id is a 404, never a 403.
 {
   "id": 1,
   "name": "Food",
-  "created_at": "2026-09-24T09:27:46.262963+05:30",
+  "created_at": "2026-09-24T09:30:31.680276+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -393,7 +393,7 @@ PATCH changes only the fields sent.
 {
   "id": 2,
   "name": "Household",
-  "created_at": "2026-09-24T09:27:46.269808+05:30",
+  "created_at": "2026-09-24T09:30:31.686848+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -423,7 +423,7 @@ PUT sends every writable field; for a category that is only `name`.
 {
   "id": 2,
   "name": "Home & utilities",
-  "created_at": "2026-09-24T09:27:46.269808+05:30",
+  "created_at": "2026-09-24T09:30:31.686848+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -453,7 +453,7 @@ A throwaway category for the delete that follows.
 {
   "id": 3,
   "name": "Travel",
-  "created_at": "2026-09-24T09:27:46.293742+05:30",
+  "created_at": "2026-09-24T09:30:31.709563+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -514,7 +514,7 @@ Someone bills are split with. People are private to each user, and names are uni
   "id": 2,
   "name": "Rahul",
   "is_self": false,
-  "created_at": "2026-09-24T09:27:46.308992+05:30",
+  "created_at": "2026-09-24T09:30:31.724003+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -561,7 +561,7 @@ A second person, for the itemised bill in folder 3.
   "id": 3,
   "name": "Aisha",
   "is_self": false,
-  "created_at": "2026-09-24T09:27:46.314842+05:30",
+  "created_at": "2026-09-24T09:30:31.729394+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -584,7 +584,7 @@ Alphabetical, **including the user themself** with `is_self: true`: the People s
       "id": 3,
       "name": "Aisha",
       "is_self": false,
-      "created_at": "2026-09-24T09:27:46.314842+05:30",
+      "created_at": "2026-09-24T09:30:31.729394+05:30",
       "shared_count": 0,
       "item_count": 0
     },
@@ -592,7 +592,7 @@ Alphabetical, **including the user themself** with `is_self: true`: the People s
       "id": 2,
       "name": "Rahul",
       "is_self": false,
-      "created_at": "2026-09-24T09:27:46.308992+05:30",
+      "created_at": "2026-09-24T09:30:31.724003+05:30",
       "shared_count": 0,
       "item_count": 0
     },
@@ -600,7 +600,7 @@ Alphabetical, **including the user themself** with `is_self: true`: the People s
       "id": 1,
       "name": "priya (self)",
       "is_self": true,
-      "created_at": "2026-09-24T09:27:46.247243+05:30",
+      "created_at": "2026-09-24T09:30:31.665363+05:30",
       "shared_count": 0,
       "item_count": 0
     }
@@ -621,7 +621,7 @@ One person.
   "id": 2,
   "name": "Rahul",
   "is_self": false,
-  "created_at": "2026-09-24T09:27:46.308992+05:30",
+  "created_at": "2026-09-24T09:30:31.724003+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -650,7 +650,7 @@ PATCH changes only the fields sent.
   "id": 3,
   "name": "Aisha Khan",
   "is_self": false,
-  "created_at": "2026-09-24T09:27:46.314842+05:30",
+  "created_at": "2026-09-24T09:30:31.729394+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -696,7 +696,7 @@ PUT sends every writable field; for a person that is only `name`.
   "id": 3,
   "name": "Aisha K.",
   "is_self": false,
-  "created_at": "2026-09-24T09:27:46.314842+05:30",
+  "created_at": "2026-09-24T09:30:31.729394+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -725,7 +725,7 @@ A throwaway person for the delete that follows.
   "id": 4,
   "name": "Old colleague",
   "is_self": false,
-  "created_at": "2026-09-24T09:27:46.335514+05:30",
+  "created_at": "2026-09-24T09:30:31.748865+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -810,7 +810,7 @@ The simplest expense: yours alone. `paid_by` may be left out and defaults to you
   "items_total": null,
   "unaccounted_amount": null,
   "is_balanced": true,
-  "created_at": "2026-09-24T09:27:46.357216+05:30"
+  "created_at": "2026-09-24T09:30:31.770404+05:30"
 }
 ```
 
@@ -841,7 +841,7 @@ The simplest expense: yours alone. `paid_by` may be left out and defaults to you
 
 `POST /expenses/` · Bearer token · success `201 Created`
 
-No line items, several participants: the amount is split equally between them, rounded to the paisa without losing any. Send `include_self: false` with the exact list the form shows (see the integration guide, section 7).
+No line items, several participants: the amount is split equally between them, rounded to the paisa without losing any. Send `include_self: false` with the exact list the form shows (see the integration guide, section 9).
 
 **Request**
 
@@ -884,7 +884,7 @@ No line items, several participants: the amount is split equally between them, r
   "items_total": null,
   "unaccounted_amount": null,
   "is_balanced": true,
-  "created_at": "2026-09-24T09:27:46.367443+05:30"
+  "created_at": "2026-09-24T09:30:31.780191+05:30"
 }
 ```
 
@@ -1029,7 +1029,7 @@ Line items, each shared by the people who had it, and a tax/tip amount (`misc_am
   "items_total": "1080.00",
   "unaccounted_amount": "0.00",
   "is_balanced": true,
-  "created_at": "2026-09-24T09:27:46.378120+05:30"
+  "created_at": "2026-09-24T09:30:31.790978+05:30"
 }
 ```
 
@@ -1234,7 +1234,7 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
       "items_total": "1080.00",
       "unaccounted_amount": "0.00",
       "is_balanced": true,
-      "created_at": "2026-09-24T09:27:46.378120+05:30"
+      "created_at": "2026-09-24T09:30:31.790978+05:30"
     },
     {
       "id": 4,
@@ -1255,7 +1255,7 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
       "items_total": null,
       "unaccounted_amount": null,
       "is_balanced": true,
-      "created_at": "2026-09-24T09:27:46.367443+05:30"
+      "created_at": "2026-09-24T09:30:31.780191+05:30"
     },
     {
       "id": 3,
@@ -1273,7 +1273,7 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
       "items_total": null,
       "unaccounted_amount": null,
       "is_balanced": true,
-      "created_at": "2026-09-24T09:27:46.357216+05:30"
+      "created_at": "2026-09-24T09:30:31.770404+05:30"
     }
   ],
   "count": 3,
@@ -1364,7 +1364,7 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
       "items_total": "1080.00",
       "unaccounted_amount": "0.00",
       "is_balanced": true,
-      "created_at": "2026-09-24T09:27:46.378120+05:30"
+      "created_at": "2026-09-24T09:30:31.790978+05:30"
     }
   ],
   "count": 1,
@@ -1459,7 +1459,7 @@ One expense.
   "items_total": "1080.00",
   "unaccounted_amount": "0.00",
   "is_balanced": true,
-  "created_at": "2026-09-24T09:27:46.378120+05:30"
+  "created_at": "2026-09-24T09:30:31.790978+05:30"
 }
 ```
 
@@ -1501,7 +1501,7 @@ Only the fields sent change. `items` left out keeps the line items; `items: []` 
   "items_total": null,
   "unaccounted_amount": null,
   "is_balanced": true,
-  "created_at": "2026-09-24T09:27:46.367443+05:30"
+  "created_at": "2026-09-24T09:30:31.780191+05:30"
 }
 ```
 
@@ -1547,7 +1547,7 @@ PUT sends the whole expense again; anything left out of the lists is removed.
   "items_total": null,
   "unaccounted_amount": null,
   "is_balanced": true,
-  "created_at": "2026-09-24T09:27:46.357216+05:30"
+  "created_at": "2026-09-24T09:30:31.770404+05:30"
 }
 ```
 
@@ -1747,7 +1747,7 @@ Records a repayment of the whole outstanding amount, in whichever direction it r
     "participant_name": "Rahul",
     "amount": "838.89",
     "note": "Paid by UPI",
-    "settled_at": "2026-09-24T09:27:46.474061+05:30"
+    "settled_at": "2026-09-24T09:30:31.884195+05:30"
   }
 }
 ```
@@ -1789,7 +1789,7 @@ Every repayment recorded, newest first. `?participant=<id>` narrows it to one pe
       "participant_name": "Rahul",
       "amount": "838.89",
       "note": "Paid by UPI",
-      "settled_at": "2026-09-24T09:27:46.474061+05:30"
+      "settled_at": "2026-09-24T09:30:31.884195+05:30"
     }
   ]
 }
@@ -1810,7 +1810,7 @@ One repayment.
   "participant_name": "Rahul",
   "amount": "838.89",
   "note": "Paid by UPI",
-  "settled_at": "2026-09-24T09:27:46.474061+05:30"
+  "settled_at": "2026-09-24T09:30:31.884195+05:30"
 }
 ```
 
@@ -1847,7 +1847,7 @@ Answers at once with the job, `pending`. A worker builds the CSV and emails a li
   "end": "2026-09-30",
   "row_count": 0,
   "error": "",
-  "requested_at": "2026-09-24T09:27:46.487445+05:30",
+  "requested_at": "2026-09-24T09:30:31.896858+05:30",
   "completed_at": null,
   "download_url": null
 }
@@ -1869,8 +1869,8 @@ Poll every second or two until `status` is `complete` (then `download_url` is se
   "end": "2026-09-30",
   "row_count": 2,
   "error": "",
-  "requested_at": "2026-09-24T09:27:46.487445+05:30",
-  "completed_at": "2026-09-24T09:27:46.538592+05:30",
+  "requested_at": "2026-09-24T09:30:31.896858+05:30",
+  "completed_at": "2026-09-24T09:30:31.945858+05:30",
   "download_url": "http://127.0.0.1:8765/api/v1/exports/1/download/"
 }
 ```
@@ -1895,8 +1895,8 @@ The user's exports, newest first.
       "end": "2026-09-30",
       "row_count": 2,
       "error": "",
-      "requested_at": "2026-09-24T09:27:46.487445+05:30",
-      "completed_at": "2026-09-24T09:27:46.538592+05:30",
+      "requested_at": "2026-09-24T09:30:31.896858+05:30",
+      "completed_at": "2026-09-24T09:30:31.945858+05:30",
       "download_url": "http://127.0.0.1:8765/api/v1/exports/1/download/"
     }
   ]
@@ -1958,7 +1958,7 @@ On a server using a real vision model, upload a real photo of a bill; the sample
   "error": "",
   "result": {},
   "expense": null,
-  "created_at": "2026-09-24T09:27:46.569538+05:30",
+  "created_at": "2026-09-24T09:30:31.975745+05:30",
   "completed_at": null,
   "image_url": "http://127.0.0.1:8765/api/v1/bill-scans/1/image/"
 }
@@ -2010,8 +2010,8 @@ Poll until `status` is `done` or `failed` (then `error` says why). Scans usually
     "provider": "fake"
   },
   "expense": null,
-  "created_at": "2026-09-24T09:27:46.569538+05:30",
-  "completed_at": "2026-09-24T09:27:46.574080+05:30",
+  "created_at": "2026-09-24T09:30:31.975745+05:30",
+  "completed_at": "2026-09-24T09:30:31.979904+05:30",
   "image_url": "http://127.0.0.1:8765/api/v1/bill-scans/1/image/"
 }
 ```
@@ -2054,8 +2054,8 @@ The user's scans, newest first.
         "provider": "fake"
       },
       "expense": null,
-      "created_at": "2026-09-24T09:27:46.569538+05:30",
-      "completed_at": "2026-09-24T09:27:46.574080+05:30",
+      "created_at": "2026-09-24T09:30:31.975745+05:30",
+      "completed_at": "2026-09-24T09:30:31.979904+05:30",
       "image_url": "http://127.0.0.1:8765/api/v1/bill-scans/1/image/"
     }
   ]
@@ -2179,7 +2179,7 @@ The corrected draft, sent as a normal expense. Each scan can be saved once; the 
   "items_total": "400.00",
   "unaccounted_amount": "0.00",
   "is_balanced": true,
-  "created_at": "2026-09-24T09:27:46.596205+05:30"
+  "created_at": "2026-09-24T09:30:32.001380+05:30"
 }
 ```
 
@@ -2342,7 +2342,7 @@ The frontend's `/verify-email/<uid>/<token>` page calls this with the two parts 
 ```json
 {
   "uid": "Mw",
-  "token": "dfekya-5d334c294e3cb151fd64c2ee3f72dd72"
+  "token": "dfel2w-295c56cd01875853317948d3c9e01cfe"
 }
 ```
 
@@ -2359,8 +2359,8 @@ The frontend's `/verify-email/<uid>/<token>` page calls this with the two parts 
     "first_name": "",
     "last_name": "",
     "is_staff": false,
-    "date_joined": "2026-09-24T09:27:46.639163+05:30",
-    "last_login": "2026-09-24T09:27:46.655567+05:30",
+    "date_joined": "2026-09-24T09:30:32.046957+05:30",
+    "last_login": "2026-09-24T09:30:32.062925+05:30",
     "self_participant": {
       "id": 5,
       "name": "new.user (self)"
@@ -2409,8 +2409,8 @@ Needs the current password. Every other device is signed out; this one gets a ne
     "first_name": "",
     "last_name": "",
     "is_staff": false,
-    "date_joined": "2026-09-24T09:27:46.639163+05:30",
-    "last_login": "2026-09-24T09:27:46.662358+05:30",
+    "date_joined": "2026-09-24T09:30:32.046957+05:30",
+    "last_login": "2026-09-24T09:30:32.069556+05:30",
     "self_participant": {
       "id": 5,
       "name": "new.user (self)"
@@ -2477,7 +2477,7 @@ The frontend's `/reset-password/<uid>/<token>` page sends the two parts of its U
 ```json
 {
   "uid": "Mw",
-  "token": "dfekya-5e2156acd391971f48340a7a50661a82",
+  "token": "dfel2w-30d875fb9ad85c4393f7bec7c6beafd9",
   "new_password": "Third-Pass-2026",
   "new_password_confirm": "Third-Pass-2026"
 }
@@ -2531,8 +2531,8 @@ Signing in again after the reset.
     "first_name": "",
     "last_name": "",
     "is_staff": false,
-    "date_joined": "2026-09-24T09:27:46.639163+05:30",
-    "last_login": "2026-09-24T09:27:46.675274+05:30",
+    "date_joined": "2026-09-24T09:30:32.046957+05:30",
+    "last_login": "2026-09-24T09:30:32.081816+05:30",
     "self_participant": {
       "id": 5,
       "name": "new.user (self)"
