@@ -15,6 +15,9 @@ import logging
 import uuid
 from contextvars import ContextVar
 
+from django.conf import settings
+from django.http import HttpResponse
+
 # ContextVar, not threading.local. Under a WSGI worker they behave the
 # same; under ASGI a single thread interleaves many requests and a
 # thread-local would leak one request's id into another's log lines.
@@ -24,6 +27,42 @@ _request_id: ContextVar[str] = ContextVar("request_id", default="-")
 
 def get_request_id() -> str:
     return _request_id.get()
+
+
+class MaxUploadSizeMiddleware:
+    """Refuse a request that is already too big, before Django reads it.
+
+    Security pass 2 (HANDOVER.md). Placed first in MIDDLEWARE so nothing
+    upstream of it -- not even CsrfViewMiddleware, which reads
+    ``request.POST`` to find the token on every unsafe request, forcing a
+    full multipart parse -- gets a chance to stream an oversized body into
+    memory or a temp file before this rejects it from the header alone.
+
+    A cheap, early check, not a guarantee: Content-Length is whatever the
+    client declared, and a request that lies about it or sends the body
+    chunked slips past this and lands on DATA_UPLOAD_MAX_MEMORY_SIZE
+    (settings.py) instead, later and after more work is done. In
+    production the reverse proxy's own body-size limit (HANDOVER.md
+    section 4) is the backstop that does not trust the client either way.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        limit = settings.DATA_UPLOAD_MAX_MEMORY_SIZE
+        content_length = request.META.get("CONTENT_LENGTH")
+
+        if limit is not None and content_length is not None:
+            try:
+                declared_size = int(content_length)
+            except ValueError:
+                declared_size = None
+
+            if declared_size is not None and declared_size > limit:
+                return HttpResponse("Request body too large.", status=413)
+
+        return self.get_response(request)
 
 
 class RequestIDMiddleware:

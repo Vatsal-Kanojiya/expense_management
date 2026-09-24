@@ -15,6 +15,10 @@ from pathlib import Path
 
 import environ
 
+# The 5 MB bill-photo rule, read here rather than restated -- see the
+# upload-size settings below, in the "Upload size" section.
+from expenses.extraction import MAX_UPLOAD_SIZE
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -111,6 +115,11 @@ TEST_RUNNER = "config.test_runner.FastTestRunner"
 
 
 MIDDLEWARE = [
+    # First, so nothing else -- not even CsrfViewMiddleware reading
+    # request.POST for its token -- gets a chance to read an oversized
+    # body before this rejects it from Content-Length alone. Security
+    # pass 2; see the middleware's own docstring.
+    "config.middleware.MaxUploadSizeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     # Directly after SecurityMiddleware and before everything else, so a
     # static file is served without paying for session lookup, auth or CSRF.
@@ -290,6 +299,28 @@ BILL_SCAN_MODELS = {
     "gemini": env("BILL_SCAN_GEMINI_MODEL", default="gemini-2.5-flash-lite"),
     "openai": env("BILL_SCAN_OPENAI_MODEL", default="gpt-5-mini"),
 }
+
+
+# Upload size (security pass 2)
+#
+# Django's own defaults (2.5 MB) would refuse the 5 MB bill photo the
+# extraction boundary (expenses/extraction/__init__.py) already allows, so
+# these are sized from the same MAX_UPLOAD_SIZE rather than picked again
+# here -- one place this number is a decision, everywhere else it is a
+# read. DATA_UPLOAD_MAX_MEMORY_SIZE caps a raw request body (a JSON POST)
+# outright; FILE_UPLOAD_MAX_MEMORY_SIZE only decides whether an uploaded
+# file is held in memory or spooled to disk while it is read. Neither one
+# rejects an oversized *file* in a multipart body early -- Django does not
+# offer that hook -- which is what MaxUploadSizeMiddleware
+# (config/middleware.py) and, in production, the reverse proxy's own body
+# limit (HANDOVER.md section 4) are for.
+#
+# Headroom above the 5 MB rule for multipart's own overhead: the boundary
+# markers, part headers, and the form's other fields. A legitimate photo
+# is never what either of these rejects -- BillScanForm.clean_image still
+# enforces the exact 5 MB rule and gives a message a person can act on.
+DATA_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_SIZE + 1024 * 1024  # +1 MB headroom
+FILE_UPLOAD_MAX_MEMORY_SIZE = DATA_UPLOAD_MAX_MEMORY_SIZE
 
 
 # Media files (generated exports, uploaded bills)

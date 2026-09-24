@@ -119,7 +119,7 @@ Tick each task here as you finish it, and commit after each one.
   - [x] Bill photos: check the file's actual contents, not only the type the browser declares,
         and store and serve it with the verified type (`BillScanForm`, `bill_upload_path`,
         the scan `image` endpoint).
-  - [ ] Upload size: refuse oversized uploads as early as Django allows, and add a body-size
+  - [x] Upload size: refuse oversized uploads as early as Django allows, and add a body-size
         limit for the reverse proxy to the hosting checklist in section 4.
   - [ ] A per-user limit on creating scans and exports, shared by the web pages and the API, in
         `accounts/ratelimit.py`'s style. Scans and exports each occupy a background worker,
@@ -150,6 +150,7 @@ On the server, in `.env` (see `.env.example` for each key):
 | `ALLOWED_HOSTS` | Your domain |
 | `POSTGRES_PASSWORD` | Long and random, set **before** the first `make up` (docs/DOCKER.md §14) |
 | `WEB_BIND_ADDRESS` | `127.0.0.1` when a reverse proxy (nginx or Caddy) sits in front |
+| Reverse proxy body-size limit | `client_max_body_size 6m;` (nginx) or the Caddy equivalent. Django's own limits (security pass 2, config/settings.py) reject an oversized body only once it reaches the app; the proxy is what refuses it without ever forwarding the bytes. 6m matches the app's own 5 MB rule plus headroom, so a legitimate bill photo is never what this rejects |
 | `DATA_BIND_ADDRESS` | Leave at `127.0.0.1` |
 | `USE_X_FORWARDED_PROTO` | `True` behind a proxy that terminates HTTPS |
 | `TRUSTED_PROXY_COUNT` | The number of proxies in front: usually `1` |
