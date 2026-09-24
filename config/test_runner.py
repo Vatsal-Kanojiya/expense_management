@@ -1,3 +1,4 @@
+import shutil
 import tempfile
 
 from django.conf import settings
@@ -51,6 +52,14 @@ class FastTestRunner(DiscoverRunner):
     is therefore off by default and tests that are *about* the cache turn
     it back on with override_settings. A test that caches by accident is a
     test that passes for a reason nobody chose.
+
+    The fifth swap is MEDIA_ROOT, and it is about the data the suite leaves
+    behind. The bill-scan and export tests save real files through the
+    default storage and never delete them, so every run added more to
+    media/ -- and inside Docker, where MEDIA_ROOT is the persistent media
+    volume, to the files the running app serves. A temporary directory,
+    removed when the run ends, keeps test files out of both (BUILD_LOG
+    issue 41).
     """
 
     def setup_test_environment(self, **kwargs):
@@ -62,3 +71,8 @@ class FastTestRunner(DiscoverRunner):
         }
         settings.STATIC_ROOT = tempfile.mkdtemp(prefix="test-static-")
         settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}
+        settings.MEDIA_ROOT = tempfile.mkdtemp(prefix="test-media-")
+
+    def teardown_test_environment(self, **kwargs):
+        shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
+        super().teardown_test_environment(**kwargs)
