@@ -115,6 +115,18 @@ Tick each task here as you finish it, and commit after each one.
       She needs the hosted URL, an account (a normal one, not a superuser), and her development
       origin (`http://localhost:5173` for Vite) added to `CORS_ALLOWED_ORIGINS`.
 
+- [ ] **Security pass 2 — files in and out of the app.** Each item: a fix, a test, one commit.
+  - [ ] Bill photos: check the file's actual contents, not only the type the browser declares,
+        and store and serve it with the verified type (`BillScanForm`, `bill_upload_path`,
+        the scan `image` endpoint).
+  - [ ] Upload size: refuse oversized uploads as early as Django allows, and add a body-size
+        limit for the reverse proxy to the hosting checklist in section 4.
+  - [ ] A per-user limit on creating scans and exports, shared by the web pages and the API, in
+        `accounts/ratelimit.py`'s style. Scans and exports each occupy a background worker,
+        and scans can cost money with a real provider.
+  - [ ] CSV exports: make cells that start with `=`, `+`, `-` or `@` safe to open in
+        spreadsheet programs (`_write_csv` in `expenses/tasks.py`).
+
 - [ ] **Later — more security review.** Good free starting points:
   - `python manage.py check --deploy` with the production settings;
   - `pip install pip-audit && pip-audit -r requirements.txt`, for dependencies with known
