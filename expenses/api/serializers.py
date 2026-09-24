@@ -10,7 +10,7 @@ from django.db import transaction
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from expenses.models import Category, Expense, ExpenseItem, ItemShare, Participant
+from expenses.models import BillScan, Category, Expense, ExpenseItem, ItemShare, Participant
 
 
 class ScopedPrimaryKeyRelatedField(serializers.PrimaryKeyRelatedField):
@@ -132,6 +132,16 @@ class ExpenseSerializer(serializers.ModelSerializer):
     # charge Rahul the whole bill. Send false for a pure reimbursement.
     include_self = serializers.BooleanField(write_only=True, required=False, default=True)
     items = ExpenseItemSerializer(many=True, required=False)
+    # Saving a scanned bill: the id from `bill-scans/{id}/prefill/`. On
+    # create only, and each scan at most once -- the page enforced that by
+    # 404ing the review URL of a saved scan; here it is a rule.
+    bill_scan = ScopedPrimaryKeyRelatedField(
+        queryset=BillScan.objects.all(),
+        write_only=True,
+        required=False,
+        allow_null=True,
+        help_text="On create only: the scan this expense was confirmed from.",
+    )
 
     # Read-only conveniences, so a list can be rendered without a lookup per
     # row. The ids above stay the fields a client writes.
@@ -160,6 +170,7 @@ class ExpenseSerializer(serializers.ModelSerializer):
             "misc_amount",
             "misc_note",
             "include_self",
+            "bill_scan",
             "items",
             "items_total",
             "unaccounted_amount",
@@ -176,6 +187,17 @@ class ExpenseSerializer(serializers.ModelSerializer):
     @extend_schema_field(serializers.DecimalField(**MONEY, allow_null=True))
     def get_unaccounted_amount(self, expense):
         return None if expense.items_total() is None else f"{expense.unaccounted_amount():.2f}"
+
+    def validate_bill_scan(self, scan):
+        if scan is None:
+            return scan
+        if self.instance is not None:
+            raise serializers.ValidationError("A scan can only be attached when creating.")
+        if scan.status != BillScan.Status.DONE:
+            raise serializers.ValidationError("This bill has not finished scanning.")
+        if scan.expense_id:
+            raise serializers.ValidationError("This bill has already been saved as an expense.")
+        return scan
 
     def validate_misc_amount(self, value):
         if value is not None and value <= 0:
@@ -289,6 +311,7 @@ class ExpenseSerializer(serializers.ModelSerializer):
         include_self = validated_data.pop("include_self", True)
         items = validated_data.pop("items", [])
         participants = validated_data.pop("participants", [])
+        scan = validated_data.pop("bill_scan", None)
         participants, items = self._with_self(participants, items, include_self)
         participants = self._with_item_people(participants, items)
 
@@ -296,11 +319,24 @@ class ExpenseSerializer(serializers.ModelSerializer):
         expense.participants.set(participants)
         self._write_items(expense, items)
 
+        if scan is not None:
+            # Locked and re-checked inside this transaction: two saves of one
+            # scan racing past validation must not both create an expense.
+            # Raising here rolls the expense back with it.
+            scan = BillScan.objects.select_for_update().get(pk=scan.pk)
+            if scan.expense_id:
+                raise serializers.ValidationError(
+                    {"bill_scan": ["This bill has already been saved as an expense."]}
+                )
+            scan.expense = expense
+            scan.save(update_fields=["expense"])
+
         return expense
 
     @transaction.atomic
     def update(self, instance, validated_data):
         include_self = validated_data.pop("include_self", True)
+        validated_data.pop("bill_scan", None)  # refused on update by validate_bill_scan
         items = validated_data.pop("items", None)
         participants = validated_data.pop("participants", None)
         # Only what the request mentions is touched: None stays None, so a
