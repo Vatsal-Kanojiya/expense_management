@@ -26,7 +26,7 @@ FILE    ?=
 
 .DEFAULT_GOAL := help
 .PHONY: help env up dev down ps logs update update-dev shell manage migrate \
-        createsuperuser test lint psql redis-cli backup restore-db restore-media \
+        createsuperuser test lint api-docs psql redis-cli backup restore-db restore-media \
         destroy url
 
 help: ## List the targets
@@ -102,6 +102,10 @@ test: ## Run the test suite on Postgres, in a throwaway container (ARGS=...)
 lint: ## ruff check and ruff format --check, in the dev image
 	$(DEV) build web
 	$(DEV) run --rm --no-deps web sh -c "ruff check --no-cache . && ruff format --check --no-cache ."
+
+api-docs: ## Regenerate docs/frontend's Postman collection, API reference and schema
+	$(DEV) build web
+	$(DEV) run --rm web python manage.py build_api_docs
 
 psql: ## Open psql on the database
 	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
