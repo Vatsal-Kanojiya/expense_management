@@ -724,3 +724,117 @@ the app containers each time.
 
 **Reverse it if:** CI/CD starts building images for a registry. Build those with the default
 attestations, or more.
+
+---
+
+## Session 27 — an API a remote frontend can be built on
+
+The brief: the app is about to be hosted. A React developer — a fresher, practising — will build a
+new UI against it from her own machine, and a mobile app or a public web portal may follow. So
+**every action the Django pages offer must have an API endpoint**, and the API must be usable from
+another origin and from a native app. The business-requirements document and the Postman
+collection for that developer come in the next phase. This one makes the backend ready for them.
+
+### D40. The API reaches parity with the Django pages, and the pages stay
+
+**Decided:** every action on a Django page gets an endpoint under `/api/v1/`: account, categories,
+people, expenses and their split, dashboard, balances and settling up, exports, and bill scans.
+The Django pages are neither removed nor changed; they keep working beside the new UI.
+
+**Alternative:** only the endpoints the first React screens need, added as the screens appear.
+
+**Why:** a frontend developer building "from the document alone" needs the whole contract up
+front, and a contract that grows screen by screen is one she has to keep asking about. Parity also
+gives a simple test of done: walk the Django pages and find a matching endpoint for each action.
+The domain code was already out of the views (`summaries.py`, `balances.py`, `settlements.py`,
+`extraction/prefill.py`), so each endpoint is a thin wrapper.
+
+**Reverse it if:** the new UI replaces the Django pages entirely. Then the pages can go, and the
+API is already the whole product.
+
+### D41. JWT bearer tokens alongside sessions
+
+**Decided:** `djangorestframework-simplejwt`, with a short-lived access token, a refresh token
+that rotates on use, and a blacklist so that logout and a password change really revoke access.
+Session authentication stays, for the browsable API and any same-origin client.
+
+**Alternatives:** sessions only, served from the same origin (the recommendation in session 26,
+before the brief changed); DRF's built-in `TokenAuthentication`; `django-rest-knox`.
+
+**Why:** the brief changed. The frontend will be developed on a different machine against the live
+server, which makes it cross-origin, and a native app has no cookie jar worth relying on. Bearer
+tokens work the same in both. DRF's own tokens never expire and allow one per user, so logging out
+on a phone would log out the laptop. Knox is sound but little known. SimpleJWT is the standard a
+MERN developer has already met. Rotation plus the blacklist closes JWT's usual weak spot, a
+refresh token that cannot be taken back.
+
+**Known trade:** a token kept in browser storage can be read by any script that XSS gets onto the
+page, which an HttpOnly session cookie cannot. The frontend documentation (next phase) says where
+to keep each token. Access tokens are short-lived so that a leak expires quickly.
+
+**Reverse it if:** the only client is ever a same-origin web UI. Then sessions are simpler and
+safer.
+
+### D42. CORS by an explicit allow-list, API paths only, no credentials
+
+**Decided:** `django-cors-headers`, with origins from `CORS_ALLOWED_ORIGINS` in the environment
+(for example `http://localhost:5173` for a Vite dev server), applied only to `/api/`. Credentials
+(cookies) are not allowed cross-origin.
+
+**Why:** a wildcard would let any site script the API with a stolen token. Tokens travel in the
+`Authorization` header, so cross-origin cookies are unnecessary. Not sending them also means
+cross-origin requests need no CSRF token, and CSRF stays enforced for the session path.
+
+### D43. The API contract is generated from the code
+
+**Decided:** `drf-spectacular` publishes an OpenAPI 3 schema at `/api/schema/` and Swagger UI at
+`/api/docs/`. Every custom endpoint declares its request and response serializers. A test fails if
+generating the schema produces a warning. The next phase's Postman collection is generated from
+this schema, not written by hand.
+
+**Why:** hand-written API docs drift from the code on the first change after they are written. A
+schema generated from the serializers is the code, and a warning-free test keeps it complete.
+
+### D44. Every rule a Django page enforces is restated at the API
+
+**Decided:** the API gains the rules it had skipped:
+
+- Login is rate-limited with the web's limiter, and an unverified account gets a distinct refusal.
+- A tax/tip amount needs a description and line items.
+- If you are not on an expense, each of its line items must name who had it.
+- Anyone a line item charges is added to the expense's participants.
+- The self participant is marked `is_self`, and cannot be renamed or deleted (issue 34).
+- A delete that the database protects returns 409 with a reason instead of a 500 (issue 44).
+
+**Why:** the rule this project keeps relearning: a rule the database cannot hold must be restated
+at every entry point. The API is about to become the main entry point. Adding line-item people to
+the participants also prevents a cross-entry-point loss: the web edit form offers only an
+expense's participants, so a share the API created outside them would be dropped the first time
+someone saved that expense on the web (issue 45).
+
+### D45. An email links back to the UI that asked for it
+
+**Decided:** a new setting, `FRONTEND_URL`. Verification, password-reset and export-ready emails
+triggered through the API link to `FRONTEND_URL` routes (`/verify-email/<uid>/<token>`,
+`/reset-password/<uid>/<token>`, `/exports/<id>`), and the frontend completes the action through
+the API. Emails triggered by the Django pages keep linking to the Django pages. Unset, everything
+links to the Django pages, as before.
+
+**Why:** a link to a page the person never used — or to an API URL a browser cannot authenticate
+against — is a dead end.
+
+### D46. API defaults that differ from the pages, on purpose
+
+**Decided:**
+
+- The expense list and balances cover all time unless `start`/`end` are given. The Django pages
+  default to the current month.
+- The dashboard summary and exports keep the current-month default.
+- Throttle rates are environment settings, with the per-user default raised from 1000 to 3000
+  requests an hour.
+
+**Why:** a page has a sensible first view; an API should return what was asked for. Balances in
+particular: settling up always settles the *all-time* outstanding amount, so a month-scoped "owes
+you" beside a settle button would disagree with what the button does. A single-page app fires
+several requests per screen and polls a scan's status, which 1000 an hour would throttle in
+ordinary use.

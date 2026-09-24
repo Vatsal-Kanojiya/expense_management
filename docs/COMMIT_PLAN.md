@@ -485,6 +485,73 @@ pushing images to a registry · merging to `master`.
 
 **Tag:** `phase-19-docker-daily-use`, once the owner has run the stack on their own machine.
 
+### Phase 20 — An API for a remote frontend 🔜 *(session 27, branch `frontend-api`, on top of `project-dockerization`)*
+
+> **Prerequisite:** phase 19. This phase adds three dependencies, API code, tests and settings. It
+> does **not** change the Django pages, models or migrations — apart from the migrations of the
+> JWT blacklist app, which ship with the library.
+
+A React developer will build a new UI from her own machine against the hosted server, and a mobile
+app may follow. So every action a Django page offers gets an endpoint (D40–D46). The
+business-requirements document and the Postman collection come in phase 21, generated from this
+phase's OpenAPI schema.
+
+**Parity: every page action, and its endpoint** (all under `/api/v1/` unless noted)
+
+| Django page | Action | Endpoint |
+|---|---|---|
+| Sign up, verify email | register; confirm the mailed link | `POST auth/signup/`, `POST auth/verify-email/` |
+| Log in / log out | | `POST auth/login/`, `POST auth/refresh/`, `POST auth/logout/` |
+| Password change / reset | | `POST auth/password/change/`, `POST auth/password/reset/`, `POST auth/password/reset/confirm/` |
+| Delete account | | `DELETE me/` (plus `GET`/`PATCH me/` for the profile) |
+| Overview (dashboard) | totals, previous period, by category, biggest | `GET summary/` |
+| Expenses | list with date / category / search filters and the filtered total | `GET expenses/` |
+| Expense form | create, edit, delete, with line items, shares, tax/tip, payer | `POST/GET/PUT/PATCH/DELETE expenses/…` |
+| Expense form, Split tab | who owes what on one expense | `GET expenses/{id}/split/` |
+| Categories | list with counts and totals; add, rename, delete | `categories/` (409 when in use) |
+| People | list with counts; add, rename, delete | `participants/` (`is_self`; 409 when in use) |
+| Balances | who owes you, whom you owe; settle up | `GET balances/`, `POST balances/{participant}/settle/`, `GET settlements/` |
+| Exports | request, list, download | `POST/GET exports/`, `GET exports/{id}/download/` |
+| Scan a bill | upload, watch status, review, save | `POST/GET bill-scans/`, `GET bill-scans/{id}/image/`, `GET bill-scans/{id}/prefill/`, `POST expenses/` with `bill_scan` |
+| — | contract and health | `GET /api/schema/`, `GET /api/docs/`, `GET health/` |
+
+| # | Commit | Architecture note |
+|---|---|---|
+| 20.1 | `docs: plan phase 20, an API for a remote frontend` | D40–D46 and this section |
+| 20.2 | `feat(api): JWT, CORS, an OpenAPI schema and 409 for protected deletes` | Dependencies, settings, exception handler, health |
+| 20.3 | `feat(api): account endpoints` | Reuses the web's forms, rate limiter, token generators and ordered deletion |
+| 20.4 | `feat(api): categories, people and expenses at parity with the pages` | Aggregates, `is_self`, filters and totals, the web's expense rules, split |
+| 20.5 | `feat(api): dashboard summary, balances and settling up` | Wraps `summarise`, `outstanding_balances`, `settle_up` |
+| 20.6 | `feat(api): exports and bill scans` | Same Celery tasks; the scan links to its expense under a row lock |
+| 20.7 | `feat(docker): pass the frontend settings through compose` | `CORS_ALLOWED_ORIGINS`, `FRONTEND_URL`, JWT lifetimes, SMTP |
+| 20.8 | `docs: record session 27` | BUILD_LOG, README |
+
+**Definition of done:**
+
+| # | Check |
+|---|---|
+| A1 | Every row of the parity table answers as documented |
+| A2 | The OpenAPI schema generates with zero warnings; Swagger UI loads |
+| A3 | Against the Docker stack, over HTTP only, as a browser on another origin would: CORS preflight passes for an allowed origin and is refused for any other; the whole journey works — sign up, verify, log in, every CRUD path, summary, balances, settle, export and download, bill scan to saved expense, refresh, logout — and a revoked refresh token is refused |
+| A4 | The suite passes on SQLite and on Postgres in Docker; ruff; `check --deploy` |
+
+**Progress.**
+
+| Task | Status | Commit |
+|---|---|---|
+| 20.1 | done | *(this commit)* |
+| 20.2 | todo | |
+| 20.3 | todo | |
+| 20.4 | todo | |
+| 20.5 | todo | |
+| 20.6 | todo | |
+| 20.7 | todo | |
+| 20.8 | todo | |
+
+**Out of scope, for phase 21 and later:** the business-requirements document and Postman
+collection (phase 21) · changing the email address on an account (needs its own verification
+flow) · push notifications · resending a verification email · per-device session management.
+
 ---
 
 ## 3. Practice branches — re-implementing a phase by hand
