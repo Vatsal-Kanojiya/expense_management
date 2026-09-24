@@ -57,6 +57,9 @@
 > the Postman collection for the frontend developer, generated from `/api/v1/schema/`. COMMIT_PLAN
 > phase 20 lists two behaviours that document must explain.
 >
+> **Phase 21 in progress — the frontend pack, session 28.** Plan and progress: COMMIT_PLAN phase
+> 21. Decisions D47–D49. Output: `docs/frontend/`.
+>
 > **Study material (session 24).** Two pages built from these docs, for revising away from the
 > laptop. Both are committed here and also published as private pages:
 >

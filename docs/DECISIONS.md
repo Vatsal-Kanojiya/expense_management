@@ -843,3 +843,53 @@ ordinary use. On the count: phase 10's reasoning was that a cursor cannot know t
 the scan it exists to avoid, and that still holds for the paginator. But the Expenses page shows
 the filtered total, and a client cannot add up pages it has not fetched. One aggregate over the
 filtered set costs a single query per request, not one per row, and the query-count test pins it.
+
+---
+
+## Session 28 — the frontend pack
+
+The brief: professional documents for a frontend developer building the React UI from scratch:
+a business requirements document / scope of work, and a Postman-style collection showing every
+request and its expected response. The developer is a fresher practising MERN, so the pack has to
+work as a complete brief, not a reference only an insider can read.
+
+### D47. The pack lives in the repository, beside the code it describes
+
+**Decided:** `docs/frontend/` on the same branch as the API. It holds the requirements document,
+an integration guide, a generated API reference, the OpenAPI snapshot, the Postman collection and
+environment, and a sample bill image.
+
+**Alternatives:** a shared online document; a wiki.
+
+**Why:** the pack is a contract, and a contract kept away from the code drifts on the first
+commit that changes one and not the other. Here a change to an endpoint and to its documentation
+land in one commit, and review sees both. GitHub renders the Markdown, the diagrams and the tables,
+so the developer needs nothing beyond a link.
+
+### D48. Examples are recorded from the running API, never typed
+
+**Decided:** `python manage.py build_api_docs` spins up a throwaway test database and drives the
+API through the whole user journey with Django's test client. It records every request and the
+response actually returned — successes and the characteristic errors — and writes three files from
+that one run: the Postman collection (with the responses as saved examples), the Markdown API
+reference, and the OpenAPI snapshot. Tests fail if the snapshot no longer matches the code, or if
+any endpoint in the schema has no recorded example.
+
+**Alternative:** write the collection and the examples by hand, or convert the OpenAPI schema with
+a generic converter.
+
+**Why:** a hand-typed example is a guess about what the server returns, and a fresher will build
+against the guess. A converter produces a request for every path but no realistic journey: no
+token handling, no ids carried from one call to the next, and no real responses. A recorded run
+has all three, and regenerating after an API change is one command.
+
+### D49. The requirements specify behaviour and acceptance, not pixels
+
+**Decided:** the document specifies screens, fields, rules, states and acceptance criteria, plus
+non-functional requirements (responsive, accessible, secure token handling). Visual design is the
+developer's to make within those rules. A recommended stack is given, not mandated.
+
+**Why:** the point is for the developer to practise building a UI, and designing it is part of
+that. What must not be left to taste is behaviour: how money is split and rounded, what a balance
+means, which errors can happen and what the user sees then. Those are specified exactly, because
+getting them wrong produces a UI that shows wrong numbers.
