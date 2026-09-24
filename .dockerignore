@@ -17,5 +17,9 @@ db.sqlite3
 # container ships with the developer's local key baked in.
 .env
 
+# Database dumps and media archives from `make backup`. Everyone's
+# financial history, so never in an image.
+backups/
+
 docs/
 *.md
