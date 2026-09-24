@@ -228,6 +228,7 @@ Tracked in full in [docs/BUILD_LOG.md](docs/BUILD_LOG.md). The two that matter m
 | [docs/STUDY_MAP.md](docs/STUDY_MAP.md) | Topics ranked by depth required, and why |
 | [docs/RUNNING_ASYNC.md](docs/RUNNING_ASYNC.md) | Running the worker, the digest, cron and systemd |
 | [docs/DOCKER.md](docs/DOCKER.md) | The Docker stack: two modes, ports, volumes, updating, backups |
+| [docs/HANDOVER.md](docs/HANDOVER.md) | Where things stand, how to run them, and what is left, in order |
 | [docs/frontend/](docs/frontend/README.md) | The frontend pack: requirements, integration guide, API reference, Postman collection |
 
 ---
