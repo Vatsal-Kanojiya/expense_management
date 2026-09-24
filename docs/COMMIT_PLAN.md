@@ -574,6 +574,47 @@ while verifying:
 collection (phase 21) · changing the email address on an account (needs its own verification
 flow) · push notifications · resending a verification email · per-device session management.
 
+### Phase 21 — The frontend pack 🔜 *(session 28, branch `frontend-api`)*
+
+> **Prerequisite:** phase 20. Documentation, a management command that generates part of it, and
+> tests that keep it honest. No API behaviour changes.
+
+The documents a frontend developer builds the React UI from (D47–D49), in `docs/frontend/`:
+
+| File | What it is | How it is made |
+|---|---|---|
+| `README.md` | Start here: what is in the pack, in what order to read it, a 15-minute quick start | written |
+| `BRD.md` | Business requirements and scope of work: users, domain, business rules, every screen with its acceptance criteria, non-functional requirements, milestones | written |
+| `API_GUIDE.md` | Integration guide: base URLs, the token lifecycle, errors and codes, pagination, formats, uploads, downloads, polling | written |
+| `API_REFERENCE.md` | Every endpoint, with a real request and response | **generated** |
+| `openapi.yaml` | The OpenAPI 3 snapshot, for code generators and Postman import | **generated** |
+| `postman/*.json` | The collection (a runnable journey, with the recorded responses as examples) and environments | **generated** |
+
+| # | Commit |
+|---|---|
+| 21.1 | `docs: plan phase 21, the frontend pack` |
+| 21.2 | `feat(docs): record the API journey into a Postman collection, reference and schema` |
+| 21.3 | `docs: the requirements document, the integration guide and the index` |
+| 21.4 | `docs: record session 28` |
+
+**Definition of done:**
+
+| # | Check |
+|---|---|
+| F1 | `build_api_docs` regenerates all generated files from a throwaway database |
+| F2 | Tests fail if `openapi.yaml` is stale or an endpoint has no recorded example |
+| F3 | Newman — Postman's own runner — runs the collection against the Docker stack with every test passing, and no step edited by hand |
+| F4 | Every screen in the BRD maps to endpoints in the reference, and every rule it states matches the code |
+
+**Progress.**
+
+| Task | Status | Commit |
+|---|---|---|
+| 21.1 | done | *(this commit)* |
+| 21.2 | todo | |
+| 21.3 | todo | |
+| 21.4 | todo | |
+
 ---
 
 ## 3. Practice branches — re-implementing a phase by hand
