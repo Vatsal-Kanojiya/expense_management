@@ -832,9 +832,14 @@ against — is a dead end.
 - The dashboard summary and exports keep the current-month default.
 - Throttle rates are environment settings, with the per-user default raised from 1000 to 3000
   requests an hour.
+- The expense list returns `count` and `total_amount` for the whole filtered set, although phase
+  10 had a test asserting that cursor pagination carries no count.
 
 **Why:** a page has a sensible first view; an API should return what was asked for. Balances in
 particular: settling up always settles the *all-time* outstanding amount, so a month-scoped "owes
 you" beside a settle button would disagree with what the button does. A single-page app fires
 several requests per screen and polls a scan's status, which 1000 an hour would throttle in
-ordinary use.
+ordinary use. On the count: phase 10's reasoning was that a cursor cannot know the total without
+the scan it exists to avoid, and that still holds for the paginator. But the Expenses page shows
+the filtered total, and a client cannot add up pages it has not fetched. One aggregate over the
+filtered set costs a single query per request, not one per row, and the query-count test pins it.

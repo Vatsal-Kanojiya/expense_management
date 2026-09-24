@@ -24,3 +24,18 @@ class IdCursorPagination(CursorPagination):
     max_page_size = 100
     page_size_query_param = "page_size"
     ordering = "-id"
+
+
+class ExpenseCursorPagination(IdCursorPagination):
+    """Expenses newest date first, as the Expenses page lists them.
+
+    A deliberate exception to the rule above. The date alone is neither
+    unique nor fixed, but DRF's cursor handles a non-unique leading field
+    with an offset within the tie, and ``-id`` makes the order total. What
+    remains is that an expense whose date is edited *while* a client is
+    paging may be seen twice or missed on that pass. For a list a person
+    reads by date, that is a better trade than showing them in the order
+    they happened to be typed in.
+    """
+
+    ordering = ("-spent_on", "-id")
