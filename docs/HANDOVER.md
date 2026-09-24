@@ -103,7 +103,7 @@ Tick each task here as you finish it, and commit after each one.
       `USE_X_FORWARDED_PROTO` are in `.env.example` and `docs/DOCKER.md` §6, and `compose.yaml`
       passes them to the containers.)
 
-- [ ] **Task 3 — Record session 29.** Add a session 29 entry to `docs/BUILD_LOG.md`, copying the
+- [x] **Task 3 — Record session 29.** (Done in the handover commit series.) Add a session 29 entry to `docs/BUILD_LOG.md`, copying the
       shape of session 28. Then add a phase 22 section, "Security passes", to
       `docs/COMMIT_PLAN.md`.
 

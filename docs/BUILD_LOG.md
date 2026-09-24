@@ -545,6 +545,25 @@ cursor bug fails `TransactionTestCase` only.
 
 ---
 
+### Session 29 — Security pass 1, and the handover (phase 22)
+
+The owner asked for a security review in passes, one theme at a time, each fixed and then stopped
+for approval. Branch `security-hardening`, on top of `frontend-api`.
+
+**Pass 1, rate limits the caller could step around.** It was confirmed against the running stack
+before any change, and fixed in `ea732e4`. The commit message lists each change: one trusted
+client address for every limit (`TRUSTED_PROXY_COUNT`, which also sets DRF's `NUM_PROXIES`), one
+login guard shared by the web, API and admin logins, limits on sign-up and on wrong current
+passwords, equal work on failed API logins, and a configurable `ADMIN_URL`. `8208179` passes the
+proxy settings through compose, which they had never reached. The existing 559 tests pass. The
+pass's own tests are HANDOVER task 1.
+
+**Handover.** The owner is pausing for about two weeks without an assistant. `docs/HANDOVER.md`
+(`9e179cf`) sets out the branches and merge order, daily commands, the pre-commit checklist, the
+remaining tasks in order, and a hosting checklist.
+
+---
+
 ### Session 28 — The frontend pack (phase 21)
 
 The brief: professional documents for the React developer, who is a fresher: a business requirements
