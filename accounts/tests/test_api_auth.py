@@ -54,6 +54,7 @@ class SignupTests(AuthApiTestCase):
         "password_confirm": "Str0ng-Enough-Pass",
     }
 
+    @override_settings(FRONTEND_URL="")  # the default, whatever the environment says
     def test_signup_creates_an_inactive_account_and_mails_a_link(self):
         response = self.post("auth-signup", self.payload)
 
