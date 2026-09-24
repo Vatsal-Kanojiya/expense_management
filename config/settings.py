@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -52,6 +53,10 @@ INSTALLED_APPS = [
     "accounts",
     "rest_framework",
     "expenses",
+    # Phase 20, an API for a remote frontend (DECISIONS D41-D43).
+    "corsheaders",
+    "rest_framework_simplejwt.token_blacklist",
+    "drf_spectacular",
 ]
 
 # Custom user model. Must be set before the first migration is applied;
@@ -74,6 +79,13 @@ EMAIL_BACKEND = env(
     default="django.core.mail.backends.console.EmailBackend",
 )
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@expense-tracker.local")
+# SMTP, for EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend on a
+# hosted server. Defaults are Django's own, so nothing changes until set.
+EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_PORT = env.int("EMAIL_PORT", default=25)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=False)
 
 # How long a password reset link stays valid. Django's default is 3 days,
 # which is generous for a credential-bearing URL that may sit in an inbox.
@@ -91,6 +103,10 @@ MIDDLEWARE = [
     # Ordering is not cosmetic here: placed last it would still work and
     # would do all that work first.
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    # Before anything that can answer a request itself (CommonMiddleware's
+    # redirects), so those answers carry CORS headers too. After WhiteNoise,
+    # because static files are never fetched cross-origin by the frontend.
+    "corsheaders.middleware.CorsMiddleware",
     # Before everything that can log, so the id is set by the time any
     # other middleware, view or exception handler emits a line. After
     # WhiteNoise, because a static file is not worth an id.
@@ -384,11 +400,13 @@ LOGGING = {
 # Django REST Framework
 # https://www.django-rest-framework.org/api-guide/settings/
 REST_FRAMEWORK = {
-    # Session auth so the browsable API works while logged into the site.
-    # A mobile or script client wants tokens instead; that is a phase of its
-    # own, and session auth is the honest starting point rather than a JWT
-    # nobody has thought about expiring.
+    # Bearer tokens first: a React app on another origin and a mobile app
+    # both send `Authorization: Bearer <access>`. Session auth stays so the
+    # browsable API works while logged into the site. Phase 10 deferred
+    # tokens until expiry had been thought about; SIMPLE_JWT below is that
+    # thought. DECISIONS D41.
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
     # Deny by default. The alternative leaves a forgotten permission_classes
@@ -407,15 +425,76 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.AnonRateThrottle",
     ],
     # Generous enough not to annoy a real client, low enough to make a
-    # runaway script or a scraper visible. Known issue 15 is about the login
-    # endpoint, which is Django's, not DRF's -- this does not close it.
+    # runaway script or a scraper visible. A single-page app fires several
+    # requests per screen and polls a scan's status, so the per-user rate
+    # was raised from 1000 in phase 20 and both are now settings (D46). The
+    # API login has its own, stricter limiter -- accounts/ratelimit.py.
     "DEFAULT_THROTTLE_RATES": {
-        "user": "1000/hour",
-        "anon": "60/hour",
+        "user": env("API_USER_THROTTLE", default="3000/hour"),
+        "anon": env("API_ANON_THROTTLE", default="60/hour"),
     },
     "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.NamespaceVersioning",
     "DEFAULT_VERSION": "v1",
     "ALLOWED_VERSIONS": ["v1"],
+    # The OpenAPI schema is generated from the serializers, so the contract
+    # a frontend developer reads is the code (D43).
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # A delete the database protects is a 409 with a reason, not a 500.
+    "EXCEPTION_HANDLER": "expenses.api.exceptions.exception_handler",
+}
+
+
+# Bearer tokens (DECISIONS D41)
+#
+# Short-lived access tokens, so a leaked one expires quickly. The refresh
+# token rotates on every use and the old one is blacklisted, so a stolen
+# refresh token stops working the moment the real client refreshes -- and
+# logout and a password change can revoke access for real, which plain
+# stateless JWT cannot.
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env.int("JWT_ACCESS_MINUTES", default=30)),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=env.int("JWT_REFRESH_DAYS", default=14)),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+
+# Cross-origin access (DECISIONS D42)
+#
+# An explicit list, never a wildcard: with a wildcard any website could
+# drive the API with a token it had stolen. Only /api/ is opened. Cookies
+# are not allowed cross-origin -- tokens travel in the Authorization
+# header -- which is also why a cross-origin request needs no CSRF token.
+# Example: CORS_ALLOWED_ORIGINS=http://localhost:5173 for a Vite dev server.
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
+CORS_URLS_REGEX = r"^/api/.*$"
+CORS_ALLOW_CREDENTIALS = False
+# So the frontend can read the file name of a downloaded export.
+CORS_EXPOSE_HEADERS = ["Content-Disposition"]
+
+# Where the separate frontend lives, for links in emails the API sends:
+# verification, password reset, export ready. Unset, those emails link to
+# the Django pages, as before. DECISIONS D45.
+FRONTEND_URL = env("FRONTEND_URL", default="").rstrip("/")
+
+
+# The OpenAPI schema and Swagger UI at /api/v1/schema/ and /api/v1/docs/.
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Expense Tracker API",
+    "DESCRIPTION": (
+        "Personal expenses, bills split between people, balances and settling up, "
+        "CSV exports and bill scanning. Authenticate with `POST /api/v1/auth/login/` "
+        "and send `Authorization: Bearer <access>`."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    # Separate request and response components, so a generated client knows
+    # that `id` is never sent and `category_name` is never accepted.
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SCHEMA_PATH_PREFIX": r"/api/v1",
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
 }
 
 
