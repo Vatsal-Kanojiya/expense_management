@@ -15,12 +15,14 @@ from rest_framework.routers import DefaultRouter
 
 from accounts.api import urlpatterns as account_urls
 
+from .reports import BalancesView, SettlementViewSet, SettleUpView, SummaryView
 from .views import CategoryViewSet, ExpenseViewSet, HealthView, ParticipantViewSet
 
 router = DefaultRouter()
 router.register("categories", CategoryViewSet, basename="category")
 router.register("participants", ParticipantViewSet, basename="participant")
 router.register("expenses", ExpenseViewSet, basename="expense")
+router.register("settlements", SettlementViewSet, basename="settlement")
 
 app_name = "api"
 
@@ -31,6 +33,9 @@ app_name = "api"
 v1 = [
     *router.urls,
     *account_urls,
+    path("summary/", SummaryView.as_view(), name="summary"),
+    path("balances/", BalancesView.as_view(), name="balances"),
+    path("balances/<int:participant_id>/settle/", SettleUpView.as_view(), name="settle-up"),
     path("health/", HealthView.as_view(), name="health"),
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path("docs/", SpectacularSwaggerView.as_view(url_name="api:v1:schema"), name="docs"),
