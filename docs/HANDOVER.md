@@ -116,7 +116,7 @@ Tick each task here as you finish it, and commit after each one.
       origin (`http://localhost:5173` for Vite) added to `CORS_ALLOWED_ORIGINS`.
 
 - [ ] **Security pass 2 — files in and out of the app.** Each item: a fix, a test, one commit.
-  - [ ] Bill photos: check the file's actual contents, not only the type the browser declares,
+  - [x] Bill photos: check the file's actual contents, not only the type the browser declares,
         and store and serve it with the verified type (`BillScanForm`, `bill_upload_path`,
         the scan `image` endpoint).
   - [ ] Upload size: refuse oversized uploads as early as Django allows, and add a body-size

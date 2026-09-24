@@ -87,11 +87,19 @@ class Raw:
 
 @dataclass(frozen=True)
 class Upload:
-    """A multipart upload of the sample bill."""
+    """A multipart upload of the sample bill.
+
+    ``content`` defaults to the real sample PNG's bytes, not to whatever
+    ``filename``/``content_type`` claim -- BillScanForm now sniffs the file's
+    own signature (security pass 2), so an example meant to be rejected as
+    "not a photo" has to send bytes that are not one, not just a misleading
+    name.
+    """
 
     field: str = "image"
     filename: str = "sample-bill.png"
     content_type: str = "image/png"
+    content: bytes | None = None
 
 
 MISSING = object()
@@ -760,7 +768,9 @@ STEPS = [
             Example(
                 "Not a photo",
                 400,
-                body=Upload(filename="bill.pdf", content_type="application/pdf"),
+                body=Upload(
+                    filename="bill.pdf", content_type="application/pdf", content=b"%PDF-1.4"
+                ),
             )
         ],
     ),
@@ -1033,7 +1043,8 @@ class Journey:
         call = getattr(self.client, method.lower())
 
         if isinstance(body, Upload):
-            upload = SimpleUploadedFile(body.filename, sample_bill_png(), body.content_type)
+            content = body.content if body.content is not None else sample_bill_png()
+            upload = SimpleUploadedFile(body.filename, content, body.content_type)
             response = call(url, {body.field: upload}, format="multipart", **extra)
             sent = {body.field: f"<file {body.filename}, {body.content_type}>"}
         elif body is None:

@@ -22,6 +22,12 @@ from expenses.tests.helpers import item_formset
 
 User = get_user_model()
 
+# A real PNG signature, not just a plausible filename -- BillScanForm now
+# sniffs the bytes, so a stub like b"fake-bytes" is no longer a usable
+# stand-in for a photo through the form. See test_security_pass2.py for the
+# sniffing behaviour itself.
+PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+
 
 def _make_scan(user, **kwargs):
     image = kwargs.pop("image", None) or SimpleUploadedFile(
@@ -153,7 +159,7 @@ class BillScanUploadViewTests(TestCase):
         self.assertFalse(BillScan.objects.exists())
 
     def test_upload_queues_the_task_on_commit(self):
-        image = SimpleUploadedFile("bill.jpg", b"fake-bytes", content_type="image/jpeg")
+        image = SimpleUploadedFile("bill.png", PNG, content_type="image/png")
 
         with (
             patch("expenses.views.scan_bill.delay") as mock_delay,

@@ -240,8 +240,15 @@ class BillScanViewSet(OwnerJobViewSet):
     @action(detail=True, methods=["get"])
     def image(self, request, *args, **kwargs):
         scan = self.get_object()
+        # The extension is trustworthy: BillScanForm.clean_image verified the
+        # bytes against their signature at upload and named the file from
+        # that, not from whatever the browser claimed. nosniff stops a
+        # browser guessing a different type from the bytes themselves, which
+        # is exactly the trick that made sniffing at upload necessary.
         content_type, _ = mimetypes.guess_type(scan.image.name)
-        return FileResponse(scan.image.open("rb"), content_type=content_type)
+        response = FileResponse(scan.image.open("rb"), content_type=content_type)
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
 
     @extend_schema(
         tags=SCANS_TAG,
