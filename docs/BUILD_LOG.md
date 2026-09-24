@@ -40,9 +40,12 @@
 > 3. **Issue 34 is the only open item that can break something.** The API lets the self participant
 >    be listed, renamed and deleted. Under D26 that is a fix, not polish, if it is ever picked up.
 >
-> **Phase 18 in progress — bill scanning.** Spec and live progress table:
-> `docs/HANDOFF_BILL_SCAN.md` §P. Decisions D28–D30. Executed one task per session: open a session,
-> say *go*, the implementer does the next `todo` row and stops.
+> **Phase 18 built — bill scanning.** Spec and progress table: `docs/HANDOFF_BILL_SCAN.md` §P, all
+> six tasks done (session 25). Decisions D28–D30.
+>
+> **Phase 19 in progress — Docker for daily use, session 26, branch `project-dockerization`.** Plan,
+> definition of done and live progress table: COMMIT_PLAN phase 19. Decisions D31–D38. Runbook:
+> `docs/DOCKER.md`. Running phase 11's stack first turned up issues 38–40 below.
 >
 > **Study material (session 24).** Two pages built from these docs, for revising away from the
 > laptop. Both are committed here and also published as private pages:
@@ -1566,3 +1569,8 @@ interview-gap list.
 | 25 | Participant deletion is refused once they are on a line item | `ItemShare.participant` is `PROTECT`, so removing someone from your list fails while any item still charges them. The view explains it rather than 500ing, but there is no way to re-share those items in bulk | Same shape as issue 10: an ordered delete, or a bulk re-share action. Deliberately left visible rather than papered over with `CASCADE`, which would leave items charged to nobody |
 | 34 | The self participant is unprotected in the API | The web People pages filter out `is_self`, but the API participant endpoints list, rename and delete it like any contact. Renaming it makes the owner appear under a friend's name; deleting it strands `paid_by` on every expense the owner paid | **Parked for better design, session 21.** Proposed: keep it listed with an `is_self` marker, since API clients need its id to set `paid_by` and participation, and refuse rename and delete. The owner judged the self-participant design itself may need rethinking before patching it, so no fix was applied. **Same design review should cover:** `balances()` calling `get_or_create_self` on every read (fixed tactically in session 21 by treating a null `paid_by` as the owner, but the owner judged the self-participant data model as a whole needs a better design), and self naming, now `FirstName (self)` with a numeric suffix on collision |
 | 35 | The expense form wastes vertical space | `{{ form.as_p }}` gives every field a full-width row | **Parked by the owner, session 20.** Presentation rather than function, and the UI may move to a separate frontend such as React. Was T7 in the first handoff plan |
+| 38 | Beat crashed on start in the compose stack | `celery beat` writes `celerybeat-schedule` to its working directory, `/app`, which is owned by root: `WORKDIR` creates it, and `COPY --chown` changes only the files it copies. `Permission denied`, exit 1, and with no restart policy beat stayed down, so `purge_exports` never ran in Docker. Found by running phase 11's stack, session 26 | Phase 19: the schedule moves to its own volume, and the app user owns `/app` and `/data/*` (19.3, 19.4) |
+| 39 | Bill uploads and CSV exports failed in the compose stack | Same root cause: `/app/media` could not be created. An upload was a `PermissionError` 500 on web; an export was retried three times and marked failed on the worker. Reproduced in session 26 | Phase 19: `MEDIA_ROOT=/data/media` on an app-owned volume (19.2–19.4) |
+| 40 | Web and worker had separate media directories | Each container has its own filesystem, so even with 39 fixed, an upload saved by web could not be read by the worker, and an export written by the worker could not be served by web. Masked by 39 | Phase 19: one `media` volume mounted in both (19.4) |
+| 41 | The test suite wrote into the real `MEDIA_ROOT` | Bill-scan and export tests save files through the default storage and never delete them. Locally they pile up in `media/`; in Docker they would land in the persistent media volume | Phase 19: `FastTestRunner` points `MEDIA_ROOT` at a temp dir and removes it afterwards (19.2) |
+| 42 | Beat's schedule state was lost on every restart | Celery beat counts an interval from the last run, kept in its schedule file; a new file starts the clock at start-up. A machine that is never up for 24 hours straight would never run `purge_exports` | Phase 19: schedule file in the `beat-schedule` volume (19.4) |
