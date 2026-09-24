@@ -1,11 +1,12 @@
 """Security pass 2 (docs/HANDOVER.md): files in and out of the app.
 
-Each item lands in its own commit; this file grows alongside them, in the
-order HANDOVER.md lists the items. So far: verifying a bill photo's real
-type, refusing an oversized upload as early as Django allows, and a
-per-account limit on creating scans and exports.
+Four items, checked one by one, in the order HANDOVER.md lists them:
+verifying a bill photo's real type, refusing an oversized upload early, a
+per-account limit on creating scans and exports, and safe CSV cells.
 """
 
+from datetime import date
+from decimal import Decimal
 from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
@@ -23,7 +24,8 @@ from expenses.extraction import (
     MAX_UPLOAD_SIZE,
     sniff_image_type,
 )
-from expenses.models import BillScan, ExportJob
+from expenses.models import BillScan, Category, Expense, ExportJob
+from expenses.tasks import _csv_safe, _write_csv
 
 User = get_user_model()
 PASSWORD = "Str0ng-Enough-Pass"
@@ -303,3 +305,87 @@ class ExportLimitTests(JobLimitTestCase):
 
         self.client.force_login(self.bob)
         self.assertEqual(self.request_web().status_code, 302)
+
+
+# --- 4. CSV exports: safe for a spreadsheet to open ------------------------
+
+
+class CsvSafeTests(SimpleTestCase):
+    def test_ordinary_text_is_left_alone(self):
+        self.assertEqual(_csv_safe("Groceries"), "Groceries")
+        self.assertEqual(_csv_safe(""), "")
+        self.assertEqual(_csv_safe("Lunch with Bob"), "Lunch with Bob")
+
+    def test_each_dangerous_leading_character_is_neutralised(self):
+        for prefix in ("=", "+", "-", "@", "\t", "\r"):
+            cell = f"{prefix}cmd|' /C calc'!A1"
+            self.assertEqual(_csv_safe(cell), f"'{cell}")
+
+    def test_the_character_only_matters_at_the_start(self):
+        # "Tax - GST" is an ordinary note, not a formula.
+        self.assertEqual(_csv_safe("Tax - GST"), "Tax - GST")
+
+
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
+class CsvExportSanitizationTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+
+    def test_a_formula_like_category_and_note_open_as_text_but_amount_stays_numeric(self):
+        category = Category.objects.create(user=self.alice, name="=cmd|calc")
+        Expense.objects.create(
+            user=self.alice,
+            category=category,
+            amount=Decimal("42.50"),
+            spent_on=date(2026, 9, 1),
+            note="@SUM(1)",
+        )
+        # A second row whose amount is negative -- still a plain number.
+        Expense.objects.create(
+            user=self.alice,
+            category=category,
+            amount=Decimal("7.00"),
+            spent_on=date(2026, 9, 2),
+            note="-DDE/calc",
+        )
+
+        job = ExportJob.objects.create(
+            user=self.alice, start=date(2026, 9, 1), end=date(2026, 9, 30)
+        )
+        _write_csv(job)
+
+        content = job.file.read().decode("utf-8")
+
+        self.assertIn("'=cmd|calc", content)
+        self.assertIn("'@SUM(1)", content)
+        self.assertIn("'-DDE/calc", content)
+        # The category cell is quoted-safe on every row, not only the first.
+        self.assertEqual(content.count("'=cmd|calc"), 2)
+        # Amounts are never quote-prefixed, and a negative one still reads
+        # as a plain signed number.
+        self.assertIn(",42.50,", content)
+        self.assertIn(",7.00,", content)
+        self.assertNotIn("'42.50", content)
+        self.assertNotIn("'7.00", content)
+
+    def test_an_ordinary_export_is_untouched(self):
+        category = Category.objects.create(user=self.alice, name="Food")
+        Expense.objects.create(
+            user=self.alice,
+            category=category,
+            amount=Decimal("100.00"),
+            spent_on=date(2026, 9, 1),
+            note="Lunch",
+        )
+
+        job = ExportJob.objects.create(
+            user=self.alice, start=date(2026, 9, 1), end=date(2026, 9, 30)
+        )
+        _write_csv(job)
+
+        content = job.file.read().decode("utf-8")
+        self.assertIn("Food", content)
+        self.assertIn("Lunch", content)
+        self.assertNotIn("'Food", content)
+        self.assertNotIn("'Lunch", content)
