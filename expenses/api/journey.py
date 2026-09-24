@@ -1153,7 +1153,11 @@ def _raw_body(body):
 def _postman_url(path):
     raw = "{{baseUrl}}" + path
     route, _, query = path.partition("?")
-    url = {"raw": raw, "host": ["{{baseUrl}}"], "path": [p for p in route.split("/") if p]}
+    # Postman rebuilds the URL from `path`, not `raw`, and the trailing slash
+    # survives only as a final empty segment. Dropping it sends
+    # /auth/login instead of /auth/login/, which Django cannot redirect for
+    # a POST -- found by running the collection in Newman.
+    url = {"raw": raw, "host": ["{{baseUrl}}"], "path": route.split("/")[1:]}
     if query:
         url["query"] = [
             {"key": key, "value": value}

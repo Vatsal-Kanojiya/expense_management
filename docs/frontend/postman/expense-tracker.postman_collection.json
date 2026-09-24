@@ -158,7 +158,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "health"
+                "health",
+                ""
               ]
             },
             "auth": {
@@ -178,7 +179,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "health"
+                    "health",
+                    ""
                   ]
                 }
               },
@@ -229,7 +231,8 @@
               ],
               "path": [
                 "auth",
-                "login"
+                "login",
+                ""
               ]
             },
             "auth": {
@@ -264,7 +267,8 @@
                   ],
                   "path": [
                     "auth",
-                    "login"
+                    "login",
+                    ""
                   ]
                 },
                 "body": {
@@ -286,7 +290,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 1,\n    \"username\": \"priya\",\n    \"email\": \"priya@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-24T09:18:58.623822+05:30\",\n    \"last_login\": \"2026-09-24T09:18:58.649079+05:30\",\n    \"self_participant\": {\n      \"id\": 1,\n      \"name\": \"priya (self)\"\n    }\n  }\n}"
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 1,\n    \"username\": \"priya\",\n    \"email\": \"priya@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-24T09:22:30.248546+05:30\",\n    \"last_login\": \"2026-09-24T09:22:30.274920+05:30\",\n    \"self_participant\": {\n      \"id\": 1,\n      \"name\": \"priya (self)\"\n    }\n  }\n}"
             },
             {
               "name": "Wrong password (401 Unauthorized)",
@@ -305,7 +309,8 @@
                   ],
                   "path": [
                     "auth",
-                    "login"
+                    "login",
+                    ""
                   ]
                 },
                 "body": {
@@ -346,7 +351,8 @@
                   ],
                   "path": [
                     "auth",
-                    "login"
+                    "login",
+                    ""
                   ]
                 },
                 "body": {
@@ -396,7 +402,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "me"
+                "me",
+                ""
               ]
             },
             "description": "The signed-in user. Call it when the app starts, to check that a stored token still works."
@@ -413,7 +420,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "me"
+                    "me",
+                    ""
                   ]
                 }
               },
@@ -426,7 +434,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"username\": \"priya\",\n  \"email\": \"priya@example.com\",\n  \"first_name\": \"\",\n  \"last_name\": \"\",\n  \"is_staff\": false,\n  \"date_joined\": \"2026-09-24T09:18:58.623822+05:30\",\n  \"last_login\": \"2026-09-24T09:18:58.649079+05:30\",\n  \"self_participant\": {\n    \"id\": 1,\n    \"name\": \"priya (self)\"\n  }\n}"
+              "body": "{\n  \"id\": 1,\n  \"username\": \"priya\",\n  \"email\": \"priya@example.com\",\n  \"first_name\": \"\",\n  \"last_name\": \"\",\n  \"is_staff\": false,\n  \"date_joined\": \"2026-09-24T09:22:30.248546+05:30\",\n  \"last_login\": \"2026-09-24T09:22:30.274920+05:30\",\n  \"self_participant\": {\n    \"id\": 1,\n    \"name\": \"priya (self)\"\n  }\n}"
             },
             {
               "name": "Not signed in (401 Unauthorized)",
@@ -439,7 +447,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "me"
+                    "me",
+                    ""
                   ]
                 }
               },
@@ -485,7 +494,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "me"
+                "me",
+                ""
               ]
             },
             "body": {
@@ -516,7 +526,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "me"
+                    "me",
+                    ""
                   ]
                 },
                 "body": {
@@ -538,7 +549,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"username\": \"priya\",\n  \"email\": \"priya@example.com\",\n  \"first_name\": \"Priya\",\n  \"last_name\": \"Sharma\",\n  \"is_staff\": false,\n  \"date_joined\": \"2026-09-24T09:18:58.623822+05:30\",\n  \"last_login\": \"2026-09-24T09:18:58.649079+05:30\",\n  \"self_participant\": {\n    \"id\": 1,\n    \"name\": \"priya (self)\"\n  }\n}"
+              "body": "{\n  \"id\": 1,\n  \"username\": \"priya\",\n  \"email\": \"priya@example.com\",\n  \"first_name\": \"Priya\",\n  \"last_name\": \"Sharma\",\n  \"is_staff\": false,\n  \"date_joined\": \"2026-09-24T09:22:30.248546+05:30\",\n  \"last_login\": \"2026-09-24T09:22:30.274920+05:30\",\n  \"self_participant\": {\n    \"id\": 1,\n    \"name\": \"priya (self)\"\n  }\n}"
             }
           ]
         }
@@ -579,7 +590,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "categories"
+                "categories",
+                ""
               ]
             },
             "body": {
@@ -610,7 +622,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "categories"
+                    "categories",
+                    ""
                   ]
                 },
                 "body": {
@@ -632,7 +645,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"name\": \"Food\",\n  \"created_at\": \"2026-09-24T09:18:58.666635+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 1,\n  \"name\": \"Food\",\n  \"created_at\": \"2026-09-24T09:22:30.292983+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             },
             {
               "name": "Name already used (400 Bad Request)",
@@ -650,7 +663,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "categories"
+                    "categories",
+                    ""
                   ]
                 },
                 "body": {
@@ -707,7 +721,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "categories"
+                "categories",
+                ""
               ]
             },
             "body": {
@@ -738,7 +753,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "categories"
+                    "categories",
+                    ""
                   ]
                 },
                 "body": {
@@ -760,7 +776,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 2,\n  \"name\": \"Home\",\n  \"created_at\": \"2026-09-24T09:18:58.673182+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 2,\n  \"name\": \"Home\",\n  \"created_at\": \"2026-09-24T09:22:30.299528+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             }
           ]
         },
@@ -788,7 +804,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "categories"
+                "categories",
+                ""
               ]
             },
             "description": "Alphabetical, with the Categories screen's usage columns: `expense_count`, `total`, `last_spent_on` and `last_amount`. The last three are null for an unused category."
@@ -805,7 +822,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "categories"
+                    "categories",
+                    ""
                   ]
                 }
               },
@@ -818,7 +836,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 2,\n      \"name\": \"Home\",\n      \"created_at\": \"2026-09-24T09:18:58.673182+05:30\",\n      \"expense_count\": 0,\n      \"total\": null,\n      \"last_spent_on\": null,\n      \"last_amount\": null\n    },\n    {\n      \"id\": 1,\n      \"name\": \"Food\",\n      \"created_at\": \"2026-09-24T09:18:58.666635+05:30\",\n      \"expense_count\": 0,\n      \"total\": null,\n      \"last_spent_on\": null,\n      \"last_amount\": null\n    }\n  ]\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 2,\n      \"name\": \"Home\",\n      \"created_at\": \"2026-09-24T09:22:30.299528+05:30\",\n      \"expense_count\": 0,\n      \"total\": null,\n      \"last_spent_on\": null,\n      \"last_amount\": null\n    },\n    {\n      \"id\": 1,\n      \"name\": \"Food\",\n      \"created_at\": \"2026-09-24T09:22:30.292983+05:30\",\n      \"expense_count\": 0,\n      \"total\": null,\n      \"last_spent_on\": null,\n      \"last_amount\": null\n    }\n  ]\n}"
             }
           ]
         },
@@ -847,7 +865,8 @@
               ],
               "path": [
                 "categories",
-                "{{category_id}}"
+                "{{category_id}}",
+                ""
               ]
             },
             "description": "One category with its usage columns. Another user's id is a 404, never a 403."
@@ -865,7 +884,8 @@
                   ],
                   "path": [
                     "categories",
-                    "1"
+                    "1",
+                    ""
                   ]
                 }
               },
@@ -878,7 +898,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"name\": \"Food\",\n  \"created_at\": \"2026-09-24T09:18:58.666635+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 1,\n  \"name\": \"Food\",\n  \"created_at\": \"2026-09-24T09:22:30.292983+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             }
           ]
         },
@@ -912,7 +932,8 @@
               ],
               "path": [
                 "categories",
-                "{{home_category_id}}"
+                "{{home_category_id}}",
+                ""
               ]
             },
             "body": {
@@ -944,7 +965,8 @@
                   ],
                   "path": [
                     "categories",
-                    "2"
+                    "2",
+                    ""
                   ]
                 },
                 "body": {
@@ -966,7 +988,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 2,\n  \"name\": \"Household\",\n  \"created_at\": \"2026-09-24T09:18:58.673182+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 2,\n  \"name\": \"Household\",\n  \"created_at\": \"2026-09-24T09:22:30.299528+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             }
           ]
         },
@@ -1000,7 +1022,8 @@
               ],
               "path": [
                 "categories",
-                "{{home_category_id}}"
+                "{{home_category_id}}",
+                ""
               ]
             },
             "body": {
@@ -1032,7 +1055,8 @@
                   ],
                   "path": [
                     "categories",
-                    "2"
+                    "2",
+                    ""
                   ]
                 },
                 "body": {
@@ -1054,7 +1078,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 2,\n  \"name\": \"Home & utilities\",\n  \"created_at\": \"2026-09-24T09:18:58.673182+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 2,\n  \"name\": \"Home & utilities\",\n  \"created_at\": \"2026-09-24T09:22:30.299528+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             }
           ]
         },
@@ -1089,7 +1113,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "categories"
+                "categories",
+                ""
               ]
             },
             "body": {
@@ -1120,7 +1145,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "categories"
+                    "categories",
+                    ""
                   ]
                 },
                 "body": {
@@ -1142,7 +1168,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"name\": \"Travel\",\n  \"created_at\": \"2026-09-24T09:18:58.697070+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 3,\n  \"name\": \"Travel\",\n  \"created_at\": \"2026-09-24T09:22:30.323582+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             }
           ]
         },
@@ -1171,7 +1197,8 @@
               ],
               "path": [
                 "categories",
-                "{{temp_category_id}}"
+                "{{temp_category_id}}",
+                ""
               ]
             },
             "description": "Only a category with no expenses can be deleted. Otherwise the answer is 409 `protected`, `blocking` says what is in the way, and nothing is deleted."
@@ -1189,7 +1216,8 @@
                   ],
                   "path": [
                     "categories",
-                    "3"
+                    "3",
+                    ""
                   ]
                 }
               },
@@ -1211,7 +1239,8 @@
                   ],
                   "path": [
                     "categories",
-                    "1"
+                    "1",
+                    ""
                   ]
                 }
               },
@@ -1265,7 +1294,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "participants"
+                "participants",
+                ""
               ]
             },
             "body": {
@@ -1296,7 +1326,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "participants"
+                    "participants",
+                    ""
                   ]
                 },
                 "body": {
@@ -1318,7 +1349,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 2,\n  \"name\": \"Rahul\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-24T09:18:58.715800+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 2,\n  \"name\": \"Rahul\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-24T09:22:30.338411+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             },
             {
               "name": "Name already used (400 Bad Request)",
@@ -1336,7 +1367,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "participants"
+                    "participants",
+                    ""
                   ]
                 },
                 "body": {
@@ -1393,7 +1425,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "participants"
+                "participants",
+                ""
               ]
             },
             "body": {
@@ -1424,7 +1457,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "participants"
+                    "participants",
+                    ""
                   ]
                 },
                 "body": {
@@ -1446,7 +1480,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"name\": \"Aisha\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-24T09:18:58.721309+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 3,\n  \"name\": \"Aisha\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-24T09:22:30.343965+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             }
           ]
         },
@@ -1474,7 +1508,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "participants"
+                "participants",
+                ""
               ]
             },
             "description": "Alphabetical, **including the user themself** with `is_self: true`: the People screen hides that row, and the expense form needs its id. `shared_count` and `item_count` say how many expenses and line items name each person."
@@ -1491,7 +1526,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "participants"
+                    "participants",
+                    ""
                   ]
                 }
               },
@@ -1504,7 +1540,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 3,\n      \"name\": \"Aisha\",\n      \"is_self\": false,\n      \"created_at\": \"2026-09-24T09:18:58.721309+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    },\n    {\n      \"id\": 2,\n      \"name\": \"Rahul\",\n      \"is_self\": false,\n      \"created_at\": \"2026-09-24T09:18:58.715800+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    },\n    {\n      \"id\": 1,\n      \"name\": \"priya (self)\",\n      \"is_self\": true,\n      \"created_at\": \"2026-09-24T09:18:58.651872+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    }\n  ]\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 3,\n      \"name\": \"Aisha\",\n      \"is_self\": false,\n      \"created_at\": \"2026-09-24T09:22:30.343965+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    },\n    {\n      \"id\": 2,\n      \"name\": \"Rahul\",\n      \"is_self\": false,\n      \"created_at\": \"2026-09-24T09:22:30.338411+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    },\n    {\n      \"id\": 1,\n      \"name\": \"priya (self)\",\n      \"is_self\": true,\n      \"created_at\": \"2026-09-24T09:22:30.277814+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    }\n  ]\n}"
             }
           ]
         },
@@ -1533,7 +1569,8 @@
               ],
               "path": [
                 "participants",
-                "{{participant_id}}"
+                "{{participant_id}}",
+                ""
               ]
             },
             "description": "One person."
@@ -1551,7 +1588,8 @@
                   ],
                   "path": [
                     "participants",
-                    "2"
+                    "2",
+                    ""
                   ]
                 }
               },
@@ -1564,7 +1602,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 2,\n  \"name\": \"Rahul\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-24T09:18:58.715800+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 2,\n  \"name\": \"Rahul\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-24T09:22:30.338411+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             }
           ]
         },
@@ -1598,7 +1636,8 @@
               ],
               "path": [
                 "participants",
-                "{{participant2_id}}"
+                "{{participant2_id}}",
+                ""
               ]
             },
             "body": {
@@ -1630,7 +1669,8 @@
                   ],
                   "path": [
                     "participants",
-                    "3"
+                    "3",
+                    ""
                   ]
                 },
                 "body": {
@@ -1652,7 +1692,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"name\": \"Aisha Khan\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-24T09:18:58.721309+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 3,\n  \"name\": \"Aisha Khan\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-24T09:22:30.343965+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             },
             {
               "name": "Renaming yourself (403 Forbidden)",
@@ -1671,7 +1711,8 @@
                   ],
                   "path": [
                     "participants",
-                    "1"
+                    "1",
+                    ""
                   ]
                 },
                 "body": {
@@ -1727,7 +1768,8 @@
               ],
               "path": [
                 "participants",
-                "{{participant2_id}}"
+                "{{participant2_id}}",
+                ""
               ]
             },
             "body": {
@@ -1759,7 +1801,8 @@
                   ],
                   "path": [
                     "participants",
-                    "3"
+                    "3",
+                    ""
                   ]
                 },
                 "body": {
@@ -1781,7 +1824,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"name\": \"Aisha K.\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-24T09:18:58.721309+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 3,\n  \"name\": \"Aisha K.\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-24T09:22:30.343965+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             }
           ]
         },
@@ -1816,7 +1859,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "participants"
+                "participants",
+                ""
               ]
             },
             "body": {
@@ -1847,7 +1891,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "participants"
+                    "participants",
+                    ""
                   ]
                 },
                 "body": {
@@ -1869,7 +1914,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 4,\n  \"name\": \"Old colleague\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-24T09:18:58.741266+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 4,\n  \"name\": \"Old colleague\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-24T09:22:30.363766+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             }
           ]
         },
@@ -1898,7 +1943,8 @@
               ],
               "path": [
                 "participants",
-                "{{temp_participant_id}}"
+                "{{temp_participant_id}}",
+                ""
               ]
             },
             "description": "Refused with 409 when the person is on a line item or paid for an expense, and with 403 for the user themself."
@@ -1916,7 +1962,8 @@
                   ],
                   "path": [
                     "participants",
-                    "4"
+                    "4",
+                    ""
                   ]
                 }
               },
@@ -1938,7 +1985,8 @@
                   ],
                   "path": [
                     "participants",
-                    "1"
+                    "1",
+                    ""
                   ]
                 }
               },
@@ -1965,7 +2013,8 @@
                   ],
                   "path": [
                     "participants",
-                    "2"
+                    "2",
+                    ""
                   ]
                 }
               },
@@ -2019,7 +2068,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "expenses"
+                "expenses",
+                ""
               ]
             },
             "body": {
@@ -2050,7 +2100,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "expenses"
+                    "expenses",
+                    ""
                   ]
                 },
                 "body": {
@@ -2072,7 +2123,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"category\": 2,\n  \"category_name\": \"Home & utilities\",\n  \"amount\": \"1450.00\",\n  \"spent_on\": \"2026-09-05\",\n  \"note\": \"Electricity bill\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-24T09:18:58.762797+05:30\"\n}"
+              "body": "{\n  \"id\": 3,\n  \"category\": 2,\n  \"category_name\": \"Home & utilities\",\n  \"amount\": \"1450.00\",\n  \"spent_on\": \"2026-09-05\",\n  \"note\": \"Electricity bill\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-24T09:22:30.386917+05:30\"\n}"
             },
             {
               "name": "Invalid values (400 Bad Request)",
@@ -2090,7 +2141,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "expenses"
+                    "expenses",
+                    ""
                   ]
                 },
                 "body": {
@@ -2147,7 +2199,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "expenses"
+                "expenses",
+                ""
               ]
             },
             "body": {
@@ -2178,7 +2231,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "expenses"
+                    "expenses",
+                    ""
                   ]
                 },
                 "body": {
@@ -2200,7 +2254,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 4,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"900.00\",\n  \"spent_on\": \"2026-09-12\",\n  \"note\": \"Dinner with Rahul\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    2,\n    1\n  ],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-24T09:18:58.772751+05:30\"\n}"
+              "body": "{\n  \"id\": 4,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"900.00\",\n  \"spent_on\": \"2026-09-12\",\n  \"note\": \"Dinner with Rahul\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    2,\n    1\n  ],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-24T09:22:30.401486+05:30\"\n}"
             }
           ]
         },
@@ -2235,7 +2289,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "expenses"
+                "expenses",
+                ""
               ]
             },
             "body": {
@@ -2266,7 +2321,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "expenses"
+                    "expenses",
+                    ""
                   ]
                 },
                 "body": {
@@ -2288,7 +2344,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 5,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"1200.00\",\n  \"spent_on\": \"2026-09-18\",\n  \"note\": \"Team lunch\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    3,\n    2,\n    1\n  ],\n  \"misc_amount\": \"120.00\",\n  \"misc_note\": \"GST and tip\",\n  \"items\": [\n    {\n      \"id\": 2,\n      \"name\": \"Pizza\",\n      \"amount\": \"600.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 2,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Drinks\",\n      \"amount\": \"300.00\",\n      \"shares\": [\n        {\n          \"participant\": 2,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 4,\n      \"name\": \"Dessert\",\n      \"amount\": \"180.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        }\n      ]\n    }\n  ],\n  \"items_total\": \"1080.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-24T09:18:58.784070+05:30\"\n}"
+              "body": "{\n  \"id\": 5,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"1200.00\",\n  \"spent_on\": \"2026-09-18\",\n  \"note\": \"Team lunch\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    3,\n    2,\n    1\n  ],\n  \"misc_amount\": \"120.00\",\n  \"misc_note\": \"GST and tip\",\n  \"items\": [\n    {\n      \"id\": 2,\n      \"name\": \"Pizza\",\n      \"amount\": \"600.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 2,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Drinks\",\n      \"amount\": \"300.00\",\n      \"shares\": [\n        {\n          \"participant\": 2,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 4,\n      \"name\": \"Dessert\",\n      \"amount\": \"180.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        }\n      ]\n    }\n  ],\n  \"items_total\": \"1080.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-24T09:22:30.417059+05:30\"\n}"
             },
             {
               "name": "Tax/tip without a description (400 Bad Request)",
@@ -2306,7 +2362,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "expenses"
+                    "expenses",
+                    ""
                   ]
                 },
                 "body": {
@@ -2346,7 +2403,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "expenses"
+                    "expenses",
+                    ""
                   ]
                 },
                 "body": {
@@ -2396,7 +2454,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "expenses"
+                "expenses",
+                ""
               ]
             },
             "description": "Newest date first, 25 per page; follow `next` for more. `count` and `total_amount` cover every page. All time unless filtered."
@@ -2413,7 +2472,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "expenses"
+                    "expenses",
+                    ""
                   ]
                 }
               },
@@ -2426,7 +2486,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 5,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"1200.00\",\n      \"spent_on\": \"2026-09-18\",\n      \"note\": \"Team lunch\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        3,\n        2,\n        1\n      ],\n      \"misc_amount\": \"120.00\",\n      \"misc_note\": \"GST and tip\",\n      \"items\": [\n        {\n          \"id\": 2,\n          \"name\": \"Pizza\",\n          \"amount\": \"600.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 2,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 3,\n          \"name\": \"Drinks\",\n          \"amount\": \"300.00\",\n          \"shares\": [\n            {\n              \"participant\": 2,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 4,\n          \"name\": \"Dessert\",\n          \"amount\": \"180.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            }\n          ]\n        }\n      ],\n      \"items_total\": \"1080.00\",\n      \"unaccounted_amount\": \"0.00\",\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-24T09:18:58.784070+05:30\"\n    },\n    {\n      \"id\": 4,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"900.00\",\n      \"spent_on\": \"2026-09-12\",\n      \"note\": \"Dinner with Rahul\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        2,\n        1\n      ],\n      \"misc_amount\": null,\n      \"misc_note\": \"\",\n      \"items\": [],\n      \"items_total\": null,\n      \"unaccounted_amount\": null,\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-24T09:18:58.772751+05:30\"\n    },\n    {\n      \"id\": 3,\n      \"category\": 2,\n      \"category_name\": \"Home & utilities\",\n      \"amount\": \"1450.00\",\n      \"spent_on\": \"2026-09-05\",\n      \"note\": \"Electricity bill\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [],\n      \"misc_amount\": null,\n      \"misc_note\": \"\",\n      \"items\": [],\n      \"items_total\": null,\n      \"unaccounted_amount\": null,\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-24T09:18:58.762797+05:30\"\n    }\n  ],\n  \"count\": 3,\n  \"total_amount\": \"3550.00\"\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 5,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"1200.00\",\n      \"spent_on\": \"2026-09-18\",\n      \"note\": \"Team lunch\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        3,\n        2,\n        1\n      ],\n      \"misc_amount\": \"120.00\",\n      \"misc_note\": \"GST and tip\",\n      \"items\": [\n        {\n          \"id\": 2,\n          \"name\": \"Pizza\",\n          \"amount\": \"600.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 2,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 3,\n          \"name\": \"Drinks\",\n          \"amount\": \"300.00\",\n          \"shares\": [\n            {\n              \"participant\": 2,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 4,\n          \"name\": \"Dessert\",\n          \"amount\": \"180.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            }\n          ]\n        }\n      ],\n      \"items_total\": \"1080.00\",\n      \"unaccounted_amount\": \"0.00\",\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-24T09:22:30.417059+05:30\"\n    },\n    {\n      \"id\": 4,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"900.00\",\n      \"spent_on\": \"2026-09-12\",\n      \"note\": \"Dinner with Rahul\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        2,\n        1\n      ],\n      \"misc_amount\": null,\n      \"misc_note\": \"\",\n      \"items\": [],\n      \"items_total\": null,\n      \"unaccounted_amount\": null,\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-24T09:22:30.401486+05:30\"\n    },\n    {\n      \"id\": 3,\n      \"category\": 2,\n      \"category_name\": \"Home & utilities\",\n      \"amount\": \"1450.00\",\n      \"spent_on\": \"2026-09-05\",\n      \"note\": \"Electricity bill\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [],\n      \"misc_amount\": null,\n      \"misc_note\": \"\",\n      \"items\": [],\n      \"items_total\": null,\n      \"unaccounted_amount\": null,\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-24T09:22:30.386917+05:30\"\n    }\n  ],\n  \"count\": 3,\n  \"total_amount\": \"3550.00\"\n}"
             }
           ]
         },
@@ -2454,7 +2514,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "expenses"
+                "expenses",
+                ""
               ],
               "query": [
                 {
@@ -2489,7 +2550,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "expenses"
+                    "expenses",
+                    ""
                   ],
                   "query": [
                     {
@@ -2520,7 +2582,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 5,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"1200.00\",\n      \"spent_on\": \"2026-09-18\",\n      \"note\": \"Team lunch\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        3,\n        2,\n        1\n      ],\n      \"misc_amount\": \"120.00\",\n      \"misc_note\": \"GST and tip\",\n      \"items\": [\n        {\n          \"id\": 2,\n          \"name\": \"Pizza\",\n          \"amount\": \"600.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 2,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 3,\n          \"name\": \"Drinks\",\n          \"amount\": \"300.00\",\n          \"shares\": [\n            {\n              \"participant\": 2,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 4,\n          \"name\": \"Dessert\",\n          \"amount\": \"180.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            }\n          ]\n        }\n      ],\n      \"items_total\": \"1080.00\",\n      \"unaccounted_amount\": \"0.00\",\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-24T09:18:58.784070+05:30\"\n    }\n  ],\n  \"count\": 1,\n  \"total_amount\": \"1200.00\"\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 5,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"1200.00\",\n      \"spent_on\": \"2026-09-18\",\n      \"note\": \"Team lunch\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        3,\n        2,\n        1\n      ],\n      \"misc_amount\": \"120.00\",\n      \"misc_note\": \"GST and tip\",\n      \"items\": [\n        {\n          \"id\": 2,\n          \"name\": \"Pizza\",\n          \"amount\": \"600.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 2,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 3,\n          \"name\": \"Drinks\",\n          \"amount\": \"300.00\",\n          \"shares\": [\n            {\n              \"participant\": 2,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 4,\n          \"name\": \"Dessert\",\n          \"amount\": \"180.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            }\n          ]\n        }\n      ],\n      \"items_total\": \"1080.00\",\n      \"unaccounted_amount\": \"0.00\",\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-24T09:22:30.417059+05:30\"\n    }\n  ],\n  \"count\": 1,\n  \"total_amount\": \"1200.00\"\n}"
             },
             {
               "name": "Invalid filter (400 Bad Request)",
@@ -2533,7 +2595,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "expenses"
+                    "expenses",
+                    ""
                   ],
                   "query": [
                     {
@@ -2581,7 +2644,8 @@
               ],
               "path": [
                 "expenses",
-                "{{expense_id}}"
+                "{{expense_id}}",
+                ""
               ]
             },
             "description": "One expense."
@@ -2599,7 +2663,8 @@
                   ],
                   "path": [
                     "expenses",
-                    "5"
+                    "5",
+                    ""
                   ]
                 }
               },
@@ -2612,7 +2677,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 5,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"1200.00\",\n  \"spent_on\": \"2026-09-18\",\n  \"note\": \"Team lunch\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    3,\n    2,\n    1\n  ],\n  \"misc_amount\": \"120.00\",\n  \"misc_note\": \"GST and tip\",\n  \"items\": [\n    {\n      \"id\": 2,\n      \"name\": \"Pizza\",\n      \"amount\": \"600.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 2,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Drinks\",\n      \"amount\": \"300.00\",\n      \"shares\": [\n        {\n          \"participant\": 2,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 4,\n      \"name\": \"Dessert\",\n      \"amount\": \"180.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        }\n      ]\n    }\n  ],\n  \"items_total\": \"1080.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-24T09:18:58.784070+05:30\"\n}"
+              "body": "{\n  \"id\": 5,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"1200.00\",\n  \"spent_on\": \"2026-09-18\",\n  \"note\": \"Team lunch\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    3,\n    2,\n    1\n  ],\n  \"misc_amount\": \"120.00\",\n  \"misc_note\": \"GST and tip\",\n  \"items\": [\n    {\n      \"id\": 2,\n      \"name\": \"Pizza\",\n      \"amount\": \"600.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 2,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Drinks\",\n      \"amount\": \"300.00\",\n      \"shares\": [\n        {\n          \"participant\": 2,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 4,\n      \"name\": \"Dessert\",\n      \"amount\": \"180.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        }\n      ]\n    }\n  ],\n  \"items_total\": \"1080.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-24T09:22:30.417059+05:30\"\n}"
             }
           ]
         },
@@ -2646,7 +2711,8 @@
               ],
               "path": [
                 "expenses",
-                "{{even_expense_id}}"
+                "{{even_expense_id}}",
+                ""
               ]
             },
             "body": {
@@ -2678,7 +2744,8 @@
                   ],
                   "path": [
                     "expenses",
-                    "4"
+                    "4",
+                    ""
                   ]
                 },
                 "body": {
@@ -2700,7 +2767,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 4,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"900.00\",\n  \"spent_on\": \"2026-09-12\",\n  \"note\": \"Dinner with Rahul at Toit\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    2,\n    1\n  ],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-24T09:18:58.772751+05:30\"\n}"
+              "body": "{\n  \"id\": 4,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"900.00\",\n  \"spent_on\": \"2026-09-12\",\n  \"note\": \"Dinner with Rahul at Toit\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    2,\n    1\n  ],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-24T09:22:30.401486+05:30\"\n}"
             }
           ]
         },
@@ -2734,7 +2801,8 @@
               ],
               "path": [
                 "expenses",
-                "{{simple_expense_id}}"
+                "{{simple_expense_id}}",
+                ""
               ]
             },
             "body": {
@@ -2766,7 +2834,8 @@
                   ],
                   "path": [
                     "expenses",
-                    "3"
+                    "3",
+                    ""
                   ]
                 },
                 "body": {
@@ -2788,7 +2857,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"category\": 2,\n  \"category_name\": \"Home & utilities\",\n  \"amount\": \"1520.00\",\n  \"spent_on\": \"2026-09-05\",\n  \"note\": \"Electricity bill (August)\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-24T09:18:58.762797+05:30\"\n}"
+              "body": "{\n  \"id\": 3,\n  \"category\": 2,\n  \"category_name\": \"Home & utilities\",\n  \"amount\": \"1520.00\",\n  \"spent_on\": \"2026-09-05\",\n  \"note\": \"Electricity bill (August)\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-24T09:22:30.386917+05:30\"\n}"
             }
           ]
         },
@@ -2818,7 +2887,8 @@
               "path": [
                 "expenses",
                 "{{expense_id}}",
-                "split"
+                "split",
+                ""
               ]
             },
             "description": "The Split tab: each person's share of the lines (or of the even split) and of the misc amount. `rows` is empty when `is_balanced` is false."
@@ -2837,7 +2907,8 @@
                   "path": [
                     "expenses",
                     "5",
-                    "split"
+                    "split",
+                    ""
                   ]
                 }
               },
@@ -2879,7 +2950,8 @@
               ],
               "path": [
                 "expenses",
-                "{{simple_expense_id}}"
+                "{{simple_expense_id}}",
+                ""
               ]
             },
             "description": "Deletes the expense with its line items and shares. There is no undo."
@@ -2897,7 +2969,8 @@
                   ],
                   "path": [
                     "expenses",
-                    "3"
+                    "3",
+                    ""
                   ]
                 }
               },
@@ -2939,7 +3012,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "summary"
+                "summary",
+                ""
               ],
               "query": [
                 {
@@ -2966,7 +3040,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "summary"
+                    "summary",
+                    ""
                   ],
                   "query": [
                     {
@@ -3023,7 +3098,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "balances"
+                "balances",
+                ""
               ]
             },
             "description": "`owes_you` and `you_owe`, both as positive amounts, after repayments; `gross` is before them. All time unless `start`/`end` are given."
@@ -3040,7 +3116,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "balances"
+                    "balances",
+                    ""
                   ]
                 }
               },
@@ -3090,7 +3167,8 @@
               "path": [
                 "balances",
                 "{{participant_id}}",
-                "settle"
+                "settle",
+                ""
               ]
             },
             "body": {
@@ -3123,7 +3201,8 @@
                   "path": [
                     "balances",
                     "2",
-                    "settle"
+                    "settle",
+                    ""
                   ]
                 },
                 "body": {
@@ -3145,7 +3224,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"detail\": \"Recorded 838.89 back from Rahul.\",\n  \"code\": \"settled\",\n  \"settlement\": {\n    \"id\": 1,\n    \"participant\": 2,\n    \"participant_name\": \"Rahul\",\n    \"amount\": \"838.89\",\n    \"note\": \"Paid by UPI\",\n    \"settled_at\": \"2026-09-24T09:18:58.881677+05:30\"\n  }\n}"
+              "body": "{\n  \"detail\": \"Recorded 838.89 back from Rahul.\",\n  \"code\": \"settled\",\n  \"settlement\": {\n    \"id\": 1,\n    \"participant\": 2,\n    \"participant_name\": \"Rahul\",\n    \"amount\": \"838.89\",\n    \"note\": \"Paid by UPI\",\n    \"settled_at\": \"2026-09-24T09:22:30.545798+05:30\"\n  }\n}"
             },
             {
               "name": "Nothing outstanding (200 OK)",
@@ -3165,7 +3244,8 @@
                   "path": [
                     "balances",
                     "2",
-                    "settle"
+                    "settle",
+                    ""
                   ]
                 },
                 "body": {
@@ -3215,7 +3295,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "settlements"
+                "settlements",
+                ""
               ]
             },
             "description": "Every repayment recorded, newest first. `?participant=<id>` narrows it to one person."
@@ -3232,7 +3313,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "settlements"
+                    "settlements",
+                    ""
                   ]
                 }
               },
@@ -3245,7 +3327,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"participant\": 2,\n      \"participant_name\": \"Rahul\",\n      \"amount\": \"838.89\",\n      \"note\": \"Paid by UPI\",\n      \"settled_at\": \"2026-09-24T09:18:58.881677+05:30\"\n    }\n  ]\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"participant\": 2,\n      \"participant_name\": \"Rahul\",\n      \"amount\": \"838.89\",\n      \"note\": \"Paid by UPI\",\n      \"settled_at\": \"2026-09-24T09:22:30.545798+05:30\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -3274,7 +3356,8 @@
               ],
               "path": [
                 "settlements",
-                "{{settlement_id}}"
+                "{{settlement_id}}",
+                ""
               ]
             },
             "description": "One repayment."
@@ -3292,7 +3375,8 @@
                   ],
                   "path": [
                     "settlements",
-                    "1"
+                    "1",
+                    ""
                   ]
                 }
               },
@@ -3305,7 +3389,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"participant\": 2,\n  \"participant_name\": \"Rahul\",\n  \"amount\": \"838.89\",\n  \"note\": \"Paid by UPI\",\n  \"settled_at\": \"2026-09-24T09:18:58.881677+05:30\"\n}"
+              "body": "{\n  \"id\": 1,\n  \"participant\": 2,\n  \"participant_name\": \"Rahul\",\n  \"amount\": \"838.89\",\n  \"note\": \"Paid by UPI\",\n  \"settled_at\": \"2026-09-24T09:22:30.545798+05:30\"\n}"
             }
           ]
         }
@@ -3346,7 +3430,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "exports"
+                "exports",
+                ""
               ]
             },
             "body": {
@@ -3377,7 +3462,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "exports"
+                    "exports",
+                    ""
                   ]
                 },
                 "body": {
@@ -3399,7 +3485,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"status\": \"pending\",\n  \"start\": \"2026-09-01\",\n  \"end\": \"2026-09-30\",\n  \"row_count\": 0,\n  \"error\": \"\",\n  \"requested_at\": \"2026-09-24T09:18:58.894770+05:30\",\n  \"completed_at\": null,\n  \"download_url\": null\n}"
+              "body": "{\n  \"id\": 1,\n  \"status\": \"pending\",\n  \"start\": \"2026-09-01\",\n  \"end\": \"2026-09-30\",\n  \"row_count\": 0,\n  \"error\": \"\",\n  \"requested_at\": \"2026-09-24T09:22:30.558362+05:30\",\n  \"completed_at\": null,\n  \"download_url\": null\n}"
             }
           ]
         },
@@ -3441,7 +3527,8 @@
               ],
               "path": [
                 "exports",
-                "{{export_id}}"
+                "{{export_id}}",
+                ""
               ]
             },
             "description": "Poll every second or two until `status` is `complete` (then `download_url` is set) or `failed` (then `error` says why). This request repeats itself until then.\n\n*In the Postman runner this request repeats until finished.*"
@@ -3459,7 +3546,8 @@
                   ],
                   "path": [
                     "exports",
-                    "1"
+                    "1",
+                    ""
                   ]
                 }
               },
@@ -3472,7 +3560,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"status\": \"complete\",\n  \"start\": \"2026-09-01\",\n  \"end\": \"2026-09-30\",\n  \"row_count\": 2,\n  \"error\": \"\",\n  \"requested_at\": \"2026-09-24T09:18:58.894770+05:30\",\n  \"completed_at\": \"2026-09-24T09:18:58.944994+05:30\",\n  \"download_url\": \"http://127.0.0.1:8765/api/v1/exports/1/download/\"\n}"
+              "body": "{\n  \"id\": 1,\n  \"status\": \"complete\",\n  \"start\": \"2026-09-01\",\n  \"end\": \"2026-09-30\",\n  \"row_count\": 2,\n  \"error\": \"\",\n  \"requested_at\": \"2026-09-24T09:22:30.558362+05:30\",\n  \"completed_at\": \"2026-09-24T09:22:30.607805+05:30\",\n  \"download_url\": \"http://127.0.0.1:8765/api/v1/exports/1/download/\"\n}"
             }
           ]
         },
@@ -3500,7 +3588,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "exports"
+                "exports",
+                ""
               ]
             },
             "description": "The user's exports, newest first."
@@ -3517,7 +3606,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "exports"
+                    "exports",
+                    ""
                   ]
                 }
               },
@@ -3530,7 +3620,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"status\": \"complete\",\n      \"start\": \"2026-09-01\",\n      \"end\": \"2026-09-30\",\n      \"row_count\": 2,\n      \"error\": \"\",\n      \"requested_at\": \"2026-09-24T09:18:58.894770+05:30\",\n      \"completed_at\": \"2026-09-24T09:18:58.944994+05:30\",\n      \"download_url\": \"http://127.0.0.1:8765/api/v1/exports/1/download/\"\n    }\n  ]\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"status\": \"complete\",\n      \"start\": \"2026-09-01\",\n      \"end\": \"2026-09-30\",\n      \"row_count\": 2,\n      \"error\": \"\",\n      \"requested_at\": \"2026-09-24T09:22:30.558362+05:30\",\n      \"completed_at\": \"2026-09-24T09:22:30.607805+05:30\",\n      \"download_url\": \"http://127.0.0.1:8765/api/v1/exports/1/download/\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -3560,7 +3650,8 @@
               "path": [
                 "exports",
                 "{{export_id}}",
-                "download"
+                "download",
+                ""
               ]
             },
             "description": "The CSV, as an attachment. The file name is in `Content-Disposition`."
@@ -3579,7 +3670,8 @@
                   "path": [
                     "exports",
                     "1",
-                    "download"
+                    "download",
+                    ""
                   ]
                 }
               },
@@ -3607,7 +3699,8 @@
                   "path": [
                     "exports",
                     "2",
-                    "download"
+                    "download",
+                    ""
                   ]
                 }
               },
@@ -3656,7 +3749,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "bill-scans"
+                "bill-scans",
+                ""
               ]
             },
             "body": {
@@ -3683,7 +3777,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "bill-scans"
+                    "bill-scans",
+                    ""
                   ]
                 },
                 "body": {
@@ -3706,7 +3801,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"status\": \"pending\",\n  \"provider\": \"\",\n  \"error\": \"\",\n  \"result\": {},\n  \"expense\": null,\n  \"created_at\": \"2026-09-24T09:18:58.975844+05:30\",\n  \"completed_at\": null,\n  \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n}"
+              "body": "{\n  \"id\": 1,\n  \"status\": \"pending\",\n  \"provider\": \"\",\n  \"error\": \"\",\n  \"result\": {},\n  \"expense\": null,\n  \"created_at\": \"2026-09-24T09:22:30.638092+05:30\",\n  \"completed_at\": null,\n  \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n}"
             },
             {
               "name": "Not a photo (400 Bad Request)",
@@ -3719,7 +3814,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "bill-scans"
+                    "bill-scans",
+                    ""
                   ]
                 },
                 "body": {
@@ -3784,7 +3880,8 @@
               ],
               "path": [
                 "bill-scans",
-                "{{bill_scan_id}}"
+                "{{bill_scan_id}}",
+                ""
               ]
             },
             "description": "Poll until `status` is `done` or `failed` (then `error` says why). Scans usually take a few seconds. This request repeats itself until then.\n\n*In the Postman runner this request repeats until finished.*"
@@ -3802,7 +3899,8 @@
                   ],
                   "path": [
                     "bill-scans",
-                    "1"
+                    "1",
+                    ""
                   ]
                 }
               },
@@ -3815,7 +3913,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"status\": \"done\",\n  \"provider\": \"fake\",\n  \"error\": \"\",\n  \"result\": {\n    \"merchant\": \"Test Cafe\",\n    \"bill_date\": null,\n    \"total\": \"450.00\",\n    \"lines\": [\n      {\n        \"name\": \"Coffee\",\n        \"amount\": \"150.00\"\n      },\n      {\n        \"name\": \"Sandwich\",\n        \"amount\": \"250.00\"\n      }\n    ],\n    \"tax\": \"50.00\",\n    \"category_hint\": \"food\",\n    \"confidence\": 0.9,\n    \"provider\": \"fake\"\n  },\n  \"expense\": null,\n  \"created_at\": \"2026-09-24T09:18:58.975844+05:30\",\n  \"completed_at\": \"2026-09-24T09:18:58.980184+05:30\",\n  \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n}"
+              "body": "{\n  \"id\": 1,\n  \"status\": \"done\",\n  \"provider\": \"fake\",\n  \"error\": \"\",\n  \"result\": {\n    \"merchant\": \"Test Cafe\",\n    \"bill_date\": null,\n    \"total\": \"450.00\",\n    \"lines\": [\n      {\n        \"name\": \"Coffee\",\n        \"amount\": \"150.00\"\n      },\n      {\n        \"name\": \"Sandwich\",\n        \"amount\": \"250.00\"\n      }\n    ],\n    \"tax\": \"50.00\",\n    \"category_hint\": \"food\",\n    \"confidence\": 0.9,\n    \"provider\": \"fake\"\n  },\n  \"expense\": null,\n  \"created_at\": \"2026-09-24T09:22:30.638092+05:30\",\n  \"completed_at\": \"2026-09-24T09:22:30.642320+05:30\",\n  \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n}"
             }
           ]
         },
@@ -3843,7 +3941,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "bill-scans"
+                "bill-scans",
+                ""
               ]
             },
             "description": "The user's scans, newest first."
@@ -3860,7 +3959,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "bill-scans"
+                    "bill-scans",
+                    ""
                   ]
                 }
               },
@@ -3873,7 +3973,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"status\": \"done\",\n      \"provider\": \"fake\",\n      \"error\": \"\",\n      \"result\": {\n        \"merchant\": \"Test Cafe\",\n        \"bill_date\": null,\n        \"total\": \"450.00\",\n        \"lines\": [\n          {\n            \"name\": \"Coffee\",\n            \"amount\": \"150.00\"\n          },\n          {\n            \"name\": \"Sandwich\",\n            \"amount\": \"250.00\"\n          }\n        ],\n        \"tax\": \"50.00\",\n        \"category_hint\": \"food\",\n        \"confidence\": 0.9,\n        \"provider\": \"fake\"\n      },\n      \"expense\": null,\n      \"created_at\": \"2026-09-24T09:18:58.975844+05:30\",\n      \"completed_at\": \"2026-09-24T09:18:58.980184+05:30\",\n      \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n    }\n  ]\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"status\": \"done\",\n      \"provider\": \"fake\",\n      \"error\": \"\",\n      \"result\": {\n        \"merchant\": \"Test Cafe\",\n        \"bill_date\": null,\n        \"total\": \"450.00\",\n        \"lines\": [\n          {\n            \"name\": \"Coffee\",\n            \"amount\": \"150.00\"\n          },\n          {\n            \"name\": \"Sandwich\",\n            \"amount\": \"250.00\"\n          }\n        ],\n        \"tax\": \"50.00\",\n        \"category_hint\": \"food\",\n        \"confidence\": 0.9,\n        \"provider\": \"fake\"\n      },\n      \"expense\": null,\n      \"created_at\": \"2026-09-24T09:22:30.638092+05:30\",\n      \"completed_at\": \"2026-09-24T09:22:30.642320+05:30\",\n      \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -3903,7 +4003,8 @@
               "path": [
                 "bill-scans",
                 "{{bill_scan_id}}",
-                "image"
+                "image",
+                ""
               ]
             },
             "description": "The uploaded image, for showing beside the draft."
@@ -3922,7 +4023,8 @@
                   "path": [
                     "bill-scans",
                     "1",
-                    "image"
+                    "image",
+                    ""
                   ]
                 }
               },
@@ -3967,7 +4069,8 @@
               "path": [
                 "bill-scans",
                 "{{bill_scan_id}}",
-                "prefill"
+                "prefill",
+                ""
               ]
             },
             "description": "What the model read, shaped as an expense to show for correction and then send to `POST expenses/` with `bill_scan` unchanged. `category` is set only when the model's guess matches one of the user's categories. 409 when the scan is not finished, failed, or was already saved."
@@ -3986,7 +4089,8 @@
                   "path": [
                     "bill-scans",
                     "1",
-                    "prefill"
+                    "prefill",
+                    ""
                   ]
                 }
               },
@@ -4014,7 +4118,8 @@
                   "path": [
                     "bill-scans",
                     "2",
-                    "prefill"
+                    "prefill",
+                    ""
                   ]
                 }
               },
@@ -4060,7 +4165,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "expenses"
+                "expenses",
+                ""
               ]
             },
             "body": {
@@ -4091,7 +4197,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "expenses"
+                    "expenses",
+                    ""
                   ]
                 },
                 "body": {
@@ -4113,7 +4220,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 6,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"450.00\",\n  \"spent_on\": \"2026-09-24\",\n  \"note\": \"Test Cafe\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": \"50.00\",\n  \"misc_note\": \"Tax / tip (scanned)\",\n  \"items\": [\n    {\n      \"id\": 5,\n      \"name\": \"Coffee\",\n      \"amount\": \"150.00\",\n      \"shares\": []\n    },\n    {\n      \"id\": 6,\n      \"name\": \"Sandwich\",\n      \"amount\": \"250.00\",\n      \"shares\": []\n    }\n  ],\n  \"items_total\": \"400.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-24T09:18:59.001633+05:30\"\n}"
+              "body": "{\n  \"id\": 6,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"450.00\",\n  \"spent_on\": \"2026-09-24\",\n  \"note\": \"Test Cafe\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": \"50.00\",\n  \"misc_note\": \"Tax / tip (scanned)\",\n  \"items\": [\n    {\n      \"id\": 5,\n      \"name\": \"Coffee\",\n      \"amount\": \"150.00\",\n      \"shares\": []\n    },\n    {\n      \"id\": 6,\n      \"name\": \"Sandwich\",\n      \"amount\": \"250.00\",\n      \"shares\": []\n    }\n  ],\n  \"items_total\": \"400.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-24T09:22:30.663435+05:30\"\n}"
             },
             {
               "name": "Already saved (400 Bad Request)",
@@ -4131,7 +4238,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "expenses"
+                    "expenses",
+                    ""
                   ]
                 },
                 "body": {
@@ -4196,7 +4304,8 @@
               ],
               "path": [
                 "auth",
-                "refresh"
+                "refresh",
+                ""
               ]
             },
             "auth": {
@@ -4231,7 +4340,8 @@
                   ],
                   "path": [
                     "auth",
-                    "refresh"
+                    "refresh",
+                    ""
                   ]
                 },
                 "body": {
@@ -4272,7 +4382,8 @@
                   ],
                   "path": [
                     "auth",
-                    "refresh"
+                    "refresh",
+                    ""
                   ]
                 },
                 "body": {
@@ -4328,7 +4439,8 @@
               ],
               "path": [
                 "auth",
-                "logout"
+                "logout",
+                ""
               ]
             },
             "auth": {
@@ -4363,7 +4475,8 @@
                   ],
                   "path": [
                     "auth",
-                    "logout"
+                    "logout",
+                    ""
                   ]
                 },
                 "body": {
@@ -4399,7 +4512,8 @@
                   ],
                   "path": [
                     "auth",
-                    "logout"
+                    "logout",
+                    ""
                   ]
                 },
                 "body": {
@@ -4461,7 +4575,8 @@
               ],
               "path": [
                 "auth",
-                "signup"
+                "signup",
+                ""
               ]
             },
             "auth": {
@@ -4496,7 +4611,8 @@
                   ],
                   "path": [
                     "auth",
-                    "signup"
+                    "signup",
+                    ""
                   ]
                 },
                 "body": {
@@ -4537,7 +4653,8 @@
                   ],
                   "path": [
                     "auth",
-                    "signup"
+                    "signup",
+                    ""
                   ]
                 },
                 "body": {
@@ -4596,7 +4713,8 @@
               ],
               "path": [
                 "auth",
-                "verify-email"
+                "verify-email",
+                ""
               ]
             },
             "auth": {
@@ -4631,12 +4749,13 @@
                   ],
                   "path": [
                     "auth",
-                    "verify-email"
+                    "verify-email",
+                    ""
                   ]
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"uid\": \"Mw\",\n  \"token\": \"dfekjn-78513b9dc08e712dfb5de4b5f979d550\"\n}",
+                  "raw": "{\n  \"uid\": \"Mw\",\n  \"token\": \"dfekpi-35291c33bd4a0ee85edbdbfa8b8a87d5\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -4653,7 +4772,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-24T09:18:59.045519+05:30\",\n    \"last_login\": \"2026-09-24T09:18:59.061691+05:30\",\n    \"self_participant\": {\n      \"id\": 5,\n      \"name\": \"new.user (self)\"\n    }\n  }\n}"
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-24T09:22:30.705172+05:30\",\n    \"last_login\": \"2026-09-24T09:22:30.720721+05:30\",\n    \"self_participant\": {\n      \"id\": 5,\n      \"name\": \"new.user (self)\"\n    }\n  }\n}"
             },
             {
               "name": "Link already used or expired (400 Bad Request)",
@@ -4672,12 +4791,13 @@
                   ],
                   "path": [
                     "auth",
-                    "verify-email"
+                    "verify-email",
+                    ""
                   ]
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"uid\": \"Mw\",\n  \"token\": \"dfekjn-78513b9dc08e712dfb5de4b5f979d550\"\n}",
+                  "raw": "{\n  \"uid\": \"Mw\",\n  \"token\": \"dfekpi-35291c33bd4a0ee85edbdbfa8b8a87d5\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -4732,7 +4852,8 @@
               "path": [
                 "auth",
                 "password",
-                "change"
+                "change",
+                ""
               ]
             },
             "body": {
@@ -4765,7 +4886,8 @@
                   "path": [
                     "auth",
                     "password",
-                    "change"
+                    "change",
+                    ""
                   ]
                 },
                 "body": {
@@ -4787,7 +4909,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-24T09:18:59.045519+05:30\",\n    \"last_login\": \"2026-09-24T09:18:59.069306+05:30\",\n    \"self_participant\": {\n      \"id\": 5,\n      \"name\": \"new.user (self)\"\n    }\n  }\n}"
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-24T09:22:30.705172+05:30\",\n    \"last_login\": \"2026-09-24T09:22:30.727250+05:30\",\n    \"self_participant\": {\n      \"id\": 5,\n      \"name\": \"new.user (self)\"\n    }\n  }\n}"
             },
             {
               "name": "Wrong current password (400 Bad Request)",
@@ -4807,7 +4929,8 @@
                   "path": [
                     "auth",
                     "password",
-                    "change"
+                    "change",
+                    ""
                   ]
                 },
                 "body": {
@@ -4864,7 +4987,8 @@
               "path": [
                 "auth",
                 "password",
-                "reset"
+                "reset",
+                ""
               ]
             },
             "auth": {
@@ -4900,7 +5024,8 @@
                   "path": [
                     "auth",
                     "password",
-                    "reset"
+                    "reset",
+                    ""
                   ]
                 },
                 "body": {
@@ -4958,7 +5083,8 @@
                 "auth",
                 "password",
                 "reset",
-                "confirm"
+                "confirm",
+                ""
               ]
             },
             "auth": {
@@ -4995,12 +5121,13 @@
                     "auth",
                     "password",
                     "reset",
-                    "confirm"
+                    "confirm",
+                    ""
                   ]
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"uid\": \"Mw\",\n  \"token\": \"dfekjn-75d2a84a46fc1ccd0c525f6b414b1a5e\",\n  \"new_password\": \"Third-Pass-2026\",\n  \"new_password_confirm\": \"Third-Pass-2026\"\n}",
+                  "raw": "{\n  \"uid\": \"Mw\",\n  \"token\": \"dfekpi-b57a228afd14082681e5f72ef63ce2d1\",\n  \"new_password\": \"Third-Pass-2026\",\n  \"new_password_confirm\": \"Third-Pass-2026\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -5038,12 +5165,13 @@
                     "auth",
                     "password",
                     "reset",
-                    "confirm"
+                    "confirm",
+                    ""
                   ]
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"uid\": \"Mw\",\n  \"token\": \"dfekjn-75d2a84a46fc1ccd0c525f6b414b1a5e\",\n  \"new_password\": \"Third-Pass-2026\",\n  \"new_password_confirm\": \"Third-Pass-2026\"\n}",
+                  "raw": "{\n  \"uid\": \"Mw\",\n  \"token\": \"dfekpi-b57a228afd14082681e5f72ef63ce2d1\",\n  \"new_password\": \"Third-Pass-2026\",\n  \"new_password_confirm\": \"Third-Pass-2026\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -5097,7 +5225,8 @@
               ],
               "path": [
                 "auth",
-                "login"
+                "login",
+                ""
               ]
             },
             "auth": {
@@ -5132,7 +5261,8 @@
                   ],
                   "path": [
                     "auth",
-                    "login"
+                    "login",
+                    ""
                   ]
                 },
                 "body": {
@@ -5154,7 +5284,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-24T09:18:59.045519+05:30\",\n    \"last_login\": \"2026-09-24T09:18:59.082715+05:30\",\n    \"self_participant\": {\n      \"id\": 5,\n      \"name\": \"new.user (self)\"\n    }\n  }\n}"
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-24T09:22:30.705172+05:30\",\n    \"last_login\": \"2026-09-24T09:22:30.739478+05:30\",\n    \"self_participant\": {\n      \"id\": 5,\n      \"name\": \"new.user (self)\"\n    }\n  }\n}"
             }
           ]
         },
@@ -5187,7 +5317,8 @@
                 "{{baseUrl}}"
               ],
               "path": [
-                "me"
+                "me",
+                ""
               ]
             },
             "body": {
@@ -5218,7 +5349,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "me"
+                    "me",
+                    ""
                   ]
                 },
                 "body": {
@@ -5253,7 +5385,8 @@
                     "{{baseUrl}}"
                   ],
                   "path": [
-                    "me"
+                    "me",
+                    ""
                   ]
                 },
                 "body": {
