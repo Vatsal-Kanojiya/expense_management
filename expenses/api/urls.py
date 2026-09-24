@@ -13,6 +13,8 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
+from accounts.api import urlpatterns as account_urls
+
 from .views import CategoryViewSet, ExpenseViewSet, HealthView, ParticipantViewSet
 
 router = DefaultRouter()
@@ -28,6 +30,7 @@ app_name = "api"
 # and a future v2 gets its own. DECISIONS D43.
 v1 = [
     *router.urls,
+    *account_urls,
     path("health/", HealthView.as_view(), name="health"),
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path("docs/", SpectacularSwaggerView.as_view(url_name="api:v1:schema"), name="docs"),

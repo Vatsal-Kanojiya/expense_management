@@ -458,6 +458,11 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
+    # Every token carries a hash of the password hash, so changing the
+    # password -- through the API or a Django page -- ends every access token
+    # already issued. The API's password endpoints also blacklist the
+    # refresh tokens, which this check does not reach.
+    "CHECK_REVOKE_TOKEN": True,
 }
 
 
