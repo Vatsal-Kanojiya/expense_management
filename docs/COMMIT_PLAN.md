@@ -574,7 +574,7 @@ while verifying:
 collection (phase 21) · changing the email address on an account (needs its own verification
 flow) · push notifications · resending a verification email · per-device session management.
 
-### Phase 21 — The frontend pack 🔜 *(session 28, branch `frontend-api`)*
+### Phase 21 — The frontend pack ✅ *(session 28, built and verified on branch `frontend-api`; not merged)*
 
 > **Prerequisite:** phase 20. Documentation, a management command that generates part of it, and
 > tests that keep it honest. No API behaviour changes.
@@ -610,10 +610,16 @@ The documents a frontend developer builds the React UI from (D47–D49), in `doc
 
 | Task | Status | Commit |
 |---|---|---|
-| 21.1 | done | *(this commit)* |
-| 21.2 | todo | |
-| 21.3 | todo | |
-| 21.4 | todo | |
+| 21.1 | done | `9059724` |
+| 21.2 | done | `0dcaa72`, test `da82023` |
+| — | done, found by verification | `ea92fab` `fix(docs): keep the trailing slash on Postman request URLs` |
+| — | done, found by verification | `3f38706` `fix(api): errors a UI can show as they are; the verification email's expiry` |
+| 21.3 | done | `4c1aeef` |
+| 21.4 | done | the commit that records session 28 |
+
+**As built.** F1–F4 pass; the results are in BUILD_LOG session 28. Writing against recorded
+responses, rather than against the code, found three things worth fixing in the API itself. They are
+listed there.
 
 ---
 

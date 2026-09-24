@@ -57,8 +57,11 @@
 > the Postman collection for the frontend developer, generated from `/api/v1/schema/`. COMMIT_PLAN
 > phase 20 lists two behaviours that document must explain.
 >
-> **Phase 21 in progress — the frontend pack, session 28.** Plan and progress: COMMIT_PLAN phase
-> 21. Decisions D47–D49. Output: `docs/frontend/`.
+> **Phase 21 built and verified — the frontend pack, session 28** (branch `frontend-api`).
+> `docs/frontend/` holds the business requirements and scope of work (`BRD.md`), the integration
+> guide, a generated API reference, the OpenAPI snapshot and a Postman collection that Newman runs
+> clean against the Docker stack. Decisions D47–D49. **Hand the developer `docs/frontend/README.md`.**
+> After any API change: `make api-docs`, and commit the diff with the change.
 >
 > **Study material (session 24).** Two pages built from these docs, for revising away from the
 > laptop. Both are committed here and also published as private pages:
@@ -75,9 +78,9 @@
 > Discussion: <https://claude.ai/code/session_0192K6QsQDjhnfxymJ7YfskB>
 
 **Session:** 24 — study pages added; phase 17 still **awaiting owner click-through before tagging**
-**Last code commit:** `e2f1887` — *fix(api): pin FRONTEND_URL in the tests that assume it unset* (branch `frontend-api`, on `project-dockerization`; `master` is at `9371cc5`)
+**Last code commit:** `3f38706` — *fix(api): errors a UI can show as they are; the verification email's expiry* (branch `frontend-api`, on `project-dockerization`; `master` is at `9371cc5`)
 **Phase tags:** 17, `phase-1-foundation` … `phase-16-hardening` (`git tag | sort -V`)
-**Suite:** 552 tests — green on SQLite (9 skipped) and on Postgres in Docker (none skipped), session 27. Coverage 96%, back over the 95% gate (issue 43)
+**Suite:** 559 tests — green on SQLite (9 skipped), session 28; on Postgres in Docker (none skipped) at session 27. Coverage 96%
 **Remote:** `github.com/Vatsal-Kanojiya/expense_management` — **in sync**
 
 | Dimension | State |
@@ -314,6 +317,10 @@ erDiagram
 | API | Exports and bill scans | `expenses/api/jobs.py` | ✅ done | 27 |
 | Query | Category and people usage shared by page and API | `expenses/managers.py` | ✅ done | 27 |
 | Test | API platform, account, resources, reports, jobs | `*/tests/test_api_*.py` | ✅ 75 tests | 27 |
+| Docs | The API journey, rendered as collection, reference and schema | `expenses/api/journey.py`, `build_api_docs` | ✅ done | 28 |
+| Docs | Business requirements and scope of work | `docs/frontend/BRD.md` | ✅ done | 28 |
+| Docs | Integration guide and index | `docs/frontend/API_GUIDE.md`, `README.md` | ✅ done | 28 |
+| Test | The pack stays true: schema snapshot, endpoint coverage, collection shape | `expenses/tests/test_api_docs.py` | ✅ 6 tests | 28 |
 
 Legend: ✅ done · 🔜 next · ⬜ not started · 🅿️ deliberately parked · ❌ problem
 
@@ -532,6 +539,52 @@ cursor bug fails `TransactionTestCase` only.
 `ContentFile` · `queryset.iterator()` and cursor lifetime · `TestCase` vs `TransactionTestCase` ·
 `BaseCommand`, `add_arguments`, `CommandError`, `self.style` · `call_command` in tests ·
 `IntegrityError` as a concurrency primitive · `FileResponse` · `MEDIA_ROOT`.
+
+---
+
+### Session 28 — The frontend pack (phase 21)
+
+The brief: professional documents for the React developer, who is a fresher: a business requirements
+document and scope of work, plus a Postman-style collection showing every request and its expected
+response. Plan and decisions first, as `9059724`: D47–D49.
+
+**The half that is generated.** The user journey is described once, in `expenses/api/journey.py`: 54
+requests in ten folders, with 25 recorded error examples. `build_api_docs` runs it against a
+throwaway test database, as the test runner does, and writes the Postman collection, the Markdown
+reference and the OpenAPI snapshot from that one run. Every response in the pack is one the API
+really returned. Tests fail if the snapshot is stale, if an endpoint in the schema has no recorded
+example, or if the collection uses an undeclared variable or repeats a request name.
+
+**The half that is written.** `BRD.md` (853 lines): 29 business rules, requirements and acceptance
+criteria for every screen, 15 non-functional requirements, milestones, and 16 acceptance scenarios
+whose numbers are the API's recorded answers. `API_GUIDE.md` (622 lines): the conventions every
+endpoint shares, with working code for token refresh, polling, authenticated downloads and
+generated types. `README.md`: the index and a 15-minute start. Every cross-document link was
+checked to resolve.
+
+**Verified.**
+
+| # | Check | Result |
+|---|---|---|
+| F1 | `build_api_docs` regenerates the pack from a throwaway database | ✅ 54 requests, 25 examples |
+| F2 | Tests keep the pack honest | ✅ 6 tests: schema snapshot, endpoint coverage, collection shape, the command end to end |
+| F3 | Newman, Postman's own runner, runs folders 0–8 unedited against the Docker stack | ✅ 48 requests, 50 assertions, **0 failures**. The export poll repeated once, because the worker had not finished, then passed |
+| F4 | The BRD's numbers and rules match the code | ✅ acceptance figures copied from the recorded responses; rules checked against the models, forms and serializers |
+
+**What only running it found:**
+
+1. **Every POST in the first Newman run failed.** Postman rebuilds a URL from its path segments, and
+   the generator dropped the empty last segment that keeps the trailing slash. A GET was redirected
+   and passed; POST `/auth/login` cannot be redirected, so there was no token for anything after it.
+   Fixed in `ea92fab`, then 0 failures.
+2. **Reading the recorded errors as a frontend developer would** turned up three things to fix in
+   the API itself (`3f38706`): "still used by 1 expenses"; password-rule errors reported on the
+   *confirmation* field, where a form would show them under the wrong box; and the verification
+   email promising three days for a link that lasts 24 hours.
+3. **Coverage fell to 92%** with the generator's renderers untested. A test that runs the real
+   command into a temporary directory brought it back to 96% (`da82023`).
+
+**Suite:** 559 tests.
 
 ---
 
