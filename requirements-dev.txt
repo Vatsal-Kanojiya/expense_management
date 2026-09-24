@@ -13,3 +13,8 @@ coverage[toml]==7.11.0
 
 # Runs the linters before each commit.
 pre-commit==4.4.0
+
+# Restarts the Celery worker and beat when a .py file changes, in the
+# Docker development mode (compose.dev.yaml). runserver reloads itself;
+# Celery has no reloader of its own.
+watchfiles==1.3.0
