@@ -545,6 +545,18 @@ cursor bug fails `TransactionTestCase` only.
 
 ---
 
+### Session 30 — Security pass 1 completed
+
+The subscription carried on, so work resumed from `docs/HANDOVER.md`. Task 1: 14 tests in
+`accounts/tests/test_security_pass1.py` now check each protection pass 1 added. The client
+address ignores X-Forwarded-For without a proxy and reads it from the right behind one or two,
+and DRF's throttle follows the same rule. Sign-up and wrong current passwords share one budget
+between the page and the API. The admin login is guarded, one address is capped across
+usernames, a success clears only its own username, and failed logins do equal work. Task 2: the
+frontend pack's rate-limit table and BRD rules match. **Suite:** 573 tests, coverage 96%.
+
+---
+
 ### Session 29 — Security pass 1, and the handover (phase 22)
 
 The owner asked for a security review in passes, one theme at a time, each fixed and then stopped
