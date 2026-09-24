@@ -485,7 +485,7 @@ pushing images to a registry · merging to `master`.
 
 **Tag:** `phase-19-docker-daily-use`, once the owner has run the stack on their own machine.
 
-### Phase 20 — An API for a remote frontend 🔜 *(session 27, branch `frontend-api`, on top of `project-dockerization`)*
+### Phase 20 — An API for a remote frontend ✅ *(session 27, built and verified on branch `frontend-api`, on top of `project-dockerization`; not merged)*
 
 > **Prerequisite:** phase 19. This phase adds three dependencies, API code, tests and settings. It
 > does **not** change the Django pages, models or migrations — apart from the migrations of the
@@ -513,7 +513,7 @@ phase's OpenAPI schema.
 | Balances | who owes you, whom you owe; settle up | `GET balances/`, `POST balances/{participant}/settle/`, `GET settlements/` |
 | Exports | request, list, download | `POST/GET exports/`, `GET exports/{id}/download/` |
 | Scan a bill | upload, watch status, review, save | `POST/GET bill-scans/`, `GET bill-scans/{id}/image/`, `GET bill-scans/{id}/prefill/`, `POST expenses/` with `bill_scan` |
-| — | contract and health | `GET /api/schema/`, `GET /api/docs/`, `GET health/` |
+| — | contract and health | `GET schema/` (OpenAPI 3), `GET docs/` (Swagger UI), `GET health/` |
 
 | # | Commit | Architecture note |
 |---|---|---|
@@ -539,14 +539,36 @@ phase's OpenAPI schema.
 
 | Task | Status | Commit |
 |---|---|---|
-| 20.1 | done | *(this commit)* |
-| 20.2 | todo | |
-| 20.3 | todo | |
-| 20.4 | todo | |
-| 20.5 | todo | |
-| 20.6 | todo | |
-| 20.7 | todo | |
-| 20.8 | todo | |
+| 20.1 | done | `920c6e2` |
+| 20.2 | done | `1fc9fe3` |
+| 20.3 | done | `b633357` |
+| 20.4 | done | `17a935b` |
+| 20.5 | done | `4d0fe98` |
+| 20.6 | done | `c9e3fe9` |
+| 20.7 | done | `a29b29c` |
+| — | done, found by verification | `e2f1887` `fix(api): pin FRONTEND_URL in the tests that assume it unset; lint without a cache` |
+| 20.8 | done | the commit that records session 27 |
+
+**As built.** A1–A4 all pass; the results are in BUILD_LOG session 27. Four departures from the
+plan:
+
+- **The schema and Swagger UI live inside the version**, at `/api/v1/schema/` and `/api/v1/docs/`.
+  With namespace versioning, drf-spectacular documents the endpoints of the version the schema
+  was requested from.
+- **`GET settlements/` was added.** No page lists repayments, but a client has no other way to
+  show what "settled" meant.
+- **The expense list carries `count` and `total_amount`**, reversing a phase 10 test (D46).
+- **One commit came from running the suite inside Docker**, where `.env` sets `FRONTEND_URL`: two
+  tests of the unset default had been reading the environment.
+
+**For phase 21 (the frontend document).** Two behaviours a UI developer must be told, both found
+while verifying:
+
+- **Send `include_self: false` together with the exact lists your checkboxes show.** D25's default
+  adds you to every shared line, so "only Rahul had the drinks" would otherwise come back as a
+  50/50 line.
+- **`unaccounted_amount` is null when an expense has no line items** — there is nothing to
+  reconcile. A number there always means "these lines do not add up".
 
 **Out of scope, for phase 21 and later:** the business-requirements document and Postman
 collection (phase 21) · changing the email address on an account (needs its own verification

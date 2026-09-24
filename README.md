@@ -115,6 +115,23 @@ that provider's own API key as its SDK expects (`ANTHROPIC_API_KEY`, `GEMINI_API
 
 ---
 
+## API for a separate frontend
+
+Everything the Django pages do is also a JSON endpoint under `/api/v1/`, so a React or mobile client
+can be built without touching Django templates. The contract is generated from the code:
+
+| URL | What |
+|---|---|
+| `/api/v1/docs/` | Swagger UI: every endpoint, its request and response, runnable in the browser |
+| `/api/v1/schema/` | The OpenAPI 3 schema. Postman, Insomnia and client generators import it directly |
+
+Sign in with `POST /api/v1/auth/login/` and send `Authorization: Bearer <access>`. Refresh with
+`POST /api/v1/auth/refresh/`. A frontend served from another origin needs that origin in
+`CORS_ALLOWED_ORIGINS`, and `FRONTEND_URL` makes verification, reset and export emails link back to
+it. See `.env.example`, and DECISIONS D40–D46 for the design.
+
+---
+
 ## Project layout
 
 ```
