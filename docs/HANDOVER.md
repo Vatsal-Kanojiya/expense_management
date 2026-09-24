@@ -96,7 +96,7 @@ Tick each task here as you finish it, and commit after each one.
       test short. **Done when** `python manage.py test accounts` passes and coverage is 95% or
       more.
 
-- [ ] **Task 2 — Bring the docs in line with pass 1.** The rate-limit table in
+- [x] **Task 2 — Bring the docs in line with pass 1.** (Done in session 30.) The rate-limit table in
       `docs/frontend/API_GUIDE.md` §11, and business rules BR-24 to BR-27 in
       `docs/frontend/BRD.md`, should list every limit that `accounts/ratelimit.py` now defines.
       (The configuration half is already done: `TRUSTED_PROXY_COUNT`, `ADMIN_URL` and

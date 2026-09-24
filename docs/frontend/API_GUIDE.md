@@ -547,7 +547,14 @@ When the draft endpoint answers 409 `already_saved`, open that expense instead.
 | 3,000 requests per hour | Per signed-in user | 429 with `Retry-After` |
 | 60 requests per hour | Per address, for requests without a token (login, sign-up, refresh, reset) | 429 with `Retry-After` |
 | 10 failed logins per 15 minutes | Per username per address | 429 `rate_limited` |
+| 50 failed logins per 15 minutes | Per address, across all usernames | 429 `rate_limited` |
+| 10 sign-up attempts per hour | Per address (the web page and the API share it) | 429 `rate_limited` |
+| 5 wrong current passwords per 15 minutes | Per account, on password change (page and API share it) | 429 `rate_limited` |
 | 5 reset requests per hour | Per email address per address | 429 `rate_limited` |
+
+The login limits apply to every way in (this API, the web page and the admin site), so attempts
+through one count towards the others. "Address" is the caller's network address as the server's
+trusted proxy reports it. Headers the client sends itself do not change it.
 
 The figures are server settings and may differ per environment. A well-behaved client polls no more
 often than §10 suggests, and refreshes tokens only when a request fails with 401.

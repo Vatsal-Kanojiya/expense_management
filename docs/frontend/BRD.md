@@ -347,11 +347,13 @@ expense, and a second save is refused (400 on `bill_scan`).
 rules: at least 8 characters, not entirely numeric, not a commonly used password, and not too
 similar to the username or email. The server reports which rule failed. A new account is
 **inactive** until its email address is confirmed through the emailed link, which is valid for **24
-hours** and works once.
+hours** and works once. At most 10 sign-up attempts per network address per hour (429
+`rate_limited`).
 
 **BR-25 · Signing in** is limited to 10 failed attempts per username from one network address in
-15 minutes (429 `rate_limited`). An account that has not been verified gets 403
-`email_not_verified`, but only when the password was right.
+15 minutes, and 50 failed attempts from one address across all usernames (429 `rate_limited`).
+An account that has not been verified gets 403 `email_not_verified`, but only when the password
+was right.
 
 **BR-26 · Password reset** emails a link valid for **24 hours**, which works once. The request
 always answers the same way, whether or not the address has an account, so that the screen reveals
@@ -359,6 +361,8 @@ nothing. At most 5 reset requests per address per hour.
 
 **BR-27 · Password change** needs the current password. It signs the user out on **every other
 device**; the current one receives new tokens and stays signed in. A reset signs out every device.
+After 5 wrong current passwords in 15 minutes the account must wait (429 `rate_limited`), even
+with the right one.
 
 **BR-28 · Deleting the account** is irreversible and removes everything the user owns. The user
 must confirm by typing their username.
@@ -795,6 +799,7 @@ Run on a fresh account, in this order. The expected numbers are the API's real a
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 24 Sep 2026 | First issue |
+| 1.1 | Oct 2026 | BR-24, BR-25, BR-27: the limits added by security pass 1 |
 
 ---
 
