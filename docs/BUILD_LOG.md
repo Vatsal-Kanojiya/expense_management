@@ -21,6 +21,9 @@
 
 > ## ▶ Resume here
 >
+> **Working without an assistant? Start at [HANDOVER.md](HANDOVER.md)** (session 29): branches and
+> merge order, daily commands, and the remaining tasks in order.
+>
 > **The expense tracker is frozen as of session 22.** It covers the concepts it was built for. From
 > here, only bugs that lose data or break a working flow get fixed. Polish goes on the backlog and
 > stays there. See DECISIONS D27.
