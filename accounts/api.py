@@ -17,6 +17,7 @@ from django.conf import settings
 from django.contrib.auth import authenticate as django_authenticate
 from django.contrib.auth import get_user_model, logout, update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm, PasswordResetForm, SetPasswordForm
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import update_last_login
 from django.contrib.auth.tokens import default_token_generator
 from django.urls import path
@@ -189,6 +190,12 @@ def user_from_uid(uid):
         return None
 
 
+def rate_limited(detail):
+    return Response(
+        {"detail": detail, "code": "rate_limited"}, status=status.HTTP_429_TOO_MANY_REQUESTS
+    )
+
+
 INVALID_LINK = Response(
     {"detail": "This link is invalid or has expired.", "code": "invalid_link"},
     status=status.HTTP_400_BAD_REQUEST,
@@ -212,9 +219,20 @@ class SignupView(PublicView):
         tags=AUTH_TAG,
         summary="Sign up",
         request=SignupSerializer,
-        responses={201: MessageSerializer, 400: ValidationErrorSerializer},
+        responses={
+            201: MessageSerializer,
+            400: ValidationErrorSerializer,
+            429: OpenApiResponse(MessageSerializer, description="Too many sign-ups."),
+        },
     )
     def post(self, request, *args, **kwargs):
+        # The web page's limit, under the same key, so the two share it.
+        if ratelimit.is_limited(
+            "signup", request, "", ratelimit.SIGNUP_LIMIT, ratelimit.SIGNUP_WINDOW
+        ):
+            return rate_limited("Too many sign-up attempts. Try again later.")
+        ratelimit.record_attempt("signup", request, "", ratelimit.SIGNUP_WINDOW)
+
         body = SignupSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         data = body.validated_data
@@ -297,29 +315,29 @@ class LoginView(PublicView):
         username = body.validated_data["username"]
         password = body.validated_data["password"]
 
-        if ratelimit.is_limited(
-            "login", request, username, ratelimit.LOGIN_LIMIT, ratelimit.LOGIN_WINDOW
-        ):
-            return Response(
-                {
-                    "detail": "Too many sign-in attempts. Wait a few minutes and try again.",
-                    "code": "rate_limited",
-                },
-                status=status.HTTP_429_TOO_MANY_REQUESTS,
-            )
+        if ratelimit.login_blocked(request, username):
+            return rate_limited("Too many sign-in attempts. Wait a few minutes and try again.")
 
         user = django_authenticate(request, username=username, password=password)
 
         if user is None:
-            ratelimit.record_attempt("login", request, username, ratelimit.LOGIN_WINDOW)
+            ratelimit.record_login_failure(request, username)
             logging.getLogger("django.security").warning(
                 "Failed API login for %r from %s", username[:150], ratelimit.client_ip(request)
             )
             # Said apart only when the password was right: someone who knows
             # it learns nothing new, and a real person learns why they are
             # stuck.
+            #
+            # One password hash on every failed path, whether or not an
+            # unverified account exists: hashing only when one does made the
+            # response measurably slower for exactly those usernames, which
+            # told a stranger which accounts were awaiting verification.
+            # Security pass 1.
             pending = User.objects.filter(username=username, is_active=False).first()
-            if pending is not None and pending.check_password(password):
+            if pending is None:
+                make_password(password)
+            elif pending.check_password(password):
                 return Response(
                     {
                         "detail": "Confirm your email address first: use the link we sent.",
@@ -332,7 +350,7 @@ class LoginView(PublicView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        ratelimit.clear("login", request, username)
+        ratelimit.clear_login(request, username)
         return Response(issue_tokens(user))
 
 
@@ -379,9 +397,24 @@ class PasswordChangeView(APIView):
         tags=AUTH_TAG,
         summary="Change password",
         request=PasswordChangeSerializer,
-        responses={200: TokenPairSerializer, 400: ValidationErrorSerializer},
+        responses={
+            200: TokenPairSerializer,
+            400: ValidationErrorSerializer,
+            429: OpenApiResponse(MessageSerializer, description="Too many wrong passwords."),
+        },
     )
     def post(self, request, *args, **kwargs):
+        # Wrong current passwords per account, shared with the web page.
+        key = str(request.user.pk)
+        if ratelimit.is_limited(
+            "password-change",
+            request,
+            key,
+            ratelimit.PASSWORD_CHANGE_LIMIT,
+            ratelimit.PASSWORD_CHANGE_WINDOW,
+        ):
+            return rate_limited("Too many attempts. Wait a few minutes and try again.")
+
         body = PasswordChangeSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         data = body.validated_data
@@ -395,10 +428,15 @@ class PasswordChangeView(APIView):
             },
         )
         if not form.is_valid():
+            if "old_password" in form.errors:
+                ratelimit.record_attempt(
+                    "password-change", request, key, ratelimit.PASSWORD_CHANGE_WINDOW
+                )
             raise_form_errors(
                 form, password_errors(data["new_password"], data["new_password_confirm"])
             )
 
+        ratelimit.clear("password-change", request, key)
         user = form.save()
         revoke_refresh_tokens(user)
         if request.auth is None:
@@ -427,13 +465,7 @@ class PasswordResetView(PublicView):
         if ratelimit.is_limited(
             "reset", request, email, ratelimit.RESET_LIMIT, ratelimit.RESET_WINDOW
         ):
-            return Response(
-                {
-                    "detail": "Too many reset requests. Wait an hour and try again.",
-                    "code": "rate_limited",
-                },
-                status=status.HTTP_429_TOO_MANY_REQUESTS,
-            )
+            return rate_limited("Too many reset requests. Wait an hour and try again.")
         ratelimit.record_attempt("reset", request, email, ratelimit.RESET_WINDOW)
 
         form = PasswordResetForm(data={"email": email})

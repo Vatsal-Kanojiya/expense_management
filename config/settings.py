@@ -40,6 +40,20 @@ DEBUG = env("DEBUG")
 
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 
+# How many reverse proxies (nginx, a load balancer) stand in front of the
+# app. Each one appends the address it received the request from to
+# X-Forwarded-For, so the trustworthy client address is that many entries
+# from the *right*; anything further left was written by the client and can
+# be anything. 0 means no proxy: REMOTE_ADDR is the client. Every rate limit
+# (DRF's throttles and accounts/ratelimit.py) reads the address this way.
+# Defaults to 1 when USE_X_FORWARDED_PROTO says a proxy terminates TLS.
+# Where the admin site lives, with a trailing slash. See config/urls.py.
+ADMIN_URL = env("ADMIN_URL", default="admin/").strip("/") + "/"
+
+TRUSTED_PROXY_COUNT = env.int(
+    "TRUSTED_PROXY_COUNT", default=1 if env.bool("USE_X_FORWARDED_PROTO", default=False) else 0
+)
+
 
 # Application definition
 
@@ -433,6 +447,10 @@ REST_FRAMEWORK = {
         "user": env("API_USER_THROTTLE", default="3000/hour"),
         "anon": env("API_ANON_THROTTLE", default="60/hour"),
     },
+    # Unset, DRF identifies an anonymous caller by the whole X-Forwarded-For
+    # header -- which the caller writes -- so a new value per request resets
+    # the throttle. Pinned to the same trusted-proxy count as the login limiter.
+    "NUM_PROXIES": TRUSTED_PROXY_COUNT,
     "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.NamespaceVersioning",
     "DEFAULT_VERSION": "v1",
     "ALLOWED_VERSIONS": ["v1"],

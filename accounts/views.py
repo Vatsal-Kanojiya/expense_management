@@ -30,7 +30,7 @@ class ThrottledLoginView(auth_views.LoginView):
 
     def form_invalid(self, form):
         username = self.request.POST.get("username", "")
-        ratelimit.record_attempt("login", self.request, username, ratelimit.LOGIN_WINDOW)
+        ratelimit.record_login_failure(self.request, username)
         # Logged to django.security so it lands wherever real security
         # events go, rather than inventing a channel nobody watches.
         logging.getLogger("django.security").warning(
@@ -41,15 +41,13 @@ class ThrottledLoginView(auth_views.LoginView):
     def form_valid(self, form):
         # Clear on success, or ten legitimate logins in a window would lock
         # out exactly the wrong person.
-        ratelimit.clear("login", self.request, self.request.POST.get("username", ""))
+        ratelimit.clear_login(self.request, self.request.POST.get("username", ""))
         return super().form_valid(form)
 
     def post(self, request, *args, **kwargs):
         username = request.POST.get("username", "")
 
-        if ratelimit.is_limited(
-            "login", request, username, ratelimit.LOGIN_LIMIT, ratelimit.LOGIN_WINDOW
-        ):
+        if ratelimit.login_blocked(request, username):
             form = self.get_form()
             form.full_clean()
             form.add_error(
@@ -62,6 +60,43 @@ class ThrottledLoginView(auth_views.LoginView):
             return self.render_to_response(self.get_context_data(form=form), status=429)
 
         return super().post(request, *args, **kwargs)
+
+
+class ThrottledPasswordChangeView(auth_views.PasswordChangeView):
+    """Password change, with wrong current passwords counted per account.
+
+    The current password is asked for so that someone holding a signed-in
+    session cannot take the account over for good. Unlimited guesses would
+    undo that. Security pass 1.
+    """
+
+    def _key(self):
+        return str(self.request.user.pk)
+
+    def post(self, request, *args, **kwargs):
+        if ratelimit.is_limited(
+            "password-change",
+            request,
+            self._key(),
+            ratelimit.PASSWORD_CHANGE_LIMIT,
+            ratelimit.PASSWORD_CHANGE_WINDOW,
+        ):
+            form = self.get_form()
+            form.full_clean()
+            form.add_error(None, "Too many attempts. Wait a few minutes and try again.")
+            return self.render_to_response(self.get_context_data(form=form), status=429)
+        return super().post(request, *args, **kwargs)
+
+    def form_invalid(self, form):
+        if "old_password" in form.errors:
+            ratelimit.record_attempt(
+                "password-change", self.request, self._key(), ratelimit.PASSWORD_CHANGE_WINDOW
+            )
+        return super().form_invalid(form)
+
+    def form_valid(self, form):
+        ratelimit.clear("password-change", self.request, self._key())
+        return super().form_valid(form)
 
 
 class ThrottledPasswordResetView(auth_views.PasswordResetView):
@@ -108,6 +143,21 @@ class SignUpView(CreateView):
         if request.user.is_authenticated:
             return redirect("expenses:expense_list")
         return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        # Every attempt counts, not only successful ones: each success mails
+        # an address the caller chose, and each failure can say whether a
+        # username or email is taken. Security pass 1.
+        if ratelimit.is_limited(
+            "signup", request, "", ratelimit.SIGNUP_LIMIT, ratelimit.SIGNUP_WINDOW
+        ):
+            self.object = None
+            form = self.get_form()
+            form.full_clean()
+            form.add_error(None, "Too many sign-up attempts. Try again later.")
+            return self.render_to_response(self.get_context_data(form=form), status=429)
+        ratelimit.record_attempt("signup", request, "", ratelimit.SIGNUP_WINDOW)
+        return super().post(request, *args, **kwargs)
 
     def form_valid(self, form):
         """Create the account inactive and mail a confirmation link.

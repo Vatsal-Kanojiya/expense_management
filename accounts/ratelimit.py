@@ -39,25 +39,45 @@ LOGIN_WINDOW = 15 * 60
 RESET_LIMIT = 5
 RESET_WINDOW = 60 * 60
 
+# Failed logins from one address across *all* usernames. The per-username
+# key above never counts one guess against each of many accounts; this cap
+# does. High enough for an office behind one NAT, low enough to matter.
+LOGIN_IP_LIMIT = 50
+LOGIN_IP_WINDOW = 15 * 60
+
+# Sign-ups from one address. Each one sends an email to an address the
+# caller chose, so this protects third parties as much as the database.
+SIGNUP_LIMIT = 10
+SIGNUP_WINDOW = 60 * 60
+
+# Wrong current passwords per account. Changing a password needs the old
+# one precisely so that a stolen session cannot lock the owner out; that
+# only holds if the old one cannot be guessed at leisure.
+PASSWORD_CHANGE_LIMIT = 5
+PASSWORD_CHANGE_WINDOW = 15 * 60
+
 
 def client_ip(request):
-    """The caller's address, trusting X-Forwarded-For only when configured.
+    """The caller's address, as far as the deployment can vouch for it.
 
-    Behind a proxy, REMOTE_ADDR is the proxy. In front of one,
-    X-Forwarded-For is whatever the client typed. Reading the header
-    unconditionally is how a rate limiter becomes decorative: the attacker
-    sends a different value each request.
+    With no proxy in front (TRUSTED_PROXY_COUNT = 0), REMOTE_ADDR is the
+    client, and X-Forwarded-For is ignored: it is whatever the client typed.
 
-    So the header is read only when SECURE_PROXY_SSL_HEADER is configured,
-    which is this project's existing signal that a trusted proxy is in
-    front. The left-most entry is the original client; the proxy appends.
+    Behind N trusted proxies, each appends the address it received the
+    request from, so the entry N places from the right is the one the
+    outermost trusted proxy saw. Everything to its left arrived with the
+    request and is the client's to invent. Reading the left-most entry --
+    as this function did until security pass 1 -- let any caller pick the
+    key its attempts were counted under.
     """
     from django.conf import settings
 
-    if getattr(settings, "SECURE_PROXY_SSL_HEADER", None):
-        forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
+    proxies = getattr(settings, "TRUSTED_PROXY_COUNT", 0)
+    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    if proxies > 0 and forwarded:
+        hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
+        if hops:
+            return hops[-min(proxies, len(hops))]
 
     return request.META.get("REMOTE_ADDR", "unknown")
 
@@ -110,3 +130,27 @@ def clear(scope, request, identifier):
     which punishes exactly the wrong person.
     """
     cache.delete(_key(scope, request, identifier))
+
+
+# --- The login guard, shared by every login door -------------------------
+#
+# The web page, the API and the admin site each take a password. One guard
+# for all three means attempts through any of them count against the same
+# budgets, and a door added later cannot forget half the rules.
+
+
+def login_blocked(request, username):
+    """Whether this attempt must be refused before the password is checked."""
+    return is_limited("login", request, username, LOGIN_LIMIT, LOGIN_WINDOW) or is_limited(
+        "login-ip", request, "", LOGIN_IP_LIMIT, LOGIN_IP_WINDOW
+    )
+
+
+def record_login_failure(request, username):
+    record_attempt("login", request, username, LOGIN_WINDOW)
+    record_attempt("login-ip", request, "", LOGIN_IP_WINDOW)
+
+
+def clear_login(request, username):
+    """Forget this username's failures. The per-address count stays."""
+    clear("login", request, username)
