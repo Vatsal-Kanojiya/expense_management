@@ -121,7 +121,7 @@ Tick each task here as you finish it, and commit after each one.
         the scan `image` endpoint).
   - [x] Upload size: refuse oversized uploads as early as Django allows, and add a body-size
         limit for the reverse proxy to the hosting checklist in section 4.
-  - [ ] A per-user limit on creating scans and exports, shared by the web pages and the API, in
+  - [x] A per-user limit on creating scans and exports, shared by the web pages and the API, in
         `accounts/ratelimit.py`'s style. Scans and exports each occupy a background worker,
         and scans can cost money with a real provider.
   - [ ] CSV exports: make cells that start with `=`, `+`, `-` or `@` safe to open in

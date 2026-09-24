@@ -2,17 +2,20 @@
 
 Each item lands in its own commit; this file grows alongside them, in the
 order HANDOVER.md lists the items. So far: verifying a bill photo's real
-type, and refusing an oversized upload as early as Django allows.
+type, refusing an oversized upload as early as Django allows, and a
+per-account limit on creating scans and exports.
 """
 
 from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
-from django.test import RequestFactory, SimpleTestCase, TestCase
+from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
+from accounts import ratelimit
 from config.middleware import MaxUploadSizeMiddleware
 from expenses.extraction import (
     ACCEPTED_MIME_TYPES,
@@ -20,7 +23,7 @@ from expenses.extraction import (
     MAX_UPLOAD_SIZE,
     sniff_image_type,
 )
-from expenses.models import BillScan
+from expenses.models import BillScan, ExportJob
 
 User = get_user_model()
 PASSWORD = "Str0ng-Enough-Pass"
@@ -208,3 +211,95 @@ class UploadSizeIntegrationTests(TestCase):
 
         self.assertEqual(response.status_code, 413)
         self.assertFalse(BillScan.objects.exists())
+
+
+# --- 3. A per-account limit on scans and exports ---------------------------
+
+with_cache = override_settings(
+    CACHES={
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "security-pass2-tests",
+        }
+    }
+)
+
+
+@with_cache
+class JobLimitTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+        cls.bob = User.objects.create_user("bob", "bob@example.com", PASSWORD)
+
+    def setUp(self):
+        cache.clear()
+        self.client.force_login(self.alice)
+
+
+class ScanLimitTests(JobLimitTestCase):
+    def upload_web(self, n):
+        image = SimpleUploadedFile(f"bill{n}.jpg", JPEG, content_type="image/jpeg")
+        with patch("expenses.views.scan_bill.delay"):
+            return self.client.post(reverse("expenses:bill_upload"), {"image": image})
+
+    def upload_api(self, n):
+        image = SimpleUploadedFile(f"bill{n}.jpg", JPEG, content_type="image/jpeg")
+        with patch("expenses.api.jobs.scan_bill.delay"):
+            return self.client.post("/api/v1/bill-scans/", {"image": image})
+
+    @patch.object(ratelimit, "SCAN_LIMIT", 2)
+    def test_the_page_and_the_api_share_one_budget(self):
+        self.assertEqual(self.upload_web(1).status_code, 302)
+        self.assertEqual(self.upload_api(2).status_code, 202)
+
+        self.assertEqual(self.upload_web(3).status_code, 429)
+        response = self.upload_api(4)
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.json()["code"], "rate_limited")
+        self.assertEqual(BillScan.objects.count(), 2)
+
+    @patch.object(ratelimit, "SCAN_LIMIT", 1)
+    def test_a_rejected_upload_does_not_spend_the_budget(self):
+        pdf = SimpleUploadedFile("bill.pdf", NOT_AN_IMAGE, content_type="application/pdf")
+        rejected = self.client.post(reverse("expenses:bill_upload"), {"image": pdf})
+        self.assertEqual(rejected.status_code, 200)
+        self.assertFalse(BillScan.objects.exists())
+
+        # The budget is still whole: a bad upload is not a worker job.
+        self.assertEqual(self.upload_web(1).status_code, 302)
+
+    @patch.object(ratelimit, "SCAN_LIMIT", 1)
+    def test_the_limit_is_per_account_not_per_address(self):
+        self.assertEqual(self.upload_web(1).status_code, 302)
+
+        # Same test client, i.e. the same address -- a different account's
+        # budget must be untouched.
+        self.client.force_login(self.bob)
+        self.assertEqual(self.upload_web(2).status_code, 302)
+
+
+class ExportLimitTests(JobLimitTestCase):
+    def request_web(self):
+        return self.client.post(reverse("expenses:export_create"), {})
+
+    def request_api(self):
+        return self.client.post("/api/v1/exports/", {}, content_type="application/json")
+
+    @patch.object(ratelimit, "EXPORT_LIMIT", 2)
+    def test_the_page_and_the_api_share_one_budget(self):
+        self.assertEqual(self.request_web().status_code, 302)
+        self.assertEqual(self.request_api().status_code, 202)
+
+        self.assertEqual(self.request_web().status_code, 429)
+        response = self.request_api()
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.json()["code"], "rate_limited")
+        self.assertEqual(ExportJob.objects.count(), 2)
+
+    @patch.object(ratelimit, "EXPORT_LIMIT", 1)
+    def test_the_limit_is_per_account_not_per_address(self):
+        self.assertEqual(self.request_web().status_code, 302)
+
+        self.client.force_login(self.bob)
+        self.assertEqual(self.request_web().status_code, 302)

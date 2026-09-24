@@ -441,6 +441,12 @@ paths:
           description: ''
         '400':
           description: Not a usable photo.
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Too many, too recently.
   /api/v1/bill-scans/{id}/:
     get:
       operationId: bill_scans_retrieve
@@ -1044,6 +1050,12 @@ paths:
           description: ''
         '400':
           description: Invalid dates.
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Too many, too recently.
   /api/v1/exports/{id}/:
     get:
       operationId: exports_retrieve

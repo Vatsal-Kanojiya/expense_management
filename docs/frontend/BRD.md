@@ -371,6 +371,11 @@ must confirm by typing their username.
 (Asia/Kolkata). Timestamps such as `created_at` are ISO 8601 with the offset, and should be shown in
 the user's local time.
 
+**BR-30 · Scan and export limits.** At most 30 bill scans and 20 CSV exports per account per hour
+(429 `rate_limited`, shared by the web page and the API). Both tie up a background worker for as
+long as the job takes, and a scan spends money with a real vision provider, so the limit is the
+account's regardless of which device or network it uploads or requests from.
+
 ---
 
 ## 6. Information architecture
@@ -800,6 +805,7 @@ Run on a fresh account, in this order. The expected numbers are the API's real a
 |---|---|---|
 | 1.0 | 24 Sep 2026 | First issue |
 | 1.1 | Oct 2026 | BR-24, BR-25, BR-27: the limits added by security pass 1 |
+| 1.2 | Oct 2026 | BR-30: the scan and export limits added by security pass 2 |
 
 ---
 

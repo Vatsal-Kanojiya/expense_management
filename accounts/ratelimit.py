@@ -56,6 +56,19 @@ SIGNUP_WINDOW = 60 * 60
 PASSWORD_CHANGE_LIMIT = 5
 PASSWORD_CHANGE_WINDOW = 15 * 60
 
+# Bill scans and CSV exports per account (security pass 2). Both occupy a
+# background worker for the length of the job, and a scan calls a paid
+# vision API when BILL_SCAN_PROVIDER is a real one -- unlike the limits
+# above, this is not only about abuse, it is about one account not being
+# able to run the worker pool, or the bill, unbounded. Generous: a person
+# reviewing a stack of receipts or re-running a few exports in an hour
+# should never feel this.
+SCAN_LIMIT = 30
+SCAN_WINDOW = 60 * 60
+
+EXPORT_LIMIT = 20
+EXPORT_WINDOW = 60 * 60
+
 
 def client_ip(request):
     """The caller's address, as far as the deployment can vouch for it.
@@ -98,8 +111,8 @@ def is_limited(scope, request, identifier, limit, window):
     return (cache.get(_key(scope, request, identifier)) or 0) >= limit
 
 
-def record_attempt(scope, request, identifier, window):
-    """Count one attempt against this caller.
+def _increment(key, window):
+    """Count one attempt against whatever `key` names, and return the total.
 
     The window is fixed, not sliding: the counter expires as a whole rather
     than ageing entry by entry. A determined caller can therefore get up to
@@ -111,7 +124,6 @@ def record_attempt(scope, request, identifier, window):
     would reset the expiry on every attempt -- which would make the window
     restart forever and the limit unreachable.
     """
-    key = _key(scope, request, identifier)
     cache.add(key, 0, window)
 
     try:
@@ -121,6 +133,11 @@ def record_attempt(scope, request, identifier, window):
         # response is to treat this attempt as the first of a new window.
         cache.set(key, 1, window)
         return 1
+
+
+def record_attempt(scope, request, identifier, window):
+    """Count one attempt against this caller (see _increment)."""
+    return _increment(_key(scope, request, identifier), window)
 
 
 def clear(scope, request, identifier):
@@ -154,3 +171,44 @@ def record_login_failure(request, username):
 def clear_login(request, username):
     """Forget this username's failures. The per-address count stays."""
     clear("login", request, username)
+
+
+# --- Per-user job limits, shared by the web pages and the API ------------
+#
+# Keyed on the account, not the address: the login guards above are about
+# who is knocking, but a scan or an export is something a *signed-in*
+# account does to the worker pool (and, for a scan, to a paid API) no
+# matter which network it does it from. Keying this by IP the way the
+# login guards are would let the same account reset its budget by moving
+# to another address, or would lock an office's shared address on one
+# person's behalf -- both wrong for a per-account cost.
+
+
+def _user_key(scope, user_id):
+    return f"ratelimit:{scope}:user:{user_id}"
+
+
+def user_is_limited(scope, user_id, limit):
+    """Whether this account has already used up its budget for `scope`."""
+    return (cache.get(_user_key(scope, user_id)) or 0) >= limit
+
+
+def record_user_attempt(scope, user_id, window):
+    """Count one attempt against this account's budget for `scope`."""
+    return _increment(_user_key(scope, user_id), window)
+
+
+def scan_blocked(user):
+    return user_is_limited("scan", user.pk, SCAN_LIMIT)
+
+
+def record_scan(user):
+    record_user_attempt("scan", user.pk, SCAN_WINDOW)
+
+
+def export_blocked(user):
+    return user_is_limited("export", user.pk, EXPORT_LIMIT)
+
+
+def record_export(user):
+    record_user_attempt("export", user.pk, EXPORT_WINDOW)

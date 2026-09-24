@@ -21,6 +21,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from accounts import ratelimit
 from expenses.extraction.prefill import initial_from_scan
 from expenses.filters import DateRangeForm
 from expenses.forms import BillScanForm
@@ -44,6 +45,17 @@ class OwnerJobViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
 
 def not_ready(detail, code="not_ready", **extra):
     return Response({"detail": detail, "code": code, **extra}, status=status.HTTP_409_CONFLICT)
+
+
+def rate_limited(detail):
+    # Same shape as accounts/api.py's own rate_limited: {detail, code}, so a
+    # client branches on one field no matter which limit it hit.
+    return Response(
+        {"detail": detail, "code": "rate_limited"}, status=status.HTTP_429_TOO_MANY_REQUESTS
+    )
+
+
+RATE_LIMIT_RESPONSE = OpenApiResponse(MessageSerializer, description="Too many, too recently.")
 
 
 # --- Exports --------------------------------------------------------------
@@ -99,15 +111,27 @@ class ExportViewSet(OwnerJobViewSet):
             "`download_url`."
         ),
         request=ExportRequestSerializer,
-        responses={202: ExportJobSerializer, 400: OpenApiResponse(description="Invalid dates.")},
+        responses={
+            202: ExportJobSerializer,
+            400: OpenApiResponse(description="Invalid dates."),
+            429: RATE_LIMIT_RESPONSE,
+        },
     )
     def create(self, request, *args, **kwargs):
+        # Shared with the web page's ExportCreateView, and keyed on the
+        # account (accounts/ratelimit.py) -- an export ties up a worker for
+        # as long as it takes to build, same reasoning as the scan limit
+        # below.
+        if ratelimit.export_blocked(request.user):
+            return rate_limited("Too many exports requested recently. Try again later.")
+
         form = DateRangeForm(request.data)
         if not form.is_valid():
             raise_form_errors(form)
         start, end = form.range_or_default()
 
         job = ExportJob.objects.create(user=request.user, start=start, end=end)
+        ratelimit.record_export(request.user)
 
         site_url = request.build_absolute_uri("/").rstrip("/")
         download_url = f"{settings.FRONTEND_URL}/exports/{job.pk}" if settings.FRONTEND_URL else ""
@@ -219,15 +243,24 @@ class BillScanViewSet(OwnerJobViewSet):
         responses={
             202: BillScanSerializer,
             400: OpenApiResponse(description="Not a usable photo."),
+            429: RATE_LIMIT_RESPONSE,
         },
     )
     def create(self, request, *args, **kwargs):
+        # Shared with the web page's BillScanCreateView, and keyed on the
+        # account (accounts/ratelimit.py): a scan ties up a worker and, with
+        # a real BILL_SCAN_PROVIDER, spends money, so the budget is the
+        # account's no matter which client or address it uploads from.
+        if ratelimit.scan_blocked(request.user):
+            return rate_limited("Too many bills scanned recently. Try again later.")
+
         # The page's own form: the accepted types and the 5 MB limit.
         form = BillScanForm(request.data, request.FILES)
         if not form.is_valid():
             raise_form_errors(form)
 
         scan = BillScan.objects.create(user=request.user, image=form.cleaned_data["image"])
+        ratelimit.record_scan(request.user)
         transaction.on_commit(lambda: scan_bill.delay(scan.pk))
 
         return Response(self.get_serializer(scan).data, status=status.HTTP_202_ACCEPTED)

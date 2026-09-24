@@ -551,10 +551,16 @@ When the draft endpoint answers 409 `already_saved`, open that expense instead.
 | 10 sign-up attempts per hour | Per address (the web page and the API share it) | 429 `rate_limited` |
 | 5 wrong current passwords per 15 minutes | Per account, on password change (page and API share it) | 429 `rate_limited` |
 | 5 reset requests per hour | Per email address per address | 429 `rate_limited` |
+| 30 bill scans per hour | Per account (the web page and the API share it) | 429 `rate_limited` |
+| 20 CSV exports per hour | Per account (the web page and the API share it) | 429 `rate_limited` |
 
 The login limits apply to every way in (this API, the web page and the admin site), so attempts
 through one count towards the others. "Address" is the caller's network address as the server's
 trusted proxy reports it. Headers the client sends itself do not change it.
+
+The scan and export limits (security pass 2) are the one exception: they are keyed on the signed-in
+account, not the address, since a scan or an export ties up a worker -- and a scan spends money with
+a real vision provider -- no matter which device or network the account uses.
 
 The figures are server settings and may differ per environment. A well-behaved client polls no more
 often than §10 suggests, and refreshes tokens only when a request fails with 401.
