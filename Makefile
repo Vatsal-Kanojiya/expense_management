@@ -10,6 +10,14 @@
 COMPOSE := docker compose
 DEV     := docker compose -f compose.yaml -f compose.dev.yaml
 
+# Docker 29's containerd image store gives every build a provenance
+# attestation stamped with the build time, so even a fully cached build
+# gets a new image ID -- and Compose then recreates every app container on
+# each `make up`, with nothing changed. Without the default attestations an
+# unchanged tree rebuilds to the same ID and nothing restarts. They matter
+# for images pushed to a registry, not for these local ones.
+export BUILDX_NO_DEFAULT_ATTESTATIONS := 1
+
 # Set on the command line, e.g. `make logs SERVICE=worker`.
 SERVICE ?=
 CMD     ?=
@@ -25,7 +33,8 @@ help: ## List the targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 # A file target: made once, never overwritten. `up` and `dev` depend on it,
-# so the first run creates it without being asked.
+# so the first run creates it without being asked. Mode 600, because it
+# holds the secret key and the database password.
 .env:
 	@key=$$(python3 -c 'import secrets; print(secrets.token_urlsafe(50))' 2>/dev/null \
 	    || openssl rand -hex 40 2>/dev/null); \
@@ -35,6 +44,7 @@ help: ## List the targets
 	sed -e "s|^SECRET_KEY=.*|SECRET_KEY=$$key|" \
 	    -e "s|^HOST_UID=.*|HOST_UID=$$uid|" \
 	    -e "s|^HOST_GID=.*|HOST_GID=$$gid|" .env.example > .env; \
+	chmod 600 .env; \
 	echo "Created .env with a fresh SECRET_KEY and HOST_UID=$$uid, HOST_GID=$$gid."
 
 env: .env ## Create .env from .env.example, once (secret key, your UID/GID)

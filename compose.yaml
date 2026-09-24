@@ -60,19 +60,19 @@ x-django-env: &django-env
   GEMINI_API_KEY:
   OPENAI_API_KEY:
 
-# One image for web, worker and beat. The same `image` and `build` on all
-# three means one build; phase 11 built the same image three times over,
-# under three names.
+# One image for web, worker and beat, and only web builds it. Compose stamps
+# the building service's name into the image as a label, so giving all three
+# a `build` makes three images that differ by that label, and whichever
+# finishes last takes the tag: a new image ID on every `up --build`, and
+# every app container recreated with nothing changed. Phase 11 went further
+# and built three images under three names. Worker and beat name the image
+# web builds.
 x-app: &app
   image: expense-tracker:prod
-  build:
-    context: .
-    target: runtime
-    args:
-      # Build args, not runtime environment: the user is created in the
-      # image. Who owns the files the containers write. D37.
-      APP_UID: ${HOST_UID:-1000}
-      APP_GID: ${HOST_GID:-1000}
+  # A local image, never on Docker Hub. Without this, a first run has Compose
+  # try to pull it for worker and beat, and print "not found" errors, before
+  # web's build makes it.
+  pull_policy: never
   environment: *django-env
   restart: unless-stopped
   logging: *logging
@@ -123,6 +123,14 @@ services:
 
   web:
     <<: *app
+    build:
+      context: .
+      target: runtime
+      args:
+        # Build args, not runtime environment: the user is created in the
+        # image. Who owns the files the containers write. D37.
+        APP_UID: ${HOST_UID:-1000}
+        APP_GID: ${HOST_GID:-1000}
     # Exactly one service runs migrate. Two containers migrating at once
     # is a race, so web owns it and worker and beat wait for web below.
     command: >

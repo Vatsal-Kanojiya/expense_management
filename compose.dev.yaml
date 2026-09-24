@@ -15,14 +15,16 @@
 
 x-dev: &dev
   image: expense-tracker:dev
-  build:
-    target: dev
   environment:
     DEBUG: "True"
 
 services:
   web:
     <<: *dev
+    # Only web builds; worker and beat run the image it produces, exactly as
+    # in compose.yaml.
+    build:
+      target: dev
     # runserver reloads itself when a .py file changes. A new migration
     # still needs `make migrate`; docs/DOCKER.md §8.
     command: >
