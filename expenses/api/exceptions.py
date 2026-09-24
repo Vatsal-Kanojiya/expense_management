@@ -21,7 +21,16 @@ def exception_handler(exc, context):
         # "3 expenses and 1 item share", from the rows that blocked the delete.
         # Counts only: naming the rows would put other data in an error body.
         blocking = Counter(str(obj._meta.verbose_name_plural) for obj in exc.protected_objects)
-        reason = " and ".join(f"{count} {name}" for name, count in sorted(blocking.items()))
+        singular = {
+            str(obj._meta.verbose_name_plural): str(obj._meta.verbose_name)
+            for obj in exc.protected_objects
+        }
+        # "1 expense", "3 expenses". The `blocking` keys stay plural, so a
+        # client can rely on them whatever the count.
+        reason = " and ".join(
+            f"{count} {singular[name] if count == 1 else name}"
+            for name, count in sorted(blocking.items())
+        )
         return Response(
             {
                 "detail": f"This is still used by {reason}, so it cannot be deleted.",

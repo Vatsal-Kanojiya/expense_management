@@ -139,6 +139,24 @@ PASSWORD_FIELDS = {
 }
 
 
+def password_errors(password, confirm):
+    """Where the password-rule errors should appear.
+
+    Django attaches "too short", "too common" and the like to the
+    *confirmation* field. When the two copies match, those errors are about
+    the password itself, and a form showing them under "Repeat password"
+    would point the user at the wrong box. A real mismatch stays on the
+    confirmation.
+    """
+    if password != confirm:
+        return PASSWORD_FIELDS
+    return {
+        **PASSWORD_FIELDS,
+        "password2": "password",
+        "new_password2": "new_password",
+    }
+
+
 # --- Helpers --------------------------------------------------------------
 
 
@@ -212,7 +230,7 @@ class SignupView(PublicView):
             }
         )
         if not form.is_valid():
-            raise_form_errors(form, PASSWORD_FIELDS)
+            raise_form_errors(form, password_errors(data["password"], data["password_confirm"]))
 
         form.instance.is_active = False
         user = form.save()
@@ -377,7 +395,9 @@ class PasswordChangeView(APIView):
             },
         )
         if not form.is_valid():
-            raise_form_errors(form, PASSWORD_FIELDS)
+            raise_form_errors(
+                form, password_errors(data["new_password"], data["new_password_confirm"])
+            )
 
         user = form.save()
         revoke_refresh_tokens(user)
@@ -463,7 +483,9 @@ class PasswordResetConfirmView(PublicView):
             },
         )
         if not form.is_valid():
-            raise_form_errors(form, PASSWORD_FIELDS)
+            raise_form_errors(
+                form, password_errors(data["new_password"], data["new_password_confirm"])
+            )
 
         form.save()
         revoke_refresh_tokens(user)

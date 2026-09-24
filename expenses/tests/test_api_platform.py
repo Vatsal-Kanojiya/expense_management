@@ -104,6 +104,7 @@ class ProtectedDeleteTests(PlatformTestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "protected")
         self.assertEqual(response.json()["blocking"], {"expenses": 1})
+        self.assertIn("used by 1 expense,", response.json()["detail"])
         self.assertTrue(Category.objects.filter(pk=self.food.pk).exists())
 
     def test_a_person_on_a_line_item_is_a_409(self):
@@ -116,7 +117,7 @@ class ProtectedDeleteTests(PlatformTestCase):
         response = self.client.delete(reverse("api:v1:participant-detail", args=[self.rahul.pk]))
 
         self.assertEqual(response.status_code, 409)
-        self.assertIn("item shares", response.json()["detail"])
+        self.assertIn("1 item share,", response.json()["detail"])
 
     def test_an_unused_category_still_deletes(self):
         response = self.client.delete(reverse("api:v1:category-detail", args=[self.food.pk]))
