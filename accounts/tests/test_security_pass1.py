@@ -157,3 +157,66 @@ class PasswordChangeLimitTests(LimitTestCase):
 
         # The password is now the new one; a wrong guess starts a fresh count.
         self.assertEqual(self.change_api("wrong-again").status_code, 400)
+
+
+class LoginGuardTests(LimitTestCase):
+    """One guard for the web page, the API and the admin site."""
+
+    def api_login(self, username, password):
+        return self.api("auth/login/", {"username": username, "password": password})
+
+    def admin_login(self, username, password):
+        return self.client.post(
+            "/admin/login/",
+            {"username": username, "password": password, "next": "/admin/"},
+        )
+
+    @patch.object(ratelimit, "LOGIN_LIMIT", 2)
+    def test_the_admin_login_is_guarded(self):
+        User.objects.create_user("staff", "staff@example.com", PASSWORD, is_staff=True)
+
+        self.assertEqual(self.admin_login("staff", "wrong-1").status_code, 200)
+        self.assertEqual(self.admin_login("staff", "wrong-2").status_code, 200)
+
+        self.assertEqual(self.admin_login("staff", PASSWORD).status_code, 429)
+
+    @patch.object(ratelimit, "LOGIN_LIMIT", 2)
+    def test_a_good_admin_login_clears_the_count(self):
+        User.objects.create_user("staff", "staff@example.com", PASSWORD, is_staff=True)
+        self.admin_login("staff", "wrong-1")
+
+        self.assertEqual(self.admin_login("staff", PASSWORD).status_code, 302)
+        self.assertFalse(ratelimit.login_blocked(self._request(), "staff"))
+
+    @patch.object(ratelimit, "LOGIN_IP_LIMIT", 3)
+    def test_one_address_is_capped_across_usernames(self):
+        for name in ("one", "two", "three"):
+            self.assertEqual(self.api_login(name, "wrong").status_code, 401)
+
+        # A different username, and the right password: still refused.
+        self.assertEqual(self.api_login("alice", PASSWORD).status_code, 429)
+        web = self.client.post("/accounts/login/", {"username": "alice", "password": PASSWORD})
+        self.assertEqual(web.status_code, 429)
+
+    @patch.object(ratelimit, "LOGIN_IP_LIMIT", 3)
+    def test_a_success_clears_only_its_own_username(self):
+        self.api_login("alice", "wrong")
+        self.api_login("other", "wrong")
+
+        self.assertEqual(self.api_login("alice", PASSWORD).status_code, 200)
+
+        request = self._request()
+        self.assertFalse(ratelimit.is_limited("login", request, "alice", 1, 60))
+        self.assertTrue(ratelimit.is_limited("login-ip", request, "", 2, 60))
+
+    def test_failed_logins_do_the_same_work_whether_or_not_the_account_exists(self):
+        with patch("accounts.api.make_password") as hashing:
+            self.api_login("nobody-by-this-name", "wrong")
+            self.api_login("alice", "wrong")
+
+        self.assertEqual(hashing.call_count, 2)
+
+    @staticmethod
+    def _request():
+        # The test client's address, as the limiter sees it.
+        return RequestFactory().get("/", REMOTE_ADDR="127.0.0.1")

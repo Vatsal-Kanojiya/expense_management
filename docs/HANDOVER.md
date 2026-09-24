@@ -85,7 +85,7 @@ python manage.py makemigrations --check --dry-run
 
 Tick each task here as you finish it, and commit after each one.
 
-- [ ] **Task 1 — Tests for security pass 1.** Commit `ea732e4` changed the code in
+- [x] **Task 1 — Tests for security pass 1.** (Done in session 30: `accounts/tests/test_security_pass1.py`.) Commit `ea732e4` changed the code in
       `accounts/ratelimit.py`, `accounts/views.py`, `accounts/api.py` and `accounts/admin.py`,
       and its message lists each change. Write a test for each item in that list, in a new file
       `accounts/tests/test_security_pass1.py`. Copy the patterns from
