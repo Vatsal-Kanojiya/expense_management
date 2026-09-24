@@ -99,8 +99,9 @@ Tick each task here as you finish it, and commit after each one.
 - [ ] **Task 2 — Bring the docs in line with pass 1.** The rate-limit table in
       `docs/frontend/API_GUIDE.md` §11, and business rules BR-24 to BR-27 in
       `docs/frontend/BRD.md`, should list every limit that `accounts/ratelimit.py` now defines.
-      Also add `TRUSTED_PROXY_COUNT` and `ADMIN_URL` to `.env.example` and to the configuration
-      table in `docs/DOCKER.md` §6. Each has a comment in `config/settings.py` explaining it.
+      (The configuration half is already done: `TRUSTED_PROXY_COUNT`, `ADMIN_URL` and
+      `USE_X_FORWARDED_PROTO` are in `.env.example` and `docs/DOCKER.md` §6, and `compose.yaml`
+      passes them to the containers.)
 
 - [ ] **Task 3 — Record session 29.** Add a session 29 entry to `docs/BUILD_LOG.md`, copying the
       shape of session 28. Then add a phase 22 section, "Security passes", to
