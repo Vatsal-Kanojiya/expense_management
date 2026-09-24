@@ -627,7 +627,7 @@ Themed passes, each confirmed, fixed, recorded and then paused for the owner's a
 
 | Pass | Theme | Commit | Status |
 |---|---|---|---|
-| 1 | Rate limits the caller could step around | `ea732e4`, `8208179` | Fixed; tests pending (HANDOVER task 1) |
+| 1 | Rate limits the caller could step around | `ea732e4`, `8208179`; tests `df0492e`, `16fb6f7`, `21107f4`; docs `82f9bc1` | ✅ Done: 14 tests |
 | 2+ | Next themes, to be chosen | — | Not started |
 
 ---
