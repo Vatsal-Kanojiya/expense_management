@@ -1,90 +1,190 @@
-# One command for the whole stack: web, worker, scheduler, broker, database.
+# The whole stack, production-like: web, worker, scheduler, broker, database.
 #
-# Before this, running the async parts meant three terminals and a
-# hand-started Redis (see docs/RUNNING_ASYNC.md). That is the utility this
-# phase ships; Postgres arriving with it is what makes phase 13 possible,
-# because select_for_update is a no-op on SQLite.
+#   make up              or   docker compose up -d --build
+#   http://127.0.0.1:8765
+#
+# Production-like means the code is baked into the image, DEBUG is off and
+# gunicorn serves it. For live editing, compose.dev.yaml is layered on top
+# of this file (`make dev`) and changes only what differs in development.
+# Ports, volumes and every setting below are explained in docs/DOCKER.md;
+# the reasoning is in DECISIONS D31-D38.
+#
+# Before phase 11, running the async parts meant three terminals and a
+# hand-started Redis (docs/RUNNING_ASYNC.md). Postgres arriving with that
+# phase is what made phase 13 possible, because select_for_update is a no-op
+# on SQLite.
+#
+# Every ${VAR:-default} below is read from .env, which `make env` creates.
+# The defaults are what you get with no .env at all.
 
 name: expense-tracker
+
+x-logging: &logging
+  # Docker's default json-file driver never rotates. A chatty worker left
+  # running for months fills the disk.
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-django-env: &django-env
+  SECRET_KEY: ${SECRET_KEY:-compose-local-only-not-a-real-secret}
+  DEBUG: "False"
+  ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+  # Nothing in this stack terminates TLS, so all three HTTPS protections
+  # are off here and nowhere else. Redirecting to HTTPS would break every
+  # request, and a browser drops a Secure cookie on a LAN address, so a
+  # phone could never log in. In a real deployment a proxy terminates TLS
+  # and these stay at their default of True. D35.
+  SECURE_SSL_REDIRECT: "False"
+  SESSION_COOKIE_SECURE: "False"
+  CSRF_COOKIE_SECURE: "False"
+  DATABASE_URL: postgres://${POSTGRES_USER:-expense}:${POSTGRES_PASSWORD:-expense-local-only}@db:5432/${POSTGRES_DB:-expense_tracker}
+  # Separate Redis databases. The broker and the cache share a server
+  # and must not share a keyspace, or `FLUSHDB` on the cache takes the
+  # queue with it.
+  CELERY_BROKER_URL: redis://redis:6379/0
+  CELERY_RESULT_BACKEND: redis://redis:6379/1
+  CACHE_URL: rediscache://redis:6379/2
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
+  DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-no-reply@expense-tracker.local}
+  BILL_SCAN_PROVIDER: ${BILL_SCAN_PROVIDER:-fake}
+  # No value: passed through only when set in .env or the shell, so that
+  # settings.py keeps its own defaults otherwise. An empty string would
+  # override them with "".
+  BILL_SCAN_CLAUDE_MODEL:
+  BILL_SCAN_GEMINI_MODEL:
+  BILL_SCAN_OPENAI_MODEL:
+  ANTHROPIC_API_KEY:
+  GEMINI_API_KEY:
+  OPENAI_API_KEY:
+
+# One image for web, worker and beat. The same `image` and `build` on all
+# three means one build; phase 11 built the same image three times over,
+# under three names.
+x-app: &app
+  image: expense-tracker:prod
+  build:
+    context: .
+    target: runtime
+    args:
+      # Build args, not runtime environment: the user is created in the
+      # image. Who owns the files the containers write. D37.
+      APP_UID: ${HOST_UID:-1000}
+      APP_GID: ${HOST_GID:-1000}
+  environment: *django-env
+  restart: unless-stopped
+  logging: *logging
 
 services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: expense_tracker
-      POSTGRES_USER: expense
-      POSTGRES_PASSWORD: expense-local-only
+      # Applied only when the volume is first initialised. Changing them
+      # later does not change an existing database; docs/DOCKER.md §14.
+      POSTGRES_DB: ${POSTGRES_DB:-expense_tracker}
+      POSTGRES_USER: ${POSTGRES_USER:-expense}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-expense-local-only}
+    ports:
+      # Loopback unless DATA_BIND_ADDRESS says otherwise: Docker publishes
+      # ports ahead of ufw, so a firewall rule would not close this. D33.
+      - "${DATA_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
       # depends_on alone only waits for the container to start, not for
       # Postgres to accept connections. Without this the web container
       # races the database on every cold start and loses about half the time.
-      test: ["CMD-SHELL", "pg_isready -U expense -d expense_tracker"]
+      # $$ so the container's shell expands it, not Compose.
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 3s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
+    logging: *logging
 
   redis:
     image: redis:7-alpine
+    # Append-only file: a task queued but not yet picked up exists only
+    # here, and without persistence a restart drops it. D34.
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${DATA_BIND_ADDRESS:-127.0.0.1}:${REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 3s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
+    logging: *logging
 
   web:
-    build: .
+    <<: *app
+    # Exactly one service runs migrate. Two containers migrating at once
+    # is a race, so web owns it and worker and beat wait for web below.
     command: >
       sh -c "python manage.py migrate --noinput &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8000
              --workers 3 --access-logfile - --error-logfile -"
-    environment: &django-env
-      SECRET_KEY: compose-local-only-not-a-real-secret
-      DEBUG: "False"
-      ALLOWED_HOSTS: localhost,127.0.0.1
-      # Redirecting to HTTPS inside a compose network breaks every request:
-      # nothing here terminates TLS. In a real deployment a proxy does, and
-      # this stays at its default of True.
-      SECURE_SSL_REDIRECT: "False"
-      DATABASE_URL: postgres://expense:expense-local-only@db:5432/expense_tracker
-      # Separate Redis databases. The broker and the cache share a server
-      # and must not share a keyspace, or `FLUSHDB` on the cache takes the
-      # queue with it.
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
-      # A third database index. Sharing one with the broker means a cache
-      # flush takes the queue with it.
-      CACHE_URL: rediscache://redis:6379/2
     ports:
-      - "8000:8000"
+      - "${WEB_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8765}:8000"
+    volumes:
+      # Shared with the worker: web writes an uploaded bill that the worker
+      # reads, and the worker writes an export that web serves. D34.
+      - media:/data/media
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      # Listening on 8000 means migrate has finished: the command runs it
+      # first. A TCP connect rather than an HTTP request, so the access log
+      # is not given a line every ten seconds.
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8000), 3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      # Grace for the first start, when migrate builds every table.
+      start_period: 60s
 
   worker:
-    build: .
-    # No migrate here. Two containers running migrations at once is a race,
-    # so exactly one owns it -- web, above.
+    <<: *app
     command: celery -A config worker --loglevel=info
-    environment: *django-env
+    volumes:
+      - media:/data/media
+    # No migrate here (see web). Waiting for web to be healthy means the
+    # schema is current before the first task runs.
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      web:
         condition: service_healthy
 
   beat:
-    build: .
-    command: celery -A config beat --loglevel=info
-    environment: *django-env
+    <<: *app
+    # The schedule file records when each periodic task last ran. On the
+    # volume, a restart keeps the 24-hour purge_exports clock instead of
+    # starting it again from zero (BUILD_LOG issue 42).
+    command: celery -A config beat --loglevel=info --schedule /data/beat/celerybeat-schedule
+    volumes:
+      - beat-schedule:/data/beat
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
+      web:
+        condition: service_healthy
 
+# Named after the project on disk: expense-tracker_postgres-data and so on.
+# `make down` keeps them; only `make destroy` (docker compose down -v)
+# deletes them. docs/DOCKER.md §5.
 volumes:
   postgres-data:
+  redis-data:
+  media:
+  beat-schedule:
