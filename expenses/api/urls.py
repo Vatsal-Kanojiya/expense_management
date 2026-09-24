@@ -15,6 +15,7 @@ from rest_framework.routers import DefaultRouter
 
 from accounts.api import urlpatterns as account_urls
 
+from .jobs import BillScanViewSet, ExportViewSet
 from .reports import BalancesView, SettlementViewSet, SettleUpView, SummaryView
 from .views import CategoryViewSet, ExpenseViewSet, HealthView, ParticipantViewSet
 
@@ -23,6 +24,8 @@ router.register("categories", CategoryViewSet, basename="category")
 router.register("participants", ParticipantViewSet, basename="participant")
 router.register("expenses", ExpenseViewSet, basename="expense")
 router.register("settlements", SettlementViewSet, basename="settlement")
+router.register("exports", ExportViewSet, basename="export")
+router.register("bill-scans", BillScanViewSet, basename="bill-scan")
 
 app_name = "api"
 
