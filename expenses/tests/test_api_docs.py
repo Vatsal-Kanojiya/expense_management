@@ -4,8 +4,10 @@ import json
 import re
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 from django.conf import settings
+from django.core.management import call_command
 from django.test import SimpleTestCase, TransactionTestCase
 from drf_spectacular.generators import SchemaGenerator
 
@@ -48,6 +50,56 @@ class JourneyTests(TransactionTestCase):
             for method in operations
         }
         self.assertEqual(in_schema - recorded, set(), "Endpoints with no example in the journey")
+
+    def test_the_command_writes_the_whole_pack(self):
+        # The command's own throwaway database is replaced by this test's, so
+        # this exercises everything else it does, renderers included.
+        class SameDatabase:
+            def __init__(self, **kwargs):
+                pass
+
+            def setup_test_environment(self):
+                pass
+
+            def setup_databases(self):
+                return None
+
+            def teardown_databases(self, old_config):
+                pass
+
+            def teardown_test_environment(self):
+                pass
+
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch(
+                "expenses.management.commands.build_api_docs.get_runner", return_value=SameDatabase
+            ),
+        ):
+            call_command("build_api_docs", output=directory, stdout=open("/dev/null", "w"))
+            out = Path(directory)
+
+            collection = json.loads(
+                (out / "postman" / "expense-tracker.postman_collection.json").read_text()
+            )
+            reference = (out / "API_REFERENCE.md").read_text()
+            environment = json.loads(
+                (out / "postman" / "local.postman_environment.json").read_text()
+            )
+
+            self.assertEqual(len(collection["item"]), 10)
+            self.assertEqual(
+                sum(len(folder["item"]) for folder in collection["item"]), len(journey.STEPS)
+            )
+            for step in journey.STEPS:
+                self.assertIn(f"### {step.name}", reference)
+            self.assertNotIn("testserver", reference)
+            self.assertNotIn("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ", reference)  # no live token
+            self.assertEqual(environment["values"][0]["value"], journey.DOC_BASE)
+            self.assertTrue(
+                (out / "postman" / "sample-bill.png").read_bytes().startswith(b"\x89PNG")
+            )
+            self.assertIn("/api/v1/expenses/", (out / "openapi.yaml").read_text())
 
 
 class CollectionTests(SimpleTestCase):
