@@ -75,6 +75,10 @@ redis (ping) ─────┘                                      └► beat
 check is a plain TCP connect rather than an HTTP request, so it does not add a line to the access
 log every few seconds.
 
+Web builds the image, and the worker and beat run that same image. Compose labels each service's
+build differently, so letting all three build would give three slightly different images and a
+new image ID on every run (D39).
+
 Every service has `restart: unless-stopped`: after a crash or a reboot it comes back by itself,
 unless you stopped it with `make down`. Container logs are rotated at 3 × 10 MB per container.
 
@@ -143,7 +147,8 @@ docker volume inspect expense-tracker_postgres-data --format '{{ .Mountpoint }}'
 
 The first `make up` or `make dev` runs `make env`, which copies `.env.example` to `.env`, puts a
 fresh random `SECRET_KEY` in it, and records your user and group id (D37). It never overwrites an
-existing `.env`. The file is gitignored and dockerignored, so it never leaves your machine.
+existing `.env`. The file is created with mode 600, since it holds the key and the database
+password. It is gitignored and dockerignored, so it never leaves your machine.
 
 The same `.env` also serves a plain `python manage.py runserver` outside Docker. Keys that only
 Docker reads are grouped at the bottom of `.env.example`.
@@ -243,6 +248,12 @@ checkout, owned by you (D37).
 | `make restore-media FILE=…` | `tar`, see §12 | Restore a media archive |
 | `make destroy` | `docker compose down -v` | Delete containers **and all data** (asks first) |
 
+One difference from the raw commands: the Makefile exports `BUILDX_NO_DEFAULT_ATTESTATIONS=1`.
+On Docker 29's containerd image store, a build otherwise carries a timestamped attestation, so
+every `up --build` produces a new image ID and recreates the app containers, even with nothing
+changed. It is harmless, only slower. Export the variable in your shell to get the same behaviour
+from raw commands (D39).
+
 ---
 
 ## 10. Connecting from your machine
@@ -329,12 +340,27 @@ test runner sends uploaded test files to a temporary directory, so the media vol
 | Works at 127.0.0.1, but the phone gets `Bad Request (400)` | The LAN IP is missing from `ALLOWED_HOSTS` (§4) |
 | The stack is running again after a reboot | That is `restart: unless-stopped`. `make down` stops it until the next `make up` |
 | `No directory at: /app/staticfiles/` warning in development | Harmless. With `DEBUG` on, static files come from the apps, not from `collectstatic` |
+| Every raw `docker compose up -d --build` recreates web, worker and beat | The build attestation described under §9. Use `make up`, or export `BUILDX_NO_DEFAULT_ATTESTATIONS=1` |
 | Disk filling up | `docker system df`, then `docker image prune` for old images; each `make update` leaves the previous image dangling |
 
 ---
 
 ## 15. How this was verified
 
-Every command in this document was run end to end in session 26 — both modes, a browser sign-up,
-a bill scan, a CSV export, a restart, an update, a backup and restore, and the test suite on
-Postgres. The results, and what broke along the way, are in BUILD_LOG session 26.
+Every command in this document was run end to end in session 26. The runs used a Linux user with
+uid 1001 in the `docker` group, working from a fresh clone with no `.env`, volumes or app images:
+
+| Check | Result |
+|---|---|
+| `make up` from nothing | 55 s including the build; five services up, web healthy; ports on 127.0.0.1 only |
+| Browser: sign up, verify, log in, add an expense | passes in Chromium |
+| Bill scan and CSV export, which cross between web and worker | both pass (both failed on phase 11's stack) |
+| `make down`, then `make up`; a Redis restart with a task queued | data, uploads, exports and the queued task all survive |
+| `make update` after a pushed commit | new code served, new migration applied by web |
+| `make dev`: edits live, worker restarts, file ownership | passes; files created inside are owned by uid 1001 |
+| `make test` | 477 tests on Postgres, none skipped, media volume untouched |
+| `make backup`, `make destroy`, both restores | everything back |
+| Opened to the LAN | login works; Postgres stays closed |
+| Docker daemon stopped and started (a reboot) | all five containers back by themselves |
+
+Details, and the four things only running it could find, are in BUILD_LOG session 26.

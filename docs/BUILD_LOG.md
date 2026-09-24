@@ -43,9 +43,12 @@
 > **Phase 18 built — bill scanning.** Spec and progress table: `docs/HANDOFF_BILL_SCAN.md` §P, all
 > six tasks done (session 25). Decisions D28–D30.
 >
-> **Phase 19 in progress — Docker for daily use, session 26, branch `project-dockerization`.** Plan,
-> definition of done and live progress table: COMMIT_PLAN phase 19. Decisions D31–D38. Runbook:
-> `docs/DOCKER.md`. Running phase 11's stack first turned up issues 38–40 below.
+> **Phase 19 built and verified — Docker for daily use, session 26, branch `project-dockerization`.**
+> All 14 checks in COMMIT_PLAN phase 19 pass, run as a normal user from a fresh clone (session 26
+> below). Decisions D31–D39. Runbook: `docs/DOCKER.md`. **Next, for the owner:** run `make up`
+> and `make dev` on your own machine, then merge the branch, then tag `phase-19-docker-daily-use`.
+> CI/CD is the next request. Its first job is issue 43: coverage has been at 94%, below the 95%
+> gate, since phase 18.
 >
 > **Study material (session 24).** Two pages built from these docs, for revising away from the
 > laptop. Both are committed here and also published as private pages:
@@ -62,9 +65,9 @@
 > Discussion: <https://claude.ai/code/session_0192K6QsQDjhnfxymJ7YfskB>
 
 **Session:** 24 — study pages added; phase 17 still **awaiting owner click-through before tagging**
-**Last code commit:** `63956f6` — *feat(expenses): show the note as the expense form heading*
+**Last code commit:** `9e69951` — *fix(docker): build the app image once, and keep an idle `make up` idle* (branch `project-dockerization`; `master` is at `9371cc5`)
 **Phase tags:** 17, `phase-1-foundation` … `phase-16-hardening` (`git tag | sort -V`)
-**Suite:** 432 tests, 95% coverage — green on SQLite. Postgres, CI and Redis were last verified at phase 16
+**Suite:** 477 tests — green on SQLite (9 skipped) and on Postgres in Docker (none skipped), session 26. Coverage 94%, under the 95% gate since phase 18 (issue 43)
 **Remote:** `github.com/Vatsal-Kanojiya/expense_management` — **in sync**
 
 | Dimension | State |
@@ -73,8 +76,8 @@
 | Interfaces | Server-rendered views · versioned JSON API · admin · management commands |
 | Async | Celery worker + beat, Redis broker, separate result backend |
 | Cache | Redis, version-stamped per-user keys (LocMem fallback) |
-| Deploy | Multi-stage image, compose stack of five services, gunicorn, WhiteNoise |
-| Open issues | 7 — 5 deliberate, plus the self participant in the API (34) and the parked form layout (35) — see §6 |
+| Deploy | Multi-stage image with a dev target; compose stack of five services in two modes (production-like, and development with live code); four named volumes; loopback ports 8765/5433/6380; `make` front door. See `docs/DOCKER.md` |
+| Open issues | 8 — 5 deliberate, the self participant in the API (34), the parked form layout (35), coverage under the gate (43) — see §6 |
 
 > **Phases ran out of order on purpose, and the bet paid off.** Auth was deferred past CRUD so it
 > could be studied properly. That was safe because phase 3's views were written fully user-scoped
@@ -285,6 +288,14 @@ erDiagram
 | View | **Line items survive a form error** | `expenses/mixins.py` | ✅ fixed | 22 |
 | Template | Red asterisk on required fields | `templates/base.html` | ✅ done | 22 |
 | Test | Form state and required markers | `expenses/tests/test_form_state.py` | ✅ 8 tests | 22 |
+| Infra | Image: dev target, host UID/GID, app-owned `/app` and `/data` | `Dockerfile` | ✅ done | 26 |
+| Infra | Production-like compose: four volumes, loopback ports, health-gated start | `compose.yaml` | ✅ done | 26 |
+| Infra | Development overlay: bind mount, runserver, watchfiles | `compose.dev.yaml` | ✅ done | 26 |
+| Tooling | Makefile front door, 21 targets | `Makefile` | ✅ done | 26 |
+| Config | `MEDIA_ROOT` and secure-cookie flags from the environment | `config/settings.py` | ✅ done | 26 |
+| Test | Test uploads kept out of `MEDIA_ROOT` | `config/test_runner.py` | ✅ fixed | 26 |
+| Test | Relaxed cookies fail `check --deploy` | `expenses/tests/test_error_pages.py` | ✅ 1 test | 26 |
+| Docs | Docker runbook | `docs/DOCKER.md` | ✅ done | 26 |
 
 Legend: ✅ done · 🔜 next · ⬜ not started · 🅿️ deliberately parked · ❌ problem
 
@@ -503,6 +514,98 @@ cursor bug fails `TransactionTestCase` only.
 `ContentFile` · `queryset.iterator()` and cursor lifetime · `TestCase` vs `TransactionTestCase` ·
 `BaseCommand`, `add_arguments`, `CommandError`, `self.style` · `call_command` in tests ·
 `IntegrityError` as a concurrency primitive · `FileResponse` · `MEDIA_ROOT`.
+
+---
+
+### Session 26 — Docker for daily use (phase 19)
+
+The owner asked for the project dockerized properly, on its own branch (`project-dockerization`).
+The brief: state in volumes; code that updates on a pull; Django and Postgres reachable from the
+host on ports that do not collide with other projects; a production-like mode and a development
+mode; and the documentation first. Phase 11 had already containerised the stack, so the first step
+was to run it exactly as it stood.
+
+**Phase 11's stack could not do three of its jobs.** Built from `master` and started unchanged:
+
+| What was tried | What happened | Issue |
+|---|---|---|
+| Start the stack | beat exited with status 1 at once: `Permission denied: 'celerybeat-schedule'`. There was no restart policy, so it stayed down | 38 |
+| Save a bill image, as web would | `PermissionError: [Errno 13] Permission denied: '/app/media'` | 39 |
+| Run a CSV export on the worker | The same error, retried three times, then the job marked `failed` | 39 |
+
+One cause behind all three: `WORKDIR` creates `/app` as root, and `COPY --chown` changes only the
+files it copies, so the app user could not create anything in its own working directory. Behind
+that sat issue 40: web and worker each had their own `/app/media` anyway. The same run showed a
+real Chromium logging in fine over plain HTTP at `localhost` and `127.0.0.1` with Secure cookies,
+which is the fact D35 is built on.
+
+**Documentation first.** The plan (COMMIT_PLAN phase 19, D31–D38) and the runbook
+(`docs/DOCKER.md`) were committed and pushed before any code, as `7abddb9`. The runbook then served
+as the spec: the verification below follows its commands.
+
+**What was built.** The commits are listed in COMMIT_PLAN phase 19.
+
+| Piece | Summary |
+|---|---|
+| Two modes | `compose.yaml` is production-like: gunicorn, `DEBUG` off, code in the image. `compose.dev.yaml` is an overlay: bind mount, `runserver`, and `watchfiles` restarting the worker and beat |
+| Ports | 8765, 5433 and 6380 on the host, 127.0.0.1 by default, with separate bind switches for web and for data |
+| Volumes | `postgres-data`; `redis-data` with append-only persistence; `media`, shared by web and worker; `beat-schedule` |
+| Image | Four stages with runtime last. The app user takes the host UID/GID and owns `/app` and `/data/*`. Only web builds it |
+| Start-up | db and redis healthchecks, then web migrates and listens (TCP healthcheck), then worker and beat |
+| Operations | `restart: unless-stopped`, log rotation at 3 × 10 MB, a Makefile with 21 targets |
+| Settings | `MEDIA_ROOT`, `SESSION_COOKIE_SECURE` and `CSRF_COOKIE_SECURE` read from the environment, defaults unchanged |
+
+**Verified as a normal user, from a fresh clone.** The checks ran as a Linux user in the `docker`
+group with uid **1001**. That is deliberately not 1000, so the UID mapping could not pass by
+coincidence. The clone started with no `.env`, no volumes and no app images:
+
+| # | Check | Result |
+|---|---|---|
+| V1 | Both file sets valid; `make help` | ✅ |
+| V2 | `make up` from nothing | ✅ 55 s including the image build. `.env` was generated with `HOST_UID=1001`. Five services up, web healthy. 8765, 5433 and 6380 listen on 127.0.0.1 only, and all three are closed on the non-loopback address |
+| V3 | Static files with `DEBUG` off | ✅ hashed names, `max-age=315360000, public, immutable`, gzip served |
+| V4 | Browser: sign up, open the link from the web log, log in, add a category and an expense, check the dashboard | ✅ 6 of 6 checks |
+| V5 | Bill scan across containers | ✅ Uploaded on web and scanned by the worker. The review page was pre-filled (Test Cafe, 450.00, tax 50.00, two lines, category Food) and saved |
+| V6 | CSV export across containers | ✅ built by the worker, downloaded from web, and both expenses are in it |
+| V7 | Beat | ✅ stays up; its schedule file is on the volume, owned by 1001 |
+| V8 | `make down`, then `make up` | ✅ The user, the 770.50 total, the bill and the export all came back. A task queued while the worker was stopped survived a Redis restart and ran once the worker returned |
+| V9 | `make update` after a pushed commit | ✅ Fast-forwarded and rebuilt; the new template was served, and migration 0013 was applied by web on start |
+| V10 | `make dev` | ✅ Same data. A template edit was live, a `views.py` edit reloaded `runserver`, and a `tasks.py` edit restarted the worker. `makemigrations` output was owned by 1001:1001, and nothing in the checkout was owned by anyone else |
+| V11 | `make test` | ✅ 477 tests on Postgres, **none skipped**. The media volume held 3 files before and after |
+| V12 | Backup, destroy, `make up`, restore | ✅ A 68 KB dump plus the media archive. After destroy, nothing can log in; after both restores, everything can |
+| V13 | LAN access | ✅ With the switches off, login works on the non-loopback address. With them on (Django's default), it fails there with 403 CSRF while loopback still works. Postgres stayed closed with only the web opened |
+| V14 | The repo's checks outside Docker | ✅ ruff, format, the migrations check, `check`, `check --deploy`, 477 tests |
+| — | Simulated reboot: daemon stopped and started | ✅ All five containers came back by themselves, web healthy, data intact |
+
+**What only running it found.** Four things the plan did not predict:
+
+1. **Every `make up` recreated the app containers with nothing changed**, and the two causes were
+   measured separately. First, Compose writes the building service's name into the image as a
+   label, so three services with a `build` made three images that differed by that label, and the
+   last to finish took the tag. Second, Docker 29's containerd image store attaches a provenance
+   attestation carrying the build time, so even a single fully cached build got a new ID. The fix
+   in `9e69951`: only web builds, and the Makefile exports `BUILDX_NO_DEFAULT_ATTESTATIONS=1`
+   (D39).
+2. **A first run printed "not found" pull errors** once the worker and beat stopped building: Compose
+   asked Docker Hub for the local image before web's build made it. It was harmless but alarming,
+   and `pull_policy: never` removed it.
+3. **`.env` was created world-readable** (mode 644), with the secret key in it. It is now 600.
+4. **`make update-dev` found no migration to run**, because recreating the web container had already
+   run `migrate` in its start command. Both paths end with the migration applied. The explicit
+   step stays for the case where nothing is recreated.
+
+**Where the sandbox differed from a normal machine.** Nothing below is in the repository. Docker
+Hub rate-limited the sandbox's shared IP (429), so the three base images came from Google's mirror
+and were tagged with their usual names. The sandbox also intercepts TLS, so pip inside a build
+could not reach PyPI; the local `python:3.10-slim` was rebuilt to trust the sandbox's CA. On a
+normal machine neither step exists.
+
+**Found, not fixed: issue 43.** Coverage is 94% against the 95% gate, and was already on `master`:
+phase 18's providers and prefill code brought it under. CI's test job therefore fails its coverage
+step for a reason that is not this branch's. It is left for the CI/CD work the owner asked for
+next.
+
+**Suite:** 477 tests. One is new: relaxed cookies fail `check --deploy`.
 
 ---
 
@@ -1401,6 +1504,8 @@ this is the file set that silently drifts and is worth being able to reconstruct
 | 7 | `CELERY_TASK_SOFT_TIME_LIMIT` / `TIME_LIMIT` | — | 5min / 10min | A hung task otherwise holds a worker forever |
 | 7 | `CELERY_TASK_ALWAYS_EAGER` | — | `env.bool`, default `False` | Lets the suite run with no broker. Never true in production |
 | 7 | `MEDIA_URL` / `MEDIA_ROOT` | — | `media/` | Generated exports |
+| 26 | `MEDIA_ROOT` | `BASE_DIR / "media"` | `env("MEDIA_ROOT")`, same default | The image sets `/data/media`, a volume that web and worker share, outside the code. D34 |
+| 26 | `SESSION_COOKIE_SECURE` / `CSRF_COOKIE_SECURE` | `True` | `env.bool`, default `True` | Off only in `compose.yaml`, which serves plain HTTP. A test asserts that turning them off fails `check --deploy`. D35 |
 
 > The old `SECRET_KEY` is in git history (commit `925f501`) and is permanently compromised. A fresh
 > key was generated rather than reused. Lesson: once a secret is committed, rotating is the only
@@ -1419,6 +1524,14 @@ this is the file set that silently drifts and is worth being able to reconstruct
 | `expenses/apps.py` | — | none (stock `ExpensesConfig`) |
 | `config/asgi.py`, `config/wsgi.py`, `manage.py` | — | none |
 | `expenses/static/expenses/` | 19 | New. The project's first static asset. Placed in the **app's** static directory, not the empty project-level `static/`, because `AppDirectoriesFinder` is on by default and finds it — the project-level one would have needed `STATICFILES_DIRS` added to settings. No settings change |
+| `Dockerfile` | 26 | Four stages (builder, dev-builder, dev, runtime last). Host UID/GID as build args. `/app` and `/data/*` owned by the app user. `MEDIA_ROOT=/data/media` |
+| `compose.yaml` | 26 | Four named volumes, loopback ports 8765/5433/6380, health-gated start, one image built by web, `pull_policy: never`, restart policy, log rotation |
+| `compose.dev.yaml` | 26 | New. Development overlay: dev target, `DEBUG`, bind mount, `runserver`, `watchfiles` |
+| `Makefile` | 26 | New. 21 targets; creates `.env` with mode 600; exports `BUILDX_NO_DEFAULT_ATTESTATIONS=1` |
+| `.env.example` | 26 | Docker section: ports, bind addresses, Postgres credentials, `HOST_UID`/`HOST_GID` |
+| `.dockerignore`, `.gitignore` | 26 | `backups/` in both: a dump must never reach an image or a commit |
+| `requirements-dev.txt` | 26 | `watchfiles==1.3.0` |
+| `config/test_runner.py` | 26 | Fifth swap: `MEDIA_ROOT` goes to a temp dir, removed after the run |
 
 ---
 
@@ -1501,6 +1614,10 @@ interview-gap list.
 | Form-level `required` over a model `blank=False` | Frappe's `reqd` is a field property, so there is one place to set it | S19 — old rows cannot satisfy a new rule |
 | `form_valid` and `form_invalid` are separate exits that share no code | Frappe re-renders the whole doc from client state on a validation error, so nothing is lost and the distinction never surfaces | S22 — lost every line item |
 | CSS `:has()` keyed on the rendered `required` attribute | Frappe marks `reqd` fields itself in its form renderer | S22 `base.html` |
+| Named volume vs bind mount: a named volume pins the first copy of whatever it holds | `bench` runs from a checkout on the host; there are no image layers to shadow it | S26 — D32 |
+| Published ports bypass ufw | Frappe's production setup puts nginx in front, bound by the OS's own rules | S26 — D33 |
+| Directory ownership is separate from file ownership (`WORKDIR` vs `COPY --chown`) | `bench` creates its directories as the frappe user | S26 — issues 38, 39 |
+| Image identity: labels and attestations change an image's ID | Frappe images come prebuilt from a registry | S26 — D39 |
 
 ---
 
@@ -1557,6 +1674,11 @@ interview-gap list.
 | 33 | No per-expense split view | `6c97437` (phase 17); misc column bug fixed in `83ebb10` |
 | 36 | Line items vanished when the expense form had an error | session 22 — `ItemFormSetMixin.form_invalid` re-binds the formset to the POST. Verified in a real browser |
 | 37 | Required fields were not marked | session 22 — one `:has()` rule keyed on the `required` attribute, plus two column markers |
+| 38 | Beat crashed on start in the compose stack | session 26 — `cea809c` app-owned `/app` and `/data`; `6db7734` schedule on its own volume. Verified V7 |
+| 39 | Bill uploads and CSV exports failed in the compose stack | session 26 — `e15f2f2`, `cea809c`, `6db7734`: `MEDIA_ROOT=/data/media` on an app-owned volume. Verified V5, V6 |
+| 40 | Web and worker had separate media directories | session 26 — `6db7734`, one `media` volume in both. Verified V5, V6 |
+| 41 | The test suite wrote into the real `MEDIA_ROOT` | session 26 — `e15f2f2`, `FastTestRunner` temp dir. Verified V11 |
+| 42 | Beat's schedule state was lost on every restart | session 26 — `6db7734`, `beat-schedule` volume |
 
 ### Open
 
@@ -1569,8 +1691,4 @@ interview-gap list.
 | 25 | Participant deletion is refused once they are on a line item | `ItemShare.participant` is `PROTECT`, so removing someone from your list fails while any item still charges them. The view explains it rather than 500ing, but there is no way to re-share those items in bulk | Same shape as issue 10: an ordered delete, or a bulk re-share action. Deliberately left visible rather than papered over with `CASCADE`, which would leave items charged to nobody |
 | 34 | The self participant is unprotected in the API | The web People pages filter out `is_self`, but the API participant endpoints list, rename and delete it like any contact. Renaming it makes the owner appear under a friend's name; deleting it strands `paid_by` on every expense the owner paid | **Parked for better design, session 21.** Proposed: keep it listed with an `is_self` marker, since API clients need its id to set `paid_by` and participation, and refuse rename and delete. The owner judged the self-participant design itself may need rethinking before patching it, so no fix was applied. **Same design review should cover:** `balances()` calling `get_or_create_self` on every read (fixed tactically in session 21 by treating a null `paid_by` as the owner, but the owner judged the self-participant data model as a whole needs a better design), and self naming, now `FirstName (self)` with a numeric suffix on collision |
 | 35 | The expense form wastes vertical space | `{{ form.as_p }}` gives every field a full-width row | **Parked by the owner, session 20.** Presentation rather than function, and the UI may move to a separate frontend such as React. Was T7 in the first handoff plan |
-| 38 | Beat crashed on start in the compose stack | `celery beat` writes `celerybeat-schedule` to its working directory, `/app`, which is owned by root: `WORKDIR` creates it, and `COPY --chown` changes only the files it copies. `Permission denied`, exit 1, and with no restart policy beat stayed down, so `purge_exports` never ran in Docker. Found by running phase 11's stack, session 26 | Phase 19: the schedule moves to its own volume, and the app user owns `/app` and `/data/*` (19.3, 19.4) |
-| 39 | Bill uploads and CSV exports failed in the compose stack | Same root cause: `/app/media` could not be created. An upload was a `PermissionError` 500 on web; an export was retried three times and marked failed on the worker. Reproduced in session 26 | Phase 19: `MEDIA_ROOT=/data/media` on an app-owned volume (19.2–19.4) |
-| 40 | Web and worker had separate media directories | Each container has its own filesystem, so even with 39 fixed, an upload saved by web could not be read by the worker, and an export written by the worker could not be served by web. Masked by 39 | Phase 19: one `media` volume mounted in both (19.4) |
-| 41 | The test suite wrote into the real `MEDIA_ROOT` | Bill-scan and export tests save files through the default storage and never delete them. Locally they pile up in `media/`; in Docker they would land in the persistent media volume | Phase 19: `FastTestRunner` points `MEDIA_ROOT` at a temp dir and removes it afterwards (19.2) |
-| 42 | Beat's schedule state was lost on every restart | Celery beat counts an interval from the last run, kept in its schedule file; a new file starts the clock at start-up. A machine that is never up for 24 hours straight would never run `purge_exports` | Phase 19: schedule file in the `beat-schedule` volume (19.4) |
+| 43 | Coverage is 94%, under the 95% gate | Found in session 26, and already true on `master`: phase 18's `extraction/providers/base.py` (0%), `prefill.py` (80%), `openai.py`, `registry.py` and `claude.py` pulled the total under. CI's coverage step fails for a reason no current branch caused | Tests for the uncovered prefill and provider error paths, as part of the CI/CD work that comes next |
