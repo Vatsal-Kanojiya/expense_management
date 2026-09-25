@@ -29,6 +29,7 @@ from expenses.models import (
     Participant,
     Settlement,
 )
+from expenses.tests.helpers import item_formset
 
 User = get_user_model()
 PASSWORD = "Str0ng-Enough-Pass"
@@ -177,3 +178,110 @@ class ReadingBoundaryTests(TwoAccountsTestCase):
             api("settle-up", self.bob_person.pk), {}, content_type="application/json"
         )
         self.assertEqual(api_response.status_code, 404)
+
+
+# --- 2. Linking: an id in a body or form must belong to the same account ---
+
+
+class LinkingBoundaryTests(TwoAccountsTestCase):
+    def test_web_expense_form_rejects_the_other_accounts_category_and_people(self):
+        response = self.client.post(
+            reverse("expenses:expense_create"),
+            {
+                "category": self.bob_category.pk,
+                "amount": "5.00",
+                "spent_on": "2026-09-02",
+                "note": "sneaky",
+                "participants": [self.bob_person.pk],
+                **item_formset(),
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("category", response.context["form"].errors)
+        self.assertIn("participants", response.context["form"].errors)
+        self.assertFalse(Expense.objects.filter(note="sneaky").exists())
+
+    def test_web_line_item_cannot_be_shared_with_someone_elses_person(self):
+        # The formset scopes its own `shared_with` queryset to the expense's
+        # participants, so a crafted id for another account's person is
+        # simply not a valid choice.
+        response = self.client.post(
+            reverse("expenses:expense_create"),
+            {
+                "category": self.alice_category.pk,
+                "amount": "10.00",
+                "spent_on": "2026-09-02",
+                "note": "shared item",
+                "participants": [self.alice_person.pk],
+                **item_formset(("Line", "10.00")),
+                "items-0-shared_with": [self.bob_person.pk],
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        formset = response.context["formset"]
+        self.assertFalse(formset.is_valid())
+        self.assertFalse(Expense.objects.filter(note="shared item").exists())
+
+    def test_api_expense_create_rejects_every_other_accounts_id(self):
+        payloads = [
+            ("category", {"category": self.bob_category.pk}),
+            ("participants", {"participants": [self.bob_person.pk]}),
+            ("paid_by", {"paid_by": self.bob_person.pk}),
+            ("bill_scan", {"bill_scan": self.bob_scan.pk}),
+        ]
+        base = {"category": self.alice_category.pk, "amount": "10.00", "spent_on": "2026-09-02"}
+        for field, override in payloads:
+            with self.subTest(field=field):
+                response = self.client.post(
+                    api("expense-list"), {**base, **override}, content_type="application/json"
+                )
+                self.assertEqual(response.status_code, 400)
+                self.assertIn(field, response.json())
+                self.assertFalse(Expense.objects.filter(spent_on=date(2026, 9, 2)).exists())
+
+    def test_api_item_share_rejects_someone_elses_participant(self):
+        response = self.client.post(
+            api("expense-list"),
+            {
+                "category": self.alice_category.pk,
+                "amount": "10.00",
+                "spent_on": "2026-09-02",
+                "participants": [self.alice_person.pk],
+                "items": [
+                    {
+                        "name": "Line",
+                        "amount": "10.00",
+                        "shares": [{"participant": self.bob_person.pk, "weight": 1}],
+                    }
+                ],
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Expense.objects.filter(spent_on=date(2026, 9, 2)).exists())
+
+    def test_api_update_also_rejects_every_other_accounts_id(self):
+        payloads = [
+            {"category": self.bob_category.pk},
+            {"participants": [self.bob_person.pk]},
+            {"paid_by": self.bob_person.pk},
+        ]
+        for override in payloads:
+            with self.subTest(override=list(override)[0]):
+                response = self.client.patch(
+                    api("expense-detail", self.alice_expense.pk),
+                    override,
+                    content_type="application/json",
+                )
+                self.assertEqual(response.status_code, 400)
+                self.alice_expense.refresh_from_db()
+                self.assertEqual(self.alice_expense.category, self.alice_category)
+
+    def test_web_and_api_cannot_settle_up_a_forged_note_onto_someone_elses_person(self):
+        # settle_up looks the participant up scoped to the caller, so there
+        # is no id to forge here beyond the 404 already covered above -- this
+        # documents that the same is true through the ORM helper directly.
+        from expenses.settlements import settle_up
+
+        with self.assertRaises(Participant.DoesNotExist):
+            settle_up(self.alice, self.bob_person.pk)
