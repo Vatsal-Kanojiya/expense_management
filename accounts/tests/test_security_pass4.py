@@ -6,10 +6,12 @@ correctly implemented; those sections pin the existing behaviour rather
 than changing it, and say so.
 """
 
+import re
 from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
@@ -84,3 +86,90 @@ class RefreshTokenBlacklistRecordTests(TestCase):
         new_token = RefreshToken(response.json()["refresh"])
         new_outstanding = OutstandingToken.objects.get(jti=new_token["jti"])
         self.assertFalse(BlacklistedToken.objects.filter(token=new_outstanding).exists())
+
+
+# --- Item 2: password change/reset end other sign-ins -----------------------
+
+
+class WebPasswordChangeRevokesRefreshTokensTests(TestCase):
+    """Gap: accounts/views.py's ThrottledPasswordChangeView did not call
+    revoke_refresh_tokens, so a refresh token issued to a mobile/SPA client
+    survived a password change made through the Django page. Fixed by
+    calling it from form_valid, the same way accounts/api.py's
+    PasswordChangeView already did for a change made through the API.
+    """
+
+    def setUp(self):
+        self.alice = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+
+    def refresh(self, token):
+        return self.client.post(
+            api_url("auth-refresh"), {"refresh": str(token)}, content_type="application/json"
+        )
+
+    def test_changing_the_password_on_the_web_page_blacklists_refresh_tokens(self):
+        token = RefreshToken.for_user(self.alice)
+        self.assertEqual(self.refresh(token).status_code, 200)
+        token = RefreshToken.for_user(self.alice)  # a second, still-live token
+
+        self.client.force_login(self.alice)
+        response = self.client.post(
+            reverse("accounts:password_change"),
+            {
+                "old_password": PASSWORD,
+                "new_password1": "An0ther-Good-Pass",
+                "new_password2": "An0ther-Good-Pass",
+            },
+        )
+
+        self.assertRedirects(response, reverse("accounts:password_change_done"))
+        self.assertEqual(self.refresh(token).status_code, 401)
+
+    def test_a_failed_change_does_not_revoke_anything(self):
+        token = RefreshToken.for_user(self.alice)
+
+        self.client.force_login(self.alice)
+        self.client.post(
+            reverse("accounts:password_change"),
+            {
+                "old_password": "wrong-password",
+                "new_password1": "An0ther-Good-Pass",
+                "new_password2": "An0ther-Good-Pass",
+            },
+        )
+
+        self.assertEqual(self.refresh(token).status_code, 200)
+
+
+class WebPasswordResetRevokesRefreshTokensTests(TestCase):
+    """Same gap, in ``PasswordResetConfirmView``: fixed by
+    ThrottledPasswordResetConfirmView (accounts/views.py, accounts/urls.py).
+    """
+
+    def setUp(self):
+        self.alice = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+
+    def refresh(self, token):
+        return self.client.post(
+            api_url("auth-refresh"), {"refresh": str(token)}, content_type="application/json"
+        )
+
+    def _reset_link(self):
+        mail.outbox = []
+        self.client.post(reverse("accounts:password_reset"), {"email": "alice@example.com"})
+        return re.search(r"(/accounts/password/reset/[^/\s]+/[^/\s]+/)", mail.outbox[0].body).group(
+            1
+        )
+
+    def test_confirming_a_reset_on_the_web_page_blacklists_refresh_tokens(self):
+        token = RefreshToken.for_user(self.alice)
+        link = self._reset_link()
+        final_url = self.client.get(link, follow=True).redirect_chain[-1][0]
+
+        response = self.client.post(
+            final_url,
+            {"new_password1": "An0ther-Good-Pass", "new_password2": "An0ther-Good-Pass"},
+        )
+
+        self.assertRedirects(response, reverse("accounts:password_reset_complete"))
+        self.assertEqual(self.refresh(token).status_code, 401)

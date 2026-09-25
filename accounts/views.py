@@ -12,6 +12,7 @@ from django.views.generic import CreateView, TemplateView
 from expenses.models import Category, Expense, Participant
 
 from . import ratelimit
+from .api import revoke_refresh_tokens
 from .deletion import delete_account
 from .forms import SignUpForm
 from .verification import send_verification_email, verify
@@ -96,7 +97,15 @@ class ThrottledPasswordChangeView(auth_views.PasswordChangeView):
 
     def form_valid(self, form):
         ratelimit.clear("password-change", self.request, self._key())
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        # update_session_auth_hash (called above, inside super().form_valid)
+        # only keeps *this* session signed in; it says nothing about a
+        # refresh token some other device is holding. Revoke those too, or
+        # a stolen refresh token outlives the password that was supposed to
+        # shut it out -- the same gap PasswordChangeView in accounts/api.py
+        # already closes for a change made through the API. Security pass 4.
+        revoke_refresh_tokens(form.user)
+        return response
 
 
 class ThrottledPasswordResetView(auth_views.PasswordResetView):
@@ -122,6 +131,25 @@ class ThrottledPasswordResetView(auth_views.PasswordResetView):
         ratelimit.record_attempt("reset", request, email, ratelimit.RESET_WINDOW)
 
         return super().post(request, *args, **kwargs)
+
+
+class ThrottledPasswordResetConfirmView(auth_views.PasswordResetConfirmView):
+    """Set a new password from a mailed reset link, and end other sign-ins.
+
+    Everything else -- validating the link, the new-password form -- is
+    exactly ``PasswordResetConfirmView``; the only addition is closing the
+    same gap as ``ThrottledPasswordChangeView.form_valid`` above: a refresh
+    token issued before the reset must not outlive it, on the web page and
+    not only through the API (``accounts/api.py``'s
+    ``PasswordResetConfirmView`` already does this for that path). Not
+    itself throttled -- the link is single-use and the mailed request that
+    produced it already went through ``ThrottledPasswordResetView``.
+    """
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        revoke_refresh_tokens(self.user)
+        return response
 
 
 class SignUpView(CreateView):
