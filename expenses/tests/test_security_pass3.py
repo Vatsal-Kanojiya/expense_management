@@ -26,6 +26,7 @@ from expenses.models import (
     Expense,
     ExpenseItem,
     ExportJob,
+    ItemShare,
     Participant,
     Settlement,
 )
@@ -285,3 +286,88 @@ class LinkingBoundaryTests(TwoAccountsTestCase):
 
         with self.assertRaises(Participant.DoesNotExist):
             settle_up(self.alice, self.bob_person.pk)
+
+
+# --- 3. Changing and deleting: same boundary, on writes -------------------
+
+
+class ChangingAndDeletingBoundaryTests(TwoAccountsTestCase):
+    def test_web_update_and_delete_of_someone_elses_row_is_refused_and_unchanged(self):
+        cases = [
+            (
+                "expenses:category_update",
+                self.bob_category.pk,
+                {"name": "hijacked"},
+            ),
+            (
+                "expenses:participant_update",
+                self.bob_person.pk,
+                {"name": "hijacked"},
+            ),
+        ]
+        for name, pk, data in cases:
+            with self.subTest(view=name):
+                response = self.client.post(reverse(name, args=[pk]), data)
+                self.assertEqual(response.status_code, 404)
+
+        self.bob_category.refresh_from_db()
+        self.bob_person.refresh_from_db()
+        self.assertEqual(self.bob_category.name, "Rent")
+        self.assertEqual(self.bob_person.name, "Stranger")
+
+        for name, pk in [
+            ("expenses:category_delete", self.bob_category.pk),
+            ("expenses:participant_delete", self.bob_person.pk),
+            ("expenses:expense_delete", self.bob_expense.pk),
+        ]:
+            with self.subTest(view=name):
+                self.assertEqual(self.client.post(reverse(name, args=[pk])).status_code, 404)
+
+        self.assertTrue(Category.objects.filter(pk=self.bob_category.pk).exists())
+        self.assertTrue(Participant.objects.filter(pk=self.bob_person.pk).exists())
+        self.assertTrue(Expense.objects.filter(pk=self.bob_expense.pk).exists())
+
+    def test_api_update_and_delete_of_someone_elses_row_is_404_and_unchanged(self):
+        write_routes = [
+            (api("expense-detail", self.bob_expense.pk), {"note": "hijacked"}),
+            (api("category-detail", self.bob_category.pk), {"name": "hijacked"}),
+            (api("participant-detail", self.bob_person.pk), {"name": "hijacked"}),
+        ]
+        for url, body in write_routes:
+            with self.subTest(url=url, method="PATCH"):
+                response = self.client.patch(url, body, content_type="application/json")
+                self.assertEqual(response.status_code, 404)
+
+        for url in [route for route, _ in write_routes]:
+            with self.subTest(url=url, method="DELETE"):
+                self.assertEqual(self.client.delete(url).status_code, 404)
+
+        self.bob_expense.refresh_from_db()
+        self.bob_category.refresh_from_db()
+        self.bob_person.refresh_from_db()
+        self.assertEqual(self.bob_expense.note, "Bob rent")
+        self.assertEqual(self.bob_category.name, "Rent")
+        self.assertEqual(self.bob_person.name, "Stranger")
+        self.assertTrue(Expense.objects.filter(pk=self.bob_expense.pk).exists())
+        self.assertTrue(Category.objects.filter(pk=self.bob_category.pk).exists())
+        self.assertTrue(Participant.objects.filter(pk=self.bob_person.pk).exists())
+
+    def test_api_put_of_someone_elses_expense_is_also_a_404(self):
+        response = self.client.put(
+            api("expense-detail", self.bob_expense.pk),
+            {"category": self.alice_category.pk, "amount": "1.00", "spent_on": "2026-09-02"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_deleting_someone_elses_item_share_is_impossible_through_the_api(self):
+        # There is no direct item/share endpoint -- items are only ever
+        # rewritten through the parent expense, which is itself scoped.
+        share = ItemShare.objects.create(item=self.alice_item, participant=self.alice_person)
+        response = self.client.patch(
+            api("expense-detail", self.bob_expense.pk),
+            {"items": []},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(ItemShare.objects.filter(pk=share.pk).exists())
