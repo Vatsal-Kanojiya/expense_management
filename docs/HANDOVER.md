@@ -149,7 +149,7 @@ Tick each task here as you finish it, and commit after each one.
         so it can no longer be used; a used refresh token cannot be used again after rotation.
   - [x] Password change and reset end other sign-ins: other sessions are logged out, and
         refresh tokens issued before the change stop working (API and web).
-  - [ ] Cookies and sessions: session and CSRF cookies are `HttpOnly`/`Secure`/`SameSite` as
+  - [x] Cookies and sessions: session and CSRF cookies are `HttpOnly`/`Secure`/`SameSite` as
         appropriate in production settings; the session id changes at login; sessions expire.
   - [ ] Security headers: a Content-Security-Policy that the existing templates work under,
         plus `Referrer-Policy`, `X-Frame-Options`/frame-ancestors, and HSTS in production.
