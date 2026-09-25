@@ -127,6 +127,19 @@ Tick each task here as you finish it, and commit after each one.
   - [x] CSV exports: make cells that start with `=`, `+`, `-` or `@` safe to open in
         spreadsheet programs (`_write_csv` in `expenses/tasks.py`).
 
+- [ ] **Security pass 3 — each account sees and changes only its own records.** Each item: a
+      fix (if needed), a test, one commit.
+  - [ ] Reading: every list, detail and download (web pages and API: expenses, categories,
+        people, balances, splits, exports, scans, budgets) returns only the signed-in account's
+        records, and another account's id answers 404, not 403 or the record.
+  - [ ] Linking: every id sent in a request body or form (a category, a person, a split's
+        people, a bill scan, a settlement) must belong to the same account; otherwise a 400
+        on that field.
+  - [ ] Changing and deleting: the same, for update, partial update and delete, on both the
+        web pages and the API.
+  - [ ] Staff: the admin site and any staff-only view need `is_staff`; a normal account gets
+        no admin access and no API route shows other accounts' data.
+
 - [ ] **Later — more security review.** Good free starting points:
   - `python manage.py check --deploy` with the production settings;
   - `pip install pip-audit && pip-audit -r requirements.txt`, for dependencies with known
