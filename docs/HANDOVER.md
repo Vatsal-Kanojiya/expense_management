@@ -143,8 +143,12 @@ Tick each task here as you finish it, and commit after each one.
   - [x] Staff: the admin site and any staff-only view need `is_staff`; a normal account gets
         no admin access and no API route shows other accounts' data.
 
-- [ ] **Security pass 4 — tokens, sessions and headers.** Each item: a fix (if needed), a
-      test, one commit.
+- [x] **Security pass 4 — tokens, sessions and headers.** (Session 31.) Each item: a fix (if
+      needed), a test, one commit. Three of the five items (tokens, cookies/sessions, the
+      other headers) were already correctly implemented; `accounts/tests/test_security_pass4.py`
+      adds the tests that confirm it. Two gaps were found and fixed: the web password-change and
+      password-reset-confirm pages did not revoke refresh tokens (only `accounts/api.py`'s did),
+      and there was no Content-Security-Policy header at all.
   - [x] API tokens: sensible access and refresh lifetimes; logout blacklists the refresh token
         so it can no longer be used; a used refresh token cannot be used again after rotation.
   - [x] Password change and reset end other sign-ins: other sessions are logged out, and
@@ -153,9 +157,18 @@ Tick each task here as you finish it, and commit after each one.
         appropriate in production settings; the session id changes at login; sessions expire.
   - [x] Security headers: a Content-Security-Policy that the existing templates work under,
         plus `Referrer-Policy`, `X-Frame-Options`/frame-ancestors, and HSTS in production.
-  - [ ] Deployment check: `python manage.py check --deploy` with production-like settings is
+  - [x] Deployment check: `python manage.py check --deploy` with production-like settings is
         clean (or each remaining warning is explained), and `pip-audit -r requirements.txt`
         shows no known-vulnerable package (upgrade within the pinned major version if so).
+        `check --deploy --fail-level WARNING` passes with no warnings at all (only the
+        deliberately silenced `security.W021`, DECISIONS-style, for HSTS preload); this was
+        already true before this pass and `expenses/tests/test_error_pages.py`'s
+        `DeploySettingsTests` already pinned it. `pip-audit -r requirements.txt` found
+        `djangorestframework==3.16.1` vulnerable to GHSA-2m8g-3cmr-wg3w (`request.data` bypasses
+        `DATA_UPLOAD_MAX_MEMORY_SIZE` for JSON/form bodies) and GHSA-g47c-3xmw-q6m2 (`AdminRenderer`
+        can leak a GET-only representation while rendering a failed write); bumped to 3.17.2 in
+        `requirements.txt`, still within the pinned 3.x major version. A re-run of both checks
+        after the bump is clean.
 
 - [ ] **Later — more security review.** Good free starting points:
   - `python manage.py check --deploy` with the production settings;
@@ -192,6 +205,14 @@ On the server, in `.env` (see `.env.example` for each key):
 In `compose.yaml`, the secure-cookie and SSL-redirect switches are turned **off** for local HTTP
 (DECISIONS D35). Behind HTTPS, set them back on, by removing those three lines from the compose
 environment, and run `python manage.py check --deploy` inside the web container.
+
+**Deploy check and dependencies (security pass 4, session 31):** with those three switches back
+on, `python manage.py check --deploy --fail-level WARNING` is clean -- no warnings at all, other
+than the deliberately silenced `security.W021` (HSTS preload; see its comment in
+config/settings.py). `pip-audit -r requirements.txt` found no known-vulnerable package as of
+session 31 (`djangorestframework` was bumped from 3.16.1 to 3.17.2 in that pass for two CVEs;
+see the security pass 4 entry above). Run both again before each real deployment --
+`pip-audit`'s answer changes as new vulnerabilities are published, not just as this repo changes.
 
 Keep regular backups with `make backup` (docs/DOCKER.md §12), and store them off the server.
 
