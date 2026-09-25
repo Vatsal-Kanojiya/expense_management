@@ -127,8 +127,11 @@ Tick each task here as you finish it, and commit after each one.
   - [x] CSV exports: make cells that start with `=`, `+`, `-` or `@` safe to open in
         spreadsheet programs (`_write_csv` in `expenses/tasks.py`).
 
-- [ ] **Security pass 3 — each account sees and changes only its own records.** Each item: a
-      fix (if needed), a test, one commit.
+- [x] **Security pass 3 — each account sees and changes only its own records.** Each item: a
+      fix (if needed), a test, one commit. All four items were already correctly implemented
+      (`OwnerScopedMixin`/`OwnerScopedViewSet`/`OwnerJobViewSet` and `ScopedPrimaryKeyRelatedField`
+      cover every route); `expenses/tests/test_security_pass3.py` adds the tests that confirm it,
+      with no application code changes needed.
   - [x] Reading: every list, detail and download (web pages and API: expenses, categories,
         people, balances, splits, exports, scans, budgets) returns only the signed-in account's
         records, and another account's id answers 404, not 403 or the record.
@@ -137,7 +140,7 @@ Tick each task here as you finish it, and commit after each one.
         on that field.
   - [x] Changing and deleting: the same, for update, partial update and delete, on both the
         web pages and the API.
-  - [ ] Staff: the admin site and any staff-only view need `is_staff`; a normal account gets
+  - [x] Staff: the admin site and any staff-only view need `is_staff`; a normal account gets
         no admin access and no API route shows other accounts' data.
 
 - [ ] **Later — more security review.** Good free starting points:
