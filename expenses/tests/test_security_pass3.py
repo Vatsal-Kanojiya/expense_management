@@ -371,3 +371,47 @@ class ChangingAndDeletingBoundaryTests(TwoAccountsTestCase):
         )
         self.assertEqual(response.status_code, 404)
         self.assertTrue(ItemShare.objects.filter(pk=share.pk).exists())
+
+
+# --- 4. Staff: the admin site and the API stay off-limits to normal users --
+
+
+class StaffBoundaryTests(TwoAccountsTestCase):
+    def test_a_normal_account_is_refused_admin_access(self):
+        response = self.client.get("/admin/expenses/expense/")
+        # Django's admin redirects a non-staff, logged-in user to the login
+        # page rather than 403ing, so it never confirms the admin exists.
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/admin/login/", response.url)
+
+    def test_a_normal_account_cannot_open_the_user_admin(self):
+        response = self.client.get("/admin/accounts/user/")
+        self.assertEqual(response.status_code, 302)
+
+    def test_is_staff_alone_grants_no_model_permissions(self):
+        # is_staff only opens the door (Django's AdminSite.has_permission);
+        # seeing or changing rows inside still needs explicit model
+        # permissions, which this account has none of.
+        staff = User.objects.create_user("staffer", "staffer@example.com", PASSWORD, is_staff=True)
+        self.client.force_login(staff)
+
+        self.assertEqual(self.client.get("/admin/expenses/expense/").status_code, 403)
+
+    def test_is_staff_grants_no_extra_reach_through_the_api(self):
+        # is_staff has no bearing on the API's scoping at all: even a
+        # superuser only ever sees their own rows through it, because
+        # OwnerScopedViewSet.get_queryset filters on request.user
+        # unconditionally.
+        superuser = User.objects.create_superuser("boss", "boss@example.com", PASSWORD)
+        self.client.force_login(superuser)
+
+        response = self.client.get(api("expense-list"))
+        ids = {row["id"] for row in response.json()["results"]}
+        self.assertNotIn(self.alice_expense.pk, ids)
+        self.assertNotIn(self.bob_expense.pk, ids)
+
+    def test_is_staff_cannot_be_set_through_the_account_api(self):
+        response = self.client.patch(api("me"), {"is_staff": True}, content_type="application/json")
+        self.assertIn(response.status_code, (200, 405))
+        self.alice.refresh_from_db()
+        self.assertFalse(self.alice.is_staff)
