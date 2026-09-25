@@ -122,16 +122,16 @@ class ExportViewSet(OwnerJobViewSet):
         # account (accounts/ratelimit.py) -- an export ties up a worker for
         # as long as it takes to build, same reasoning as the scan limit
         # below.
-        if ratelimit.export_blocked(request.user):
+        if not ratelimit.take_export(request.user):
             return rate_limited("Too many exports requested recently. Try again later.")
 
         form = DateRangeForm(request.data)
         if not form.is_valid():
+            ratelimit.refund_export(request.user)
             raise_form_errors(form)
         start, end = form.range_or_default()
 
         job = ExportJob.objects.create(user=request.user, start=start, end=end)
-        ratelimit.record_export(request.user)
 
         site_url = request.build_absolute_uri("/").rstrip("/")
         download_url = f"{settings.FRONTEND_URL}/exports/{job.pk}" if settings.FRONTEND_URL else ""
@@ -251,16 +251,16 @@ class BillScanViewSet(OwnerJobViewSet):
         # account (accounts/ratelimit.py): a scan ties up a worker and, with
         # a real BILL_SCAN_PROVIDER, spends money, so the budget is the
         # account's no matter which client or address it uploads from.
-        if ratelimit.scan_blocked(request.user):
+        if not ratelimit.take_scan(request.user):
             return rate_limited("Too many bills scanned recently. Try again later.")
 
         # The page's own form: the accepted types and the 5 MB limit.
         form = BillScanForm(request.data, request.FILES)
         if not form.is_valid():
+            ratelimit.refund_scan(request.user)
             raise_form_errors(form)
 
         scan = BillScan.objects.create(user=request.user, image=form.cleaned_data["image"])
-        ratelimit.record_scan(request.user)
         transaction.on_commit(lambda: scan_bill.delay(scan.pk))
 
         return Response(self.get_serializer(scan).data, status=status.HTTP_202_ACCEPTED)
