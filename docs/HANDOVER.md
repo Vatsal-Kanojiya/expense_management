@@ -129,7 +129,7 @@ Tick each task here as you finish it, and commit after each one.
 
 - [ ] **Security pass 3 — each account sees and changes only its own records.** Each item: a
       fix (if needed), a test, one commit.
-  - [ ] Reading: every list, detail and download (web pages and API: expenses, categories,
+  - [x] Reading: every list, detail and download (web pages and API: expenses, categories,
         people, balances, splits, exports, scans, budgets) returns only the signed-in account's
         records, and another account's id answers 404, not 403 or the record.
   - [ ] Linking: every id sent in a request body or form (a category, a person, a split's
