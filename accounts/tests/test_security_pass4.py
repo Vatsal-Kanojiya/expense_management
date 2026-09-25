@@ -381,3 +381,18 @@ class ContentSecurityPolicyOnRealPagesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"text/html", response["Content-Type"].encode())
         self.assertNotIn("cdn.jsdelivr.net", response["Content-Security-Policy"])
+
+
+# --- Item 5: deployment check and dependencies ------------------------------
+
+
+class DependencyPinTests(SimpleTestCase):
+    def test_djangorestframework_is_pinned_above_the_known_vulnerable_version(self):
+        # pip-audit -r requirements.txt (session 31, HANDOVER.md) flagged
+        # djangorestframework 3.16.1 for PYSEC-2026-3827 and PYSEC-2026-3828
+        # (GHSA-2m8g-3cmr-wg3w, GHSA-g47c-3xmw-q6m2), fixed in 3.17.2.
+        requirements = (BASE_DIR / "requirements.txt").read_text()
+        match = re.search(r"^djangorestframework==(\d+)\.(\d+)\.(\d+)$", requirements, re.M)
+
+        self.assertIsNotNone(match, "djangorestframework is not pinned in requirements.txt")
+        self.assertGreaterEqual(tuple(int(g) for g in match.groups()), (3, 17, 2))
