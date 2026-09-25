@@ -143,6 +143,20 @@ Tick each task here as you finish it, and commit after each one.
   - [x] Staff: the admin site and any staff-only view need `is_staff`; a normal account gets
         no admin access and no API route shows other accounts' data.
 
+- [ ] **Security pass 4 — tokens, sessions and headers.** Each item: a fix (if needed), a
+      test, one commit.
+  - [ ] API tokens: sensible access and refresh lifetimes; logout blacklists the refresh token
+        so it can no longer be used; a used refresh token cannot be used again after rotation.
+  - [ ] Password change and reset end other sign-ins: other sessions are logged out, and
+        refresh tokens issued before the change stop working (API and web).
+  - [ ] Cookies and sessions: session and CSRF cookies are `HttpOnly`/`Secure`/`SameSite` as
+        appropriate in production settings; the session id changes at login; sessions expire.
+  - [ ] Security headers: a Content-Security-Policy that the existing templates work under,
+        plus `Referrer-Policy`, `X-Frame-Options`/frame-ancestors, and HSTS in production.
+  - [ ] Deployment check: `python manage.py check --deploy` with production-like settings is
+        clean (or each remaining warning is explained), and `pip-audit -r requirements.txt`
+        shows no known-vulnerable package (upgrade within the pinned major version if so).
+
 - [ ] **Later — more security review.** Good free starting points:
   - `python manage.py check --deploy` with the production settings;
   - `pip install pip-audit && pip-audit -r requirements.txt`, for dependencies with known
