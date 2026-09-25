@@ -392,7 +392,7 @@ class ExportCreateView(LoginRequiredMixin, View):
         # as it takes to build. Not a template render -- a 429 is an
         # exceptional answer to a form POST, not a page, and this needs no
         # queryset the way redirecting to the export list does.
-        if ratelimit.export_blocked(request.user):
+        if not ratelimit.take_export(request.user):
             return HttpResponse(
                 "Too many exports requested recently. Wait a while and try again.", status=429
             )
@@ -401,7 +401,6 @@ class ExportCreateView(LoginRequiredMixin, View):
         start, end = form.range_or_default()
 
         job = ExportJob.objects.create(user=request.user, start=start, end=end)
-        ratelimit.record_export(request.user)
 
         # transaction.on_commit, not .delay() directly. Dispatching inside
         # an open transaction is a real race: the worker is fast enough to
@@ -467,7 +466,7 @@ class BillScanCreateView(LoginRequiredMixin, View):
         # Shared with the API's BillScanViewSet.create, keyed on the account
         # (accounts/ratelimit.py): a scan ties up a worker and, with a real
         # BILL_SCAN_PROVIDER, spends money.
-        if ratelimit.scan_blocked(request.user):
+        if not ratelimit.take_scan(request.user):
             return HttpResponse(
                 "Too many bills scanned recently. Wait a while and try again.", status=429
             )
@@ -475,10 +474,10 @@ class BillScanCreateView(LoginRequiredMixin, View):
         form = BillScanForm(request.POST, request.FILES)
 
         if not form.is_valid():
+            ratelimit.refund_scan(request.user)
             return render(request, "expenses/bill_upload.html", {"form": form})
 
         scan = BillScan.objects.create(user=request.user, image=form.cleaned_data["image"])
-        ratelimit.record_scan(request.user)
 
         # transaction.on_commit, not .delay() directly -- the same race
         # ExportCreateView guards against: a worker fast enough to query

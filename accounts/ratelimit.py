@@ -188,27 +188,37 @@ def _user_key(scope, user_id):
     return f"ratelimit:{scope}:user:{user_id}"
 
 
-def user_is_limited(scope, user_id, limit):
-    """Whether this account has already used up its budget for `scope`."""
-    return (cache.get(_user_key(scope, user_id)) or 0) >= limit
+def take_user_budget(scope, user_id, limit, window):
+    """Spend one unit of this account's budget for `scope`; False if none is left.
+
+    Counts first and decides from the new total, in one cache operation,
+    rather than reading the count and adding to it later: two requests
+    sent at the same moment would otherwise both read the same old count
+    and both be let through, however many were sent.
+    """
+    return _increment(_user_key(scope, user_id), window) <= limit
 
 
-def record_user_attempt(scope, user_id, window):
-    """Count one attempt against this account's budget for `scope`."""
-    return _increment(_user_key(scope, user_id), window)
+def refund_user_budget(scope, user_id):
+    """Give back a unit spent on a request that then made no job."""
+    try:
+        cache.decr(_user_key(scope, user_id))
+    except ValueError:
+        # Expired in between: nothing to give back.
+        pass
 
 
-def scan_blocked(user):
-    return user_is_limited("scan", user.pk, SCAN_LIMIT)
+def take_scan(user):
+    return take_user_budget("scan", user.pk, SCAN_LIMIT, SCAN_WINDOW)
 
 
-def record_scan(user):
-    record_user_attempt("scan", user.pk, SCAN_WINDOW)
+def refund_scan(user):
+    refund_user_budget("scan", user.pk)
 
 
-def export_blocked(user):
-    return user_is_limited("export", user.pk, EXPORT_LIMIT)
+def take_export(user):
+    return take_user_budget("export", user.pk, EXPORT_LIMIT, EXPORT_WINDOW)
 
 
-def record_export(user):
-    record_user_attempt("export", user.pk, EXPORT_WINDOW)
+def refund_export(user):
+    refund_user_budget("export", user.pk)

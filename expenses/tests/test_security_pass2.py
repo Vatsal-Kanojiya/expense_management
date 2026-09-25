@@ -306,6 +306,40 @@ class ExportLimitTests(JobLimitTestCase):
         self.client.force_login(self.bob)
         self.assertEqual(self.request_web().status_code, 302)
 
+    @patch.object(ratelimit, "EXPORT_LIMIT", 1)
+    def test_rejected_dates_do_not_spend_the_budget(self):
+        bad = self.client.post(
+            "/api/v1/exports/", {"start": "not-a-date"}, content_type="application/json"
+        )
+        self.assertEqual(bad.status_code, 400)
+
+        self.assertEqual(self.request_api().status_code, 202)
+
+
+class JobBudgetTests(JobLimitTestCase):
+    """Taking from the budget is one step: count, then decide from the new total."""
+
+    @patch.object(ratelimit, "SCAN_LIMIT", 2)
+    def test_each_take_counts_and_decides_at_once(self):
+        # No separate "record" step for simultaneous requests to slip between:
+        # the third take is refused on its own, whatever else is in flight.
+        results = [ratelimit.take_scan(self.alice) for _ in range(3)]
+
+        self.assertEqual(results, [True, True, False])
+
+    @patch.object(ratelimit, "SCAN_LIMIT", 1)
+    def test_a_refund_gives_the_unit_back(self):
+        self.assertTrue(ratelimit.take_scan(self.alice))
+        ratelimit.refund_scan(self.alice)
+
+        self.assertTrue(ratelimit.take_scan(self.alice))
+        self.assertFalse(ratelimit.take_scan(self.alice))
+
+    def test_a_refund_after_the_count_expired_is_harmless(self):
+        ratelimit.refund_export(self.alice)
+
+        self.assertTrue(ratelimit.take_export(self.alice))
+
 
 # --- 4. CSV exports: safe for a spreadsheet to open ------------------------
 
