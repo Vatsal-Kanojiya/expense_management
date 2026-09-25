@@ -147,7 +147,7 @@ Tick each task here as you finish it, and commit after each one.
       test, one commit.
   - [x] API tokens: sensible access and refresh lifetimes; logout blacklists the refresh token
         so it can no longer be used; a used refresh token cannot be used again after rotation.
-  - [ ] Password change and reset end other sign-ins: other sessions are logged out, and
+  - [x] Password change and reset end other sign-ins: other sessions are logged out, and
         refresh tokens issued before the change stop working (API and web).
   - [ ] Cookies and sessions: session and CSRF cookies are `HttpOnly`/`Secure`/`SameSite` as
         appropriate in production settings; the session id changes at login; sessions expire.

@@ -70,7 +70,7 @@ urlpatterns = [
     # it self-invalidates once the password changes.
     path(
         "password/reset/<uidb64>/<token>/",
-        auth_views.PasswordResetConfirmView.as_view(
+        views.ThrottledPasswordResetConfirmView.as_view(
             success_url=reverse_lazy("accounts:password_reset_complete")
         ),
         name="password_reset_confirm",
