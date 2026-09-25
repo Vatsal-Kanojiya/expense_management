@@ -101,7 +101,7 @@ class DeploySettingsTests(SimpleTestCase):
 class StaticFilesTests(SimpleTestCase):
     """WhiteNoise, and the middleware order that makes it worth having."""
 
-    def test_whitenoise_sits_directly_after_security_middleware(self):
+    def test_whitenoise_sits_directly_after_the_security_header_middleware(self):
         from django.conf import settings
 
         middleware = settings.MIDDLEWARE
@@ -109,7 +109,17 @@ class StaticFilesTests(SimpleTestCase):
 
         # Placed later it would still serve files, having first paid for
         # session lookup, authentication and CSRF on every asset request.
-        self.assertEqual(middleware[index - 1], "django.middleware.security.SecurityMiddleware")
+        # SecurityMiddleware and ContentSecurityPolicyMiddleware (security
+        # pass 4) only ever set response headers -- neither touches the
+        # session, auth or CSRF -- so both can sit ahead of WhiteNoise
+        # without a static file paying for any of that.
+        self.assertEqual(
+            middleware[index - 2 : index],
+            [
+                "django.middleware.security.SecurityMiddleware",
+                "config.middleware.ContentSecurityPolicyMiddleware",
+            ],
+        )
 
     def test_static_root_is_configured(self):
         from django.conf import settings

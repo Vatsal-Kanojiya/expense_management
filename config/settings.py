@@ -121,6 +121,11 @@ MIDDLEWARE = [
     # pass 2; see the middleware's own docstring.
     "config.middleware.MaxUploadSizeMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # Right after SecurityMiddleware, which sets the other security
+    # response headers (HSTS, nosniff): grouped together, and before
+    # WhiteNoise so a static file is not made to carry a CSP header it does
+    # not need. Security pass 4; see the middleware's own docstring.
+    "config.middleware.ContentSecurityPolicyMiddleware",
     # Directly after SecurityMiddleware and before everything else, so a
     # static file is served without paying for session lookup, auth or CSRF.
     # Ordering is not cosmetic here: placed last it would still work and

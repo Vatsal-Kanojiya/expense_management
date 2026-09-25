@@ -17,10 +17,13 @@ from pathlib import Path
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail
-from django.test import SimpleTestCase, TestCase
+from django.http import HttpResponse
+from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.urls import reverse
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from config.middleware import ContentSecurityPolicyMiddleware
 
 User = get_user_model()
 PASSWORD = "Str0ng-Enough-Pass"
@@ -286,3 +289,95 @@ class SessionIdRotatesAtLoginTests(TestCase):
         new_key = self.client.session.session_key
         self.assertIsNotNone(new_key)
         self.assertNotEqual(old_key, new_key)
+
+
+# --- Item 4: security headers, including Content-Security-Policy -----------
+
+
+class ContentSecurityPolicyMiddlewareUnitTests(SimpleTestCase):
+    """The middleware itself (config/middleware.py), with no database."""
+
+    def test_it_sets_the_default_policy(self):
+        middleware = ContentSecurityPolicyMiddleware(lambda request: HttpResponse())
+
+        response = middleware(RequestFactory().get("/accounts/login/"))
+
+        csp = response["Content-Security-Policy"]
+        self.assertIn("default-src 'self'", csp)
+        self.assertIn("script-src 'self'", csp)
+        self.assertIn("style-src 'self' 'unsafe-inline'", csp)
+        self.assertIn("frame-ancestors 'none'", csp)
+        self.assertIn("object-src 'none'", csp)
+        self.assertNotIn("cdn.jsdelivr.net", csp)
+
+    def test_it_widens_the_policy_only_for_the_swagger_docs_page(self):
+        middleware = ContentSecurityPolicyMiddleware(lambda request: HttpResponse())
+
+        response = middleware(RequestFactory().get("/api/v1/docs/"))
+
+        csp = response["Content-Security-Policy"]
+        self.assertIn("https://cdn.jsdelivr.net", csp)
+        self.assertIn("script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net", csp)
+
+    def test_it_does_not_override_a_policy_a_view_already_set(self):
+        def get_response(request):
+            response = HttpResponse()
+            response["Content-Security-Policy"] = "default-src 'none'"
+            return response
+
+        middleware = ContentSecurityPolicyMiddleware(get_response)
+        response = middleware(RequestFactory().get("/"))
+
+        self.assertEqual(response["Content-Security-Policy"], "default-src 'none'")
+
+
+class ContentSecurityPolicyOnRealPagesTests(TestCase):
+    """A few key pages still render, and carry the header, end to end."""
+
+    def setUp(self):
+        self.alice = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+
+    def test_the_login_page_renders_with_the_default_policy(self):
+        response = self.client.get(reverse("accounts:login"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("default-src 'self'", response["Content-Security-Policy"])
+
+    def test_the_dashboard_renders_with_the_default_policy(self):
+        self.client.force_login(self.alice)
+
+        response = self.client.get(reverse("expenses:dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("default-src 'self'", response["Content-Security-Policy"])
+
+    def test_the_expense_form_renders_with_the_default_policy(self):
+        # The one template with <script> tags (item-formset.js and
+        # friends) -- all loaded from static files, so script-src 'self'
+        # does not need loosening for it.
+        self.client.force_login(self.alice)
+
+        response = self.client.get(reverse("expenses:expense_create"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "New expense")
+        self.assertIn("script-src 'self'", response["Content-Security-Policy"])
+        self.assertNotIn("cdn.jsdelivr.net", response["Content-Security-Policy"])
+
+    def test_the_swagger_docs_page_renders_with_the_widened_policy(self):
+        response = self.client.get(reverse("api:v1:docs"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("https://cdn.jsdelivr.net", response["Content-Security-Policy"])
+
+    def test_the_drf_browsable_api_renders_under_the_default_policy(self):
+        # Its CSS/JS ship as static files under STATIC_URL (grepped before
+        # writing the middleware), not from a CDN, so it needs no
+        # allowance beyond the default policy.
+        self.client.force_login(self.alice)
+
+        response = self.client.get(api_url("category-list"), HTTP_ACCEPT="text/html")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"text/html", response["Content-Type"].encode())
+        self.assertNotIn("cdn.jsdelivr.net", response["Content-Security-Policy"])
