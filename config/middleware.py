@@ -65,6 +65,88 @@ class MaxUploadSizeMiddleware:
         return self.get_response(request)
 
 
+class ContentSecurityPolicyMiddleware:
+    """Send a Content-Security-Policy header on every response.
+
+    Security pass 4 (HANDOVER.md). Django has no built-in CSP, so this is
+    forty lines rather than a new dependency, in the spirit of
+    accounts/ratelimit.py.
+
+    The default policy is close to lock-down: every template's own
+    ``<script>`` tag names a static file (grepped before writing this),
+    never inline code, so ``script-src`` needs nothing beyond ``'self'``.
+    Inline ``style="..."`` attributes and the theme ``<style>`` block in
+    base.html and 500.html are everywhere, and rewriting every one into an
+    external stylesheet is out of scope for a security pass, so
+    ``style-src`` keeps ``'unsafe-inline'`` -- an inline stylesheet cannot
+    exfiltrate data or run script, which is why CSP still treats it as far
+    lower risk than inline script.
+
+    The one page that needs more is the drf-spectacular Swagger UI at
+    ``/api/v1/docs/``: with no sidecar package installed (requirements.txt)
+    it loads its JS and CSS from ``SPECTACULAR_SETTINGS``'s default CDN and
+    boots itself with an inline ``<script>``, so that one path gets its own
+    wider policy instead of loosening the default for every other page.
+    The DRF browsable API needs no such allowance -- its JS and CSS ship as
+    static files under STATIC_URL, so the default policy already covers it.
+    """
+
+    DEFAULT_POLICY = (
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "font-src 'self'; "
+        "connect-src 'self'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'none'; "
+        "object-src 'none'"
+    )
+
+    # Matches SPECTACULAR_SETTINGS['SWAGGER_UI_DIST']'s default host
+    # (config/settings.py does not override it, so drf-spectacular's own
+    # default applies) -- unpinned on purpose, the same way that setting is.
+    SWAGGER_UI_HOST = "https://cdn.jsdelivr.net"
+    DOCS_POLICY = (
+        "default-src 'self'; "
+        f"script-src 'self' 'unsafe-inline' {SWAGGER_UI_HOST}; "
+        f"style-src 'self' 'unsafe-inline' {SWAGGER_UI_HOST}; "
+        f"img-src 'self' data: {SWAGGER_UI_HOST}; "
+        f"font-src 'self' {SWAGGER_UI_HOST}; "
+        "connect-src 'self'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'none'; "
+        "object-src 'none'"
+    )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        policy = self.DOCS_POLICY if request.path == self._docs_path() else self.DEFAULT_POLICY
+        response.setdefault("Content-Security-Policy", policy)
+        return response
+
+    @staticmethod
+    def _docs_path():
+        # Resolved through reverse(), not hardcoded, so a future change to
+        # expenses/api/urls.py cannot silently leave the Swagger UI page
+        # under the strict default policy. Cheap enough to call every
+        # request: a handful of string joins, no I/O.
+        from django.urls import NoReverseMatch, reverse
+
+        try:
+            return reverse("api:v1:docs")
+        except NoReverseMatch:
+            # Never happens with this project's URLConf; keeps a broken
+            # reverse() from turning every response into a 500 rather than
+            # just falling back to the strict default policy.
+            return None
+
+
 class RequestIDMiddleware:
     """Attach an id to every request, and echo it back on the response.
 

@@ -151,7 +151,7 @@ Tick each task here as you finish it, and commit after each one.
         refresh tokens issued before the change stop working (API and web).
   - [x] Cookies and sessions: session and CSRF cookies are `HttpOnly`/`Secure`/`SameSite` as
         appropriate in production settings; the session id changes at login; sessions expire.
-  - [ ] Security headers: a Content-Security-Policy that the existing templates work under,
+  - [x] Security headers: a Content-Security-Policy that the existing templates work under,
         plus `Referrer-Policy`, `X-Frame-Options`/frame-ancestors, and HSTS in production.
   - [ ] Deployment check: `python manage.py check --deploy` with production-like settings is
         clean (or each remaining warning is explained), and `pip-audit -r requirements.txt`
