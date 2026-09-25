@@ -145,7 +145,7 @@ Tick each task here as you finish it, and commit after each one.
 
 - [ ] **Security pass 4 — tokens, sessions and headers.** Each item: a fix (if needed), a
       test, one commit.
-  - [ ] API tokens: sensible access and refresh lifetimes; logout blacklists the refresh token
+  - [x] API tokens: sensible access and refresh lifetimes; logout blacklists the refresh token
         so it can no longer be used; a used refresh token cannot be used again after rotation.
   - [ ] Password change and reset end other sign-ins: other sessions are logged out, and
         refresh tokens issued before the change stop working (API and web).
