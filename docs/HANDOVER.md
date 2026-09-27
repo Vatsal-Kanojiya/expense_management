@@ -16,7 +16,7 @@ Three branches are stacked, each on the one before. **None is merged into `maste
 |---|---|---|---|
 | 1 | `project-dockerization` | Docker for daily use: two modes, volumes, `Makefile` (phase 19) | Done, verified |
 | 2 | `frontend-api` | A full API for React or mobile, and the frontend pack in `docs/frontend/` (phases 20–21) | Done, verified |
-| 3 | `security-hardening` | Security passes 1–6 and this file | Passes 1–5 done, with tests; pass 6 in progress |
+| 3 | `security-hardening` | Security passes 1–6 and this file | Passes 1–6 done, with tests |
 
 **To merge**, merge them in that order. On GitHub, open a pull request into `master` for each
 branch in turn: after the first is merged, the next one's pull request shows only its own commits.
@@ -186,7 +186,7 @@ Tick each task here as you finish it, and commit after each one.
         photos and export files from storage, its refresh tokens, and its sessions; nothing
         of the account is left readable afterwards.
 
-- [ ] **Security pass 6 — what goes in, and what comes back out.** Each item: a fix (if
+- [x] **Security pass 6 — what goes in, and what comes back out.** Each item: a fix (if
       needed), a test, one commit.
   - [x] Amounts and numbers: every money field (expense amount, line items, splits,
         settlements, budgets) rejects negative, zero where it makes no sense, non-numbers, and
@@ -198,7 +198,7 @@ Tick each task here as you finish it, and commit after each one.
   - [x] Redirects: every `next` / return-URL parameter (login, logout, and any view that
         redirects to a caller-supplied URL) only goes to this site
         (`url_has_allowed_host_and_scheme`), otherwise to the default page.
-  - [ ] Bill-scan output: what the scanning provider returns is treated like user input, so
+  - [x] Bill-scan output: what the scanning provider returns is treated like user input, so
         amounts, dates, text lengths and category names are validated before they prefill a
         form or reach the database, and a malformed or oversized response fails cleanly.
 

@@ -38,17 +38,55 @@ named route -- confirmed by grepping every ``redirect(`` call in
 earlier pass (``test_auth_flows.py``) already pinned the ordinary login
 case. The tests below extend that to logout, to a scheme-relative and a
 ``javascript:`` URL, and confirm a same-site ``next`` still works.
+
+Item 4, bill-scan output: what a provider returns is untrusted input, all
+the way to the form it prefills. Most of ``normalize.py`` was already
+careful about this -- negative amounts, unparseable junk, an oversized
+line count (``MAX_LINES``) and unparseable dates were already dropped
+rather than raised (``test_extraction.py`` already pins that). Three real
+gaps remained, all reproduced against the actual code before being fixed,
+not just reasoned about:
+
+* ``_parse_amount`` called ``Decimal(cleaned)`` inside a
+  ``try/except InvalidOperation``, but the comparison and ``.quantize()``
+  after it were not -- and ``Decimal`` parses "NaN" and "Infinity"
+  without error. ``Decimal("NaN") < 0`` and ``Decimal("Infinity")
+  .quantize(...)`` both raise ``decimal.InvalidOperation`` uncaught, which
+  a `scan_bill` task then treated as a transient failure and retried
+  three times against a bill that would fail identically every time.
+* ``to_extracted_bill`` assumed its ``raw`` argument was always a dict
+  with a list of dict ``"lines"``. A provider's JSON can be valid and
+  still be the wrong shape -- a bare string, a list, ``null``, or lines
+  that are not objects -- each of which raised ``AttributeError`` or
+  ``TypeError`` instead of being treated as an empty or partial bill.
+* ``prefill.py``'s ``_to_decimal`` let NaN/Infinity through unchanged
+  (its own ``except InvalidOperation`` never fires for them), and
+  ``initial_from_scan``'s comparisons against the result (``tax > 0``,
+  ``amount <= 0``) then raised -- reproduced as an actual 500 on the
+  bill-review page (``BillScanReviewView.get``) for a scan whose stored
+  result held one of these values.
+
+Fixed by rejecting non-finite Decimals in both modules, treating a
+non-dict ``raw`` (or non-list ``lines``, or non-dict line entries) as
+empty, and capping merchant/category_hint/line-name length at what the
+fields they eventually prefill can hold (``MAX_TEXT_LENGTH``,
+``MAX_LINE_NAME_LENGTH``) so an oversized response cannot bloat
+``BillScan.result`` either.
 """
 
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
+from expenses.extraction.normalize import to_extracted_bill
+from expenses.extraction.prefill import initial_from_scan
 from expenses.models import BillScan, Category, Expense, ExpenseItem, Participant
+from expenses.tasks import scan_bill
 from expenses.tests.helpers import item_formset
 
 User = get_user_model()
@@ -401,3 +439,173 @@ class RedirectGuardTests(TestCase):
         # the dashboard as an anonymous user and 302 again to the login
         # page -- a fact about LoginRequiredMixin, not about this guard.
         self.assertRedirects(response, reverse("expenses:dashboard"), fetch_redirect_response=False)
+
+
+# --- 4. Bill-scan output is treated as untrusted input ----------------------
+
+
+class NormalizeRobustnessTests(SimpleTestCase):
+    """``to_extracted_bill`` on values a provider's JSON can validly hold
+    but that are not a usable amount, date or shape.
+
+    ``test_extraction.py`` already pins the ordinary case (negative and
+    junk amounts dropped, not raised). These are the ones that used to
+    reach past that: values ``Decimal`` parses without error but cannot be
+    compared or quantized, and shapes that are valid JSON but not the
+    object the parser assumes.
+    """
+
+    def test_non_finite_amounts_are_dropped_not_raised(self):
+        for bad in ("NaN", "Infinity", "-Infinity", "1e400"):
+            with self.subTest(total=bad):
+                bill = to_extracted_bill(
+                    {"total": bad, "tax": bad, "lines": [{"name": "x", "amount": bad}]},
+                    provider="fake",
+                )
+
+                self.assertIsNone(bill.total)
+                self.assertEqual(bill.tax, Decimal("0"))
+                self.assertEqual(bill.lines, [])
+
+    def test_very_long_text_is_capped(self):
+        bill = to_extracted_bill(
+            {
+                "merchant": "M" * 10_000,
+                "category_hint": "C" * 10_000,
+                "lines": [{"name": "L" * 10_000, "amount": "5.00"}],
+            },
+            provider="fake",
+        )
+
+        self.assertLessEqual(len(bill.merchant), 255)
+        self.assertLessEqual(len(bill.category_hint), 255)
+        self.assertLessEqual(len(bill.lines[0].name), 100)
+
+    def test_too_many_line_items_is_capped_at_fifty(self):
+        raw = {"lines": [{"name": f"Item {i}", "amount": "1.00"} for i in range(200)]}
+
+        bill = to_extracted_bill(raw, provider="fake")
+
+        self.assertEqual(len(bill.lines), 50)
+
+    def test_impossible_dates_are_dropped_not_raised(self):
+        for bad in ("2026-02-30", "2026-13-01", "not-a-date", "99999-01-01"):
+            with self.subTest(bill_date=bad):
+                bill = to_extracted_bill({"bill_date": bad}, provider="fake")
+
+                self.assertIsNone(bill.bill_date)
+
+    def test_a_response_that_is_not_an_object_is_treated_as_empty(self):
+        # Valid JSON, wrong shape: a model that answers with a bare string,
+        # a list, or null instead of the object the schema asked for.
+        for raw in (None, [], "just some text", 42, {"lines": "not-a-list"}, {"lines": {"a": 1}}):
+            with self.subTest(raw=raw):
+                bill = to_extracted_bill(raw, provider="fake")
+
+                self.assertEqual(bill.lines, [])
+                self.assertIsNone(bill.total)
+
+    def test_non_object_line_entries_are_skipped(self):
+        raw = {"lines": ["just a string", 5, None, {"name": "Real", "amount": "3.00"}]}
+
+        bill = to_extracted_bill(raw, provider="fake")
+
+        self.assertEqual(len(bill.lines), 1)
+        self.assertEqual(bill.lines[0].name, "Real")
+
+
+class _FakeScan:
+    """A stand-in for BillScan with only what initial_from_scan reads."""
+
+    def __init__(self, result):
+        self.result = result
+
+
+class PrefillRobustnessTests(TestCase):
+    """``initial_from_scan`` on a stored result holding non-finite values.
+
+    A scan's ``result`` is normally already-clean JSON, but this is the
+    module's own promise (see its docstring): a row from an older pipeline,
+    or one edited by hand, must not crash the review page either.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+
+    def test_nan_and_infinity_never_raise(self):
+        for bad in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(value=bad):
+                scan = _FakeScan(
+                    {
+                        "merchant": "Cafe",
+                        "total": bad,
+                        "tax": bad,
+                        "lines": [{"name": "Line", "amount": bad}],
+                        "category_hint": "",
+                    }
+                )
+
+                initial, line_initials = initial_from_scan(scan, self.alice)
+
+                self.assertNotIn("amount", initial)
+                self.assertNotIn("misc_amount", initial)
+                self.assertEqual(line_initials, [])
+
+
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
+class ScanBillTaskRobustnessTests(TestCase):
+    """The task, end to end, when the provider's answer is malformed."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+
+    def _scan(self):
+        return BillScan.objects.create(
+            user=self.alice,
+            image=SimpleUploadedFile("bill.jpg", b"fake-image-bytes", content_type="image/jpeg"),
+        )
+
+    def test_non_finite_provider_values_complete_the_scan_cleanly(self):
+        # The exact chain a real provider's JSON travels: raw dict ->
+        # to_extracted_bill -> the task -> scan.result -> (later)
+        # initial_from_scan. Patching extract_bill at this level, rather
+        # than mocking the SDK, is what test_extraction.py's own
+        # ProviderToggleTests do -- no network call either way.
+        scan = self._scan()
+        malformed = to_extracted_bill(
+            {
+                "merchant": "Cafe",
+                "total": "Infinity",
+                "tax": "NaN",
+                "lines": [{"name": "Line", "amount": "1e400"}],
+                "category_hint": "food",
+            },
+            provider="fake",
+        )
+
+        with patch("expenses.tasks.extract_bill", return_value=malformed):
+            scan_bill(scan.pk)
+
+        scan.refresh_from_db()
+        self.assertEqual(scan.status, BillScan.Status.DONE)
+
+        # And the review page built from that stored result does not 500.
+        self.client.force_login(self.alice)
+        Category.objects.create(user=self.alice, name="Food")
+        response = self.client.get(reverse("expenses:bill_review", args=[scan.pk]))
+        self.assertEqual(response.status_code, 200)
+
+    def test_a_non_object_provider_response_fails_the_scan_cleanly(self):
+        # Valid JSON, wrong shape (a provider bug, not a bad photo) --
+        # must not be treated as a transient error and retried forever,
+        # and must not raise past the task either.
+        scan = self._scan()
+
+        with patch("expenses.tasks.extract_bill", return_value=to_extracted_bill(None, "fake")):
+            scan_bill(scan.pk)
+
+        scan.refresh_from_db()
+        self.assertEqual(scan.status, BillScan.Status.DONE)
+        self.assertEqual(scan.result["lines"], [])
