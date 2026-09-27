@@ -581,7 +581,17 @@ are dropped or capped in `normalize.py`, and `prefill.py` refuses non-finite sto
 had crashed the review page with a 500. Escaping and redirects were already correct; tests pin
 them. The review found nothing further.
 
-**Suite:** 705 tests, coverage 97%. Next: one whole-branch review.
+**Whole-branch review** (Opus, `d81ace5`, `cb78939`). Two gaps between passes, both fixed with
+tests that fail on the old code. The rate limits count in the default cache, which outside Docker
+is per-process, so every limit multiplied by the worker count; `check --deploy` now warns
+(`accounts.W001`). Wrong current passwords were counted per address and account, so a session
+could reset its count by changing network; now per account. Left open, for the owner: the login
+limit is per address and username, so guesses at one account spread over many addresses meet only
+the per-address cap. A per-account cap would close that but lets a stranger lock the owner out.
+Minor, not fixed: an oversized upload's 413 is sent before CORS headers are added; the Swagger UI
+loads `swagger-ui-dist@latest` from a CDN, unpinned.
+
+**Suite:** 708 tests. Next: merge the three branches (HANDOVER task 4).
 
 ---
 

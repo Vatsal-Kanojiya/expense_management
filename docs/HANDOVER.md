@@ -202,6 +202,9 @@ Tick each task here as you finish it, and commit after each one.
         amounts, dates, text lengths and category names are validated before they prefill a
         form or reach the database, and a malformed or oversized response fails cleanly.
 
+- [x] **Whole-branch security review.** (Session 31, `d81ace5`, `cb78939`.) One decision is left
+      for you: whether to add a per-account login cap (see BUILD_LOG session 31).
+
 - [ ] **Later — more security review.** Good free starting points:
   - `python manage.py check --deploy` with the production settings;
   - `pip install pip-audit && pip-audit -r requirements.txt`, for dependencies with known
