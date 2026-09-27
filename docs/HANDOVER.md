@@ -170,6 +170,22 @@ Tick each task here as you finish it, and commit after each one.
         `requirements.txt`, still within the pinned 3.x major version. A re-run of both checks
         after the bump is clean.
 
+- [ ] **Security pass 5 — errors, logs, the admin site and account deletion.** Each item: a fix
+      (if needed), a test, one commit.
+  - [ ] Errors: with `DEBUG=False`, the web 404/500 pages and every API error response
+        (`expenses/api/exceptions.py`) show a plain message and the request id, never a stack
+        trace, file path, setting or SQL.
+  - [ ] Logs: passwords, tokens (access, refresh, reset, verification), session ids and
+        `Authorization`/`Cookie` headers never appear in log lines or error reports; error
+        emails to `ADMINS` use Django's sensitive-variable and sensitive-POST-parameter
+        filtering on the views that handle them.
+  - [ ] Admin site: every model registered in the admin is limited to staff, list pages don't
+        show password hashes or tokens, and changes made in the admin are recorded (Django's
+        `LogEntry`) — confirm, and pin with tests.
+  - [ ] Account deletion (`accounts/deletion.py`): deleting an account also removes its bill
+        photos and export files from storage, its refresh tokens, and its sessions; nothing
+        of the account is left readable afterwards.
+
 - [ ] **Later — more security review.** Good free starting points:
   - `python manage.py check --deploy` with the production settings;
   - `pip install pip-audit && pip-audit -r requirements.txt`, for dependencies with known
