@@ -75,7 +75,9 @@ class DeploySettingsTests(SimpleTestCase):
         )
 
     def test_production_config_passes_the_deploy_check(self):
-        result = self._check_deploy("False")
+        # A shared cache, as compose.yaml sets: the check only reads the
+        # backend's name, so nothing needs to be listening on that address.
+        result = self._check_deploy("False", CACHE_URL="rediscache://127.0.0.1:6379/2")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
