@@ -179,7 +179,7 @@ Tick each task here as you finish it, and commit after each one.
         `Authorization`/`Cookie` headers never appear in log lines or error reports; error
         emails to `ADMINS` use Django's sensitive-variable and sensitive-POST-parameter
         filtering on the views that handle them.
-  - [ ] Admin site: every model registered in the admin is limited to staff, list pages don't
+  - [x] Admin site: every model registered in the admin is limited to staff, list pages don't
         show password hashes or tokens, and changes made in the admin are recorded (Django's
         `LogEntry`) — confirm, and pin with tests.
   - [ ] Account deletion (`accounts/deletion.py`): deleting an account also removes its bill

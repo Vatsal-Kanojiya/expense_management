@@ -8,6 +8,7 @@ existing behaviour rather than changing it, and say so.
 import logging
 from unittest import mock
 
+from django.contrib.admin.models import LogEntry
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
@@ -18,7 +19,10 @@ from django.utils.http import urlsafe_base64_encode
 from django.views.debug import SafeExceptionReporterFilter
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from accounts import admin as accounts_admin
 from accounts.deletion import delete_account
+from expenses import admin as expenses_admin
+from expenses.models import Category
 
 User = get_user_model()
 PASSWORD = "Str0ng-Enough-Pass"
@@ -429,3 +433,82 @@ class NoSessionIdOrHeaderInLogsTests(TestCase):
         )
 
         self.assertNotIn(access, output)
+
+
+# --- Item 3: the admin site --------------------------------------------------
+
+
+class AdminListPagesHideSecretsTests(TestCase):
+    """Already correct: no ModelAdmin's list_display names a password or a
+    raw token. Pinned rather than fixed."""
+
+    def test_user_admin_list_display_has_no_password_field(self):
+        self.assertNotIn("password", accounts_admin.UserAdmin.list_display)
+
+    def test_no_registered_admin_shows_a_raw_token_or_password_column(self):
+        leaky = {"password", "password1", "password2", "token", "refresh", "access"}
+        for model, model_admin in admin_site_registry().items():
+            with self.subTest(model=model.__name__):
+                self.assertFalse(leaky & set(model_admin.list_display))
+
+
+def admin_site_registry():
+    from django.contrib import admin
+
+    return dict(admin.site._registry)
+
+
+class AdminChangesAreLoggedTests(TestCase):
+    """Django's own LogEntry, already wired in because nothing here
+    overrides save_model/delete_model/log_addition. Pinned."""
+
+    def setUp(self):
+        # A superuser, not merely is_staff: pass 3 already pins that
+        # is_staff alone grants no model permission, so a plain staff
+        # account cannot add or delete anything here to log in the first
+        # place. This section is about LogEntry, not about permissions.
+        self.staff = User.objects.create_superuser("staffer", "staffer@example.com", PASSWORD)
+
+    def test_adding_a_category_through_the_admin_writes_a_log_entry(self):
+        self.client.force_login(self.staff)
+        before = LogEntry.objects.count()
+
+        response = self.client.post(
+            "/admin/expenses/category/add/",
+            {"name": "Utilities", "user": self.staff.pk},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(LogEntry.objects.count(), before + 1)
+        entry = LogEntry.objects.latest("action_time")
+        self.assertEqual(entry.user_id, self.staff.pk)
+        self.assertEqual(entry.object_repr, "Utilities")
+
+    def test_deleting_a_category_through_the_admin_writes_a_log_entry(self):
+        self.client.force_login(self.staff)
+        category = Category.objects.create(user=self.staff, name="Temp")
+        before = LogEntry.objects.count()
+
+        self.client.post(
+            "/admin/expenses/category/",
+            {
+                "action": "delete_selected",
+                "_selected_action": [str(category.pk)],
+                "post": "yes",
+            },
+        )
+
+        self.assertFalse(Category.objects.filter(pk=category.pk).exists())
+        self.assertEqual(LogEntry.objects.count(), before + 1)
+
+    def test_staff_can_reach_the_admin_and_see_the_registered_models(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get("/admin/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Categories")
+        self.assertContains(response, "Users")
+
+
+del expenses_admin  # imported only so app-loading errors surface here
