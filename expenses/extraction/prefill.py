@@ -56,12 +56,24 @@ def initial_from_scan(scan, user):
 
 
 def _to_decimal(value):
+    """Parse a stored amount back to Decimal, or None if it is unusable.
+
+    ``scan.result`` is normally already-clean JSON from ``_bill_to_json``,
+    but this function makes the same "never raises" promise the module
+    docstring makes for the result as a whole, so a row written by an older
+    version of the pipeline, or edited directly, cannot crash the review
+    page either. ``Decimal("NaN")`` and ``Decimal("Infinity")`` parse
+    without error -- they are not caught by the ``except`` below -- but the
+    comparisons this module's caller makes against the result (``> 0``,
+    ``<= 0``) raise on them, so they are refused here instead.
+    """
     if value in (None, ""):
         return None
     try:
-        return Decimal(str(value))
+        amount = Decimal(str(value))
     except InvalidOperation:
         return None
+    return amount if amount.is_finite() else None
 
 
 def _to_date(value):
