@@ -424,14 +424,7 @@ class PasswordChangeView(APIView):
     @sensitive_variables()
     def post(self, request, *args, **kwargs):
         # Wrong current passwords per account, shared with the web page.
-        key = str(request.user.pk)
-        if ratelimit.is_limited(
-            "password-change",
-            request,
-            key,
-            ratelimit.PASSWORD_CHANGE_LIMIT,
-            ratelimit.PASSWORD_CHANGE_WINDOW,
-        ):
+        if ratelimit.password_change_blocked(request.user):
             return rate_limited("Too many attempts. Wait a few minutes and try again.")
 
         body = PasswordChangeSerializer(data=request.data)
@@ -448,14 +441,12 @@ class PasswordChangeView(APIView):
         )
         if not form.is_valid():
             if "old_password" in form.errors:
-                ratelimit.record_attempt(
-                    "password-change", request, key, ratelimit.PASSWORD_CHANGE_WINDOW
-                )
+                ratelimit.record_password_change_failure(request.user)
             raise_form_errors(
                 form, password_errors(data["new_password"], data["new_password_confirm"])
             )
 
-        ratelimit.clear("password-change", request, key)
+        ratelimit.clear_password_change(request.user)
         user = form.save()
         revoke_refresh_tokens(user)
         if request.auth is None:

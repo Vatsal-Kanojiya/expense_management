@@ -222,3 +222,24 @@ def take_export(user):
 
 def refund_export(user):
     refund_user_budget("export", user.pk)
+
+
+# --- Wrong current passwords, per account --------------------------------
+#
+# Keyed on the account alone, like the job limits above. Only a signed-in
+# session can reach a password change, so the address adds nothing but a
+# way out: a session held elsewhere could reset its count by changing
+# network. And since only that session can spend this budget, dropping the
+# address cannot let a stranger lock the owner out.
+
+
+def password_change_blocked(user):
+    return (cache.get(_user_key("password-change", user.pk)) or 0) >= PASSWORD_CHANGE_LIMIT
+
+
+def record_password_change_failure(user):
+    _increment(_user_key("password-change", user.pk), PASSWORD_CHANGE_WINDOW)
+
+
+def clear_password_change(user):
+    cache.delete(_user_key("password-change", user.pk))

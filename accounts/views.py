@@ -71,17 +71,8 @@ class ThrottledPasswordChangeView(auth_views.PasswordChangeView):
     undo that. Security pass 1.
     """
 
-    def _key(self):
-        return str(self.request.user.pk)
-
     def post(self, request, *args, **kwargs):
-        if ratelimit.is_limited(
-            "password-change",
-            request,
-            self._key(),
-            ratelimit.PASSWORD_CHANGE_LIMIT,
-            ratelimit.PASSWORD_CHANGE_WINDOW,
-        ):
+        if ratelimit.password_change_blocked(request.user):
             form = self.get_form()
             form.full_clean()
             form.add_error(None, "Too many attempts. Wait a few minutes and try again.")
@@ -90,13 +81,11 @@ class ThrottledPasswordChangeView(auth_views.PasswordChangeView):
 
     def form_invalid(self, form):
         if "old_password" in form.errors:
-            ratelimit.record_attempt(
-                "password-change", self.request, self._key(), ratelimit.PASSWORD_CHANGE_WINDOW
-            )
+            ratelimit.record_password_change_failure(self.request.user)
         return super().form_invalid(form)
 
     def form_valid(self, form):
-        ratelimit.clear("password-change", self.request, self._key())
+        ratelimit.clear_password_change(self.request.user)
         response = super().form_valid(form)
         # update_session_auth_hash (called above, inside super().form_valid)
         # only keeps *this* session signed in; it says nothing about a
