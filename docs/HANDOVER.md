@@ -192,7 +192,7 @@ Tick each task here as you finish it, and commit after each one.
         settlements, budgets) rejects negative, zero where it makes no sense, non-numbers, and
         values beyond the model's `max_digits`/`decimal_places`, with a 400 or a form error, not
         a 500; the same on the web forms and the API. Dates out of range are refused too.
-  - [ ] Text shown on pages: user-entered text (category names, notes, people's names, anything
+  - [x] Text shown on pages: user-entered text (category names, notes, people's names, anything
         from a bill scan) is escaped wherever it is shown; no `|safe`, `mark_safe` or
         `autoescape off` is applied to it; JSON embedded in pages uses `json_script`.
   - [ ] Redirects: every `next` / return-URL parameter (login, logout, and any view that
