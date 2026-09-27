@@ -172,7 +172,7 @@ Tick each task here as you finish it, and commit after each one.
 
 - [ ] **Security pass 5 — errors, logs, the admin site and account deletion.** Each item: a fix
       (if needed), a test, one commit.
-  - [ ] Errors: with `DEBUG=False`, the web 404/500 pages and every API error response
+  - [x] Errors: with `DEBUG=False`, the web 404/500 pages and every API error response
         (`expenses/api/exceptions.py`) show a plain message and the request id, never a stack
         trace, file path, setting or SQL.
   - [ ] Logs: passwords, tokens (access, refresh, reset, verification), session ids and

@@ -10,6 +10,9 @@
       belongs to another user" would leak exactly what the scoped
       querysets exist to hide.
     {% endcomment %}
+    {% if request.request_id %}
+      <p class="muted">Reference: <code>{{ request.request_id }}</code></p>
+    {% endif %}
     <a class="btn btn-primary" href="/">Back to your overview</a>
   </div>
 {% endblock %}
