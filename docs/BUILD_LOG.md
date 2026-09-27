@@ -545,6 +545,39 @@ cursor bug fails `TransactionTestCase` only.
 
 ---
 
+### Session 31 — Security passes 2 to 5, run by subagents
+
+The owner asked for the passes to be run by cheaper subagents, with the main session reviewing
+each one. Each pass: the checklist goes into `docs/HANDOVER.md` first, a Sonnet subagent works
+through it (one commit per item, with tests), then the main session reads the diff, re-runs the
+checks, and fixes what the review finds.
+
+**Pass 2, files in and out** (`e113a2c`–`edc0fb3`). Bill photos are checked by their leading bytes
+and saved under the verified extension; oversized bodies are refused from `Content-Length` by
+`MaxUploadSizeMiddleware`, with Django's own limits sized from `MAX_UPLOAD_SIZE`; 30 scans and 20
+exports per account per hour, shared by the page and the API; CSV cells starting with `=`, `+`,
+`-`, `@`, tab or CR open as text. **Review fix** `dcd3325`: the job limits checked, worked, then
+counted, so simultaneous requests all passed; now one atomic take, refunded if the form fails.
+
+**Pass 3, each account sees only its own records** (`a686754`–`662c872`). No gaps: the owner-scoped
+mixins, viewsets and `ScopedPrimaryKeyRelatedField` already covered reading, linking, changing and
+the admin. 20 tests pin it.
+
+**Pass 4, tokens, sessions and headers** (`64a1267`–`ed90e3e`). Password change and reset on the
+web pages now revoke refresh tokens, as the API already did. `ContentSecurityPolicyMiddleware`
+adds a CSP (no inline script; the Swagger page gets its own wider policy), checked in Chromium on
+the main pages and the admin. DRF 3.16.1 → 3.17.2 for two published advisories; `pip-audit` clean.
+
+**Pass 5, errors, logs, admin, deletion** (`75a5786`–`c2a6de1`). The 404 and 500 pages show a
+request id and nothing else; the API auth views mark their secrets sensitive; `ADMINS` and a
+`mail_admins` handler now exist (off until `ADMINS` is set); account deletion removes bill photos
+and refresh-token rows. **Review fix** `10a3d44`: files were removed inside the transaction, so a
+failed deletion lost them anyway; now removed on commit. `ADMINS` accepts plain addresses.
+
+**Suite:** 677 tests, coverage 96%. Next: pass 6 (input and output), then one whole-branch review.
+
+---
+
 ### Session 30 — Security pass 1 completed
 
 The subscription carried on, so work resumed from `docs/HANDOVER.md`. Task 1: 14 tests in
