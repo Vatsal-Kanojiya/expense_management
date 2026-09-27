@@ -188,7 +188,7 @@ Tick each task here as you finish it, and commit after each one.
 
 - [ ] **Security pass 6 — what goes in, and what comes back out.** Each item: a fix (if
       needed), a test, one commit.
-  - [ ] Amounts and numbers: every money field (expense amount, line items, splits,
+  - [x] Amounts and numbers: every money field (expense amount, line items, splits,
         settlements, budgets) rejects negative, zero where it makes no sense, non-numbers, and
         values beyond the model's `max_digits`/`decimal_places`, with a 400 or a form error, not
         a 500; the same on the web forms and the API. Dates out of range are refused too.

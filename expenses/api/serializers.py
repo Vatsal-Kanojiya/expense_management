@@ -96,6 +96,14 @@ class ParticipantSerializer(serializers.ModelSerializer):
 
 class ItemShareSerializer(serializers.ModelSerializer):
     participant = ScopedPrimaryKeyRelatedField(queryset=Participant.objects.all())
+    # PositiveSmallIntegerField's auto-generated bounds (min_value=0,
+    # max_value in the billions) are wrong on both ends: the model's
+    # CheckConstraint(weight__gt=0) refuses 0 at the database, and the
+    # column itself is a 16-bit smallint, so a value this field would
+    # otherwise accept overflows it. Either mismatch used to reach the
+    # database as an uncaught IntegrityError -- a 500 -- instead of a
+    # field error. 32767 is smallint's actual maximum.
+    weight = serializers.IntegerField(min_value=1, max_value=32767, required=False)
 
     class Meta:
         model = ItemShare

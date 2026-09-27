@@ -2104,9 +2104,8 @@ components:
           type: integer
         weight:
           type: integer
-          maximum: 9223372036854775807
-          minimum: 0
-          format: int64
+          maximum: 32767
+          minimum: 1
       required:
       - participant
     ItemShareRequest:
@@ -2116,9 +2115,8 @@ components:
           type: integer
         weight:
           type: integer
-          maximum: 9223372036854775807
-          minimum: 0
-          format: int64
+          maximum: 32767
+          minimum: 1
       required:
       - participant
     LinkRequest:
