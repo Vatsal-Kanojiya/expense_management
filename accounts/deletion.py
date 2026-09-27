@@ -31,6 +31,7 @@ see.
 import logging
 
 from django.db import transaction
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
 
 from expenses.models import Category, Expense, ExpenseItem, Participant, Settlement
 
@@ -49,13 +50,33 @@ def delete_account(user):
     """
     counts = {"items": ExpenseItem.objects.filter(expense__user=user).count()}
 
-    # Files first, while the rows that name them still exist. ExportJob
-    # rows cascade from the user, but the files on disk do not: deleting
-    # the rows alone would leave a full copy of someone's financial history
-    # after they asked to be forgotten.
+    # Files first, while the rows that name them still exist. ExportJob and
+    # BillScan rows cascade from the user, but the files on disk do not:
+    # deleting the rows alone would leave a full copy of someone's
+    # financial history -- or a photo of a receipt -- after they asked to
+    # be forgotten. Security pass 5: bill photos were missing here: the
+    # BillScan row went with the user (its FK is CASCADE), but the image
+    # file underneath it stayed on disk with nothing left pointing at it.
     for job in user.export_jobs.all():
         if job.file:
             job.file.delete(save=False)
+
+    for scan in user.bill_scans.all():
+        if scan.image:
+            scan.image.delete(save=False)
+
+    # The refresh tokens issued to this account. OutstandingToken.user is
+    # SET_NULL (rest_framework_simplejwt.token_blacklist), so left alone it
+    # would survive the account -- the raw signed token string sitting in
+    # the row's own `token` column -- as an orphan nothing can enumerate to
+    # revoke on its own. Deleting it here cascades to any BlacklistedToken
+    # for it (a OneToOne with on_delete=CASCADE) and leaves nothing of the
+    # session behind. The token was already unusable the moment the user
+    # row went (JWTAuthentication.get_user() 401s with "user_not_found" for
+    # an access token whose subject no longer exists); this is about not
+    # leaving the token itself sitting in the database, not about access.
+    # Security pass 5.
+    counts["refresh_tokens"] = OutstandingToken.objects.filter(user=user).delete()[0]
 
     # Expenses first among the rows: they hold the PROTECT reference to
     # categories, and their items and shares cascade with them.

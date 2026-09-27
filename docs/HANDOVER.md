@@ -170,7 +170,7 @@ Tick each task here as you finish it, and commit after each one.
         `requirements.txt`, still within the pinned 3.x major version. A re-run of both checks
         after the bump is clean.
 
-- [ ] **Security pass 5 — errors, logs, the admin site and account deletion.** Each item: a fix
+- [x] **Security pass 5 — errors, logs, the admin site and account deletion.** Each item: a fix
       (if needed), a test, one commit.
   - [x] Errors: with `DEBUG=False`, the web 404/500 pages and every API error response
         (`expenses/api/exceptions.py`) show a plain message and the request id, never a stack
@@ -182,7 +182,7 @@ Tick each task here as you finish it, and commit after each one.
   - [x] Admin site: every model registered in the admin is limited to staff, list pages don't
         show password hashes or tokens, and changes made in the admin are recorded (Django's
         `LogEntry`) — confirm, and pin with tests.
-  - [ ] Account deletion (`accounts/deletion.py`): deleting an account also removes its bill
+  - [x] Account deletion (`accounts/deletion.py`): deleting an account also removes its bill
         photos and export files from storage, its refresh tokens, and its sessions; nothing
         of the account is left readable afterwards.
 

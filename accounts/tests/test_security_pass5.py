@@ -12,17 +12,20 @@ from django.contrib.admin.models import LogEntry
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
+from django.core.files.storage import default_storage
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.views.debug import SafeExceptionReporterFilter
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts import admin as accounts_admin
 from accounts.deletion import delete_account
 from expenses import admin as expenses_admin
-from expenses.models import Category
+from expenses.models import BillScan, Category, ExportJob
 
 User = get_user_model()
 PASSWORD = "Str0ng-Enough-Pass"
@@ -512,3 +515,88 @@ class AdminChangesAreLoggedTests(TestCase):
 
 
 del expenses_admin  # imported only so app-loading errors surface here
+
+
+# --- Item 4: account deletion leaves nothing of the account readable -------
+
+
+class AccountDeletionRemovesFilesTests(TestCase):
+    def setUp(self):
+        self.alice = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+
+    def test_bill_photos_are_removed_from_storage(self):
+        scan = BillScan.objects.create(
+            user=self.alice,
+            image=SimpleUploadedFile("bill.jpg", b"fake-bytes", content_type="image/jpeg"),
+        )
+        path = scan.image.name
+        self.assertTrue(default_storage.exists(path))
+
+        delete_account(self.alice)
+
+        self.assertFalse(default_storage.exists(path))
+        self.assertFalse(BillScan.objects.filter(pk=scan.pk).exists())
+
+    def test_export_files_are_removed_from_storage(self):
+        job = ExportJob.objects.create(
+            user=self.alice,
+            start="2026-01-01",
+            end="2026-01-31",
+            file=SimpleUploadedFile("export.csv", b"Date,Category,Amount,Note\n"),
+        )
+        path = job.file.name
+        self.assertTrue(default_storage.exists(path))
+
+        delete_account(self.alice)
+
+        self.assertFalse(default_storage.exists(path))
+
+    def test_a_scan_with_no_image_yet_is_not_a_problem(self):
+        # Guards the `if scan.image:` check: a FileField can be blank.
+        scan = BillScan.objects.create(user=self.alice, image="")
+
+        delete_account(self.alice)
+
+        self.assertFalse(BillScan.objects.filter(pk=scan.pk).exists())
+
+
+class AccountDeletionRemovesTokensAndSessionsTests(TestCase):
+    def setUp(self):
+        self.alice = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+
+    def test_outstanding_refresh_tokens_are_removed(self):
+        refresh = RefreshToken.for_user(self.alice)
+        outstanding = OutstandingToken.objects.get(jti=refresh["jti"])
+        BlacklistedToken.objects.create(token=outstanding)
+
+        delete_account(self.alice)
+
+        self.assertFalse(OutstandingToken.objects.filter(user_id=self.alice.pk).exists())
+        self.assertFalse(BlacklistedToken.objects.filter(token_id=outstanding.pk).exists())
+
+    def test_an_access_token_stops_working_once_the_account_is_gone(self):
+        refresh = RefreshToken.for_user(self.alice)
+        access = str(refresh.access_token)
+
+        delete_account(self.alice)
+
+        response = self.client.get(api_url("me"), HTTP_AUTHORIZATION=f"Bearer {access}")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["code"], "user_not_found")
+
+    def test_a_session_stops_authenticating_once_the_account_is_gone(self):
+        other_browser = Client()
+        other_browser.force_login(self.alice)
+        self.assertEqual(other_browser.get(reverse("expenses:dashboard")).status_code, 200)
+
+        delete_account(self.alice)
+
+        response = other_browser.get(reverse("expenses:dashboard"))
+
+        # Django's AuthenticationMiddleware looks the session's user up by
+        # id on every request and falls back to AnonymousUser when it is
+        # gone, so a lingering session cookie authenticates nobody -- it
+        # is redirected to log in, not shown anyone's data.
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("accounts:login"), response.url)
