@@ -195,7 +195,7 @@ Tick each task here as you finish it, and commit after each one.
   - [x] Text shown on pages: user-entered text (category names, notes, people's names, anything
         from a bill scan) is escaped wherever it is shown; no `|safe`, `mark_safe` or
         `autoescape off` is applied to it; JSON embedded in pages uses `json_script`.
-  - [ ] Redirects: every `next` / return-URL parameter (login, logout, and any view that
+  - [x] Redirects: every `next` / return-URL parameter (login, logout, and any view that
         redirects to a caller-supplied URL) only goes to this site
         (`url_has_allowed_host_and_scheme`), otherwise to the default page.
   - [ ] Bill-scan output: what the scanning provider returns is treated like user input, so
