@@ -13,10 +13,13 @@
 </head>
 <body>
   <!--
-    Deliberately standalone: this file extends nothing, reverses no URLs and
-    reads no context. Django renders it with an empty context and no context
-    processors, so extending base.html would let an error in the base
-    template turn a 500 into a 500-while-rendering-the-500.
+    Deliberately standalone: this file extends nothing and reverses no
+    URLs. config/views.py's server_error renders it with one plain string,
+    request_id, and nothing else -- no context processors, no "request" in
+    reach -- so extending base.html would let an error in the base
+    template turn a 500 into a 500-while-rendering-the-500. A direct
+    render({}), as a test does to check this file alone still works, must
+    leave the page intact with request_id simply blank.
 
     Note that this comment must not name those tags in their real syntax.
     An HTML comment is not a template comment: Django parses tags inside it
@@ -26,6 +29,7 @@
   <main>
     <h1>Something went wrong</h1>
     <p>An error occurred on our side. It has been logged, and we're looking at it.</p>
+    {% if request_id %}<p>Reference: <code>{{ request_id }}</code></p>{% endif %}
     <p><a href="/">Back to your overview</a></p>
   </main>
 </body>

@@ -32,3 +32,8 @@ urlpatterns = [
     # the mount point; the app decides its own internal paths.
     path("", include("expenses.urls")),
 ]
+
+# Django's default server_error view renders 500.html with no context at
+# all (see config/views.py's docstring for why); this one adds the request
+# id, and nothing else. Security pass 5.
+handler500 = "config.views.server_error"
