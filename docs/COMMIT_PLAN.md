@@ -632,7 +632,7 @@ Themed passes, each confirmed, fixed, recorded and then paused for the owner's a
 | 3 | Each account sees and changes only its own records | `a686754`–`662c872` | ✅ Done: no gaps, 20 tests |
 | 4 | Tokens, sessions, headers, CSP, dependency audit | `64a1267`–`ed90e3e` | ✅ Done |
 | 5 | Errors, logs, admin site, account deletion | `75a5786`–`c2a6de1`; review fix `10a3d44` | ✅ Done |
-| 6 | Input and output: amounts, escaping, redirects, scanner output | — | In progress |
+| 6 | Input and output: amounts, escaping, redirects, scanner output | `58969e8`–`061d8d1` | ✅ Done |
 | — | Whole-branch review | — | After pass 6 |
 
 ---
