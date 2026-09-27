@@ -26,6 +26,18 @@ both pin the grep itself (so a future ``|safe`` cannot creep back in
 unnoticed) and confirm the escaping it implies on every page that shows
 user-entered text: category and participant names, an expense's note,
 and a bill scan's merchant name.
+
+Item 3, redirects: the only two places anything in the app redirects to a
+caller-supplied URL are login and logout, and both go through Django's
+own ``LoginView``/``LogoutView`` (via ``RedirectURLMixin``), which already
+checks ``next`` against ``url_has_allowed_host_and_scheme`` before
+honouring it (read directly from the installed Django source, not
+assumed). Every other redirect in the project's own views is to a fixed,
+named route -- confirmed by grepping every ``redirect(`` call in
+``accounts/`` and ``expenses/``. This item needed no fix either; an
+earlier pass (``test_auth_flows.py``) already pinned the ordinary login
+case. The tests below extend that to logout, to a scheme-relative and a
+``javascript:`` URL, and confirm a same-site ``next`` still works.
 """
 
 from datetime import date
@@ -344,3 +356,48 @@ class LoginPageReflectionTests(TestCase):
         response = self.client.get(f"{reverse('accounts:login')}?next=%22><script>evil()</script>")
 
         self.assertNotContains(response, "<script>evil()</script>", html=False)
+
+
+# --- 3. Redirects: a caller-supplied URL never leaves the site --------------
+
+
+class RedirectGuardTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+
+    def test_login_ignores_an_off_site_next_and_uses_the_default(self):
+        for evil in (
+            "https://evil.example.com/",
+            "//evil.example.com/",
+            "javascript:alert(1)",
+        ):
+            with self.subTest(next=evil):
+                response = self.client.post(
+                    f"{reverse('accounts:login')}?next={evil}",
+                    {"username": "alice", "password": PASSWORD},
+                )
+
+                self.assertRedirects(response, reverse("expenses:dashboard"))
+                self.client.logout()
+
+    def test_login_still_honours_a_same_site_next(self):
+        target = reverse("expenses:category_list")
+
+        response = self.client.post(
+            f"{reverse('accounts:login')}?next={target}",
+            {"username": "alice", "password": PASSWORD},
+        )
+
+        self.assertRedirects(response, target)
+
+    def test_logout_ignores_an_off_site_next_and_uses_the_default(self):
+        self.client.force_login(self.alice)
+
+        response = self.client.post(f"{reverse('accounts:logout')}?next=https://evil.example.com/")
+
+        # fetch_redirect_response=False: logout has already signed the
+        # client out by this point, so following the redirect would hit
+        # the dashboard as an anonymous user and 302 again to the login
+        # page -- a fact about LoginRequiredMixin, not about this guard.
+        self.assertRedirects(response, reverse("expenses:dashboard"), fetch_redirect_response=False)
