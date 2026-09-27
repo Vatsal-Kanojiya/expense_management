@@ -105,6 +105,14 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=False)
 
+# Who a production exception is mailed to (LOGGING's mail_admins handler,
+# below). "Name:address" pairs, comma-separated -- e.g.
+# "Priya:priya@example.com,Sam:sam@example.com". Empty by default, the same
+# fail-safe default as SECRET_KEY and ALLOWED_HOSTS: nobody receives mail
+# about anybody else's account until this is deliberately set. Security
+# pass 5.
+ADMINS = [tuple(pair.split(":", 1)) for pair in env.list("ADMINS", default=[]) if pair]
+
 # How long a password reset link stays valid. Django's default is 3 days,
 # which is generous for a credential-bearing URL that may sit in an inbox.
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24  # 24 hours
@@ -405,6 +413,10 @@ LOGGING = {
     "disable_existing_loggers": False,
     "filters": {
         "request_id": {"()": "config.middleware.RequestIDFilter"},
+        # Django's own filter: true only when DEBUG is False, so the admin
+        # mailbox is never sent a copy of every exception a developer sees
+        # on their own screen locally.
+        "require_debug_false": {"()": "django.utils.log.RequireDebugFalse"},
     },
     "formatters": {
         "verbose": {
@@ -420,6 +432,19 @@ LOGGING = {
             "formatter": "verbose",
             "filters": ["request_id"],
         },
+        # Mails a 5xx traceback to ADMINS. Empty by default (ADMINS above),
+        # so this handler exists but never fires until an operator opts in.
+        # Django's AdminEmailHandler builds the message with
+        # ExceptionReporter, which runs SafeExceptionReporterFilter over it
+        # -- the same filter DEBUG=True's error page uses -- so a local
+        # variable or POST parameter marked with @sensitive_variables or
+        # sensitive_post_parameters (accounts/api.py, security pass 5) is
+        # starred out here too, not only on screen.
+        "mail_admins": {
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+            "class": "django.utils.log.AdminEmailHandler",
+        },
     },
     "root": {
         "handlers": ["console"],
@@ -427,8 +452,11 @@ LOGGING = {
     },
     "loggers": {
         # Requests that 4xx/5xx. Off by default without an explicit handler.
+        # mail_admins only actually sends for this logger's ERROR+ records
+        # (an unhandled 5xx) -- its own level filters out the WARNING
+        # records a 4xx logs, so a bad request never becomes admin mail.
         "django.request": {
-            "handlers": ["console"],
+            "handlers": ["console", "mail_admins"],
             "level": "WARNING",
             "propagate": False,
         },

@@ -175,7 +175,7 @@ Tick each task here as you finish it, and commit after each one.
   - [x] Errors: with `DEBUG=False`, the web 404/500 pages and every API error response
         (`expenses/api/exceptions.py`) show a plain message and the request id, never a stack
         trace, file path, setting or SQL.
-  - [ ] Logs: passwords, tokens (access, refresh, reset, verification), session ids and
+  - [x] Logs: passwords, tokens (access, refresh, reset, verification), session ids and
         `Authorization`/`Cookie` headers never appear in log lines or error reports; error
         emails to `ADMINS` use Django's sensitive-variable and sensitive-POST-parameter
         filtering on the views that handle them.

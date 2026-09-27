@@ -22,6 +22,7 @@ from django.contrib.auth.models import update_last_login
 from django.contrib.auth.tokens import default_token_generator
 from django.urls import path
 from django.utils.http import urlsafe_base64_decode
+from django.views.decorators.debug import sensitive_variables
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_field
 from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -210,6 +211,18 @@ class PublicView(APIView):
 
 
 # --- Views ----------------------------------------------------------------
+#
+# @sensitive_variables() below, wherever a method holds a password or a
+# raw access/refresh token as a local variable (its own, or -- since the
+# decorator marks every frame called from within it -- one of a helper
+# it calls, such as issue_tokens()). Django's own auth forms already do
+# this for the web pages (django/contrib/auth/forms.py); these DRF views
+# have no such form underneath them, so nothing did it for them. Without
+# it, an unhandled exception here would show that value in full, in the
+# DEBUG=True error page and in the mail_admins traceback email alike
+# (config/settings.py's LOGGING) -- SafeExceptionReporterFilter only
+# blanks a local variable when a decorator says which ones are sensitive.
+# Security pass 5.
 
 
 class SignupView(PublicView):
@@ -225,6 +238,7 @@ class SignupView(PublicView):
             429: OpenApiResponse(MessageSerializer, description="Too many sign-ups."),
         },
     )
+    @sensitive_variables()
     def post(self, request, *args, **kwargs):
         # The web page's limit, under the same key, so the two share it.
         if ratelimit.is_limited(
@@ -273,6 +287,7 @@ class VerifyEmailView(PublicView):
         request=LinkSerializer,
         responses={200: TokenPairSerializer, 400: MessageSerializer},
     )
+    @sensitive_variables()
     def post(self, request, *args, **kwargs):
         body = LinkSerializer(data=request.data)
         body.is_valid(raise_exception=True)
@@ -309,6 +324,7 @@ class LoginView(PublicView):
             429: OpenApiResponse(MessageSerializer, description="Too many attempts."),
         },
     )
+    @sensitive_variables()
     def post(self, request, *args, **kwargs):
         body = LoginSerializer(data=request.data)
         body.is_valid(raise_exception=True)
@@ -360,6 +376,7 @@ class RefreshView(TokenRefreshView):
     authentication_classes = []
 
     @extend_schema(tags=AUTH_TAG, summary="Refresh tokens")
+    @sensitive_variables()
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
 
@@ -373,6 +390,7 @@ class LogoutView(PublicView):
         request=RefreshSerializer,
         responses={204: None, 400: MessageSerializer},
     )
+    @sensitive_variables()
     def post(self, request, *args, **kwargs):
         body = RefreshSerializer(data=request.data)
         body.is_valid(raise_exception=True)
@@ -403,6 +421,7 @@ class PasswordChangeView(APIView):
             429: OpenApiResponse(MessageSerializer, description="Too many wrong passwords."),
         },
     )
+    @sensitive_variables()
     def post(self, request, *args, **kwargs):
         # Wrong current passwords per account, shared with the web page.
         key = str(request.user.pk)
@@ -498,6 +517,7 @@ class PasswordResetConfirmView(PublicView):
         request=PasswordResetConfirmSerializer,
         responses={200: MessageSerializer, 400: ValidationErrorSerializer},
     )
+    @sensitive_variables()
     def post(self, request, *args, **kwargs):
         body = PasswordResetConfirmSerializer(data=request.data)
         body.is_valid(raise_exception=True)
