@@ -574,7 +574,14 @@ request id and nothing else; the API auth views mark their secrets sensitive; `A
 and refresh-token rows. **Review fix** `10a3d44`: files were removed inside the transaction, so a
 failed deletion lost them anyway; now removed on commit. `ADMINS` accepts plain addresses.
 
-**Suite:** 677 tests, coverage 96%. Next: pass 6 (input and output), then one whole-branch review.
+**Pass 6, input and output** (`58969e8`–`061d8d1`). The API accepted an item-share weight of 0
+or past the smallint column, which reached the database as a 500; now 1–32767. Bill-scan output
+is untrusted all the way through: `NaN`/`Infinity` amounts, wrong-shaped JSON and overlong text
+are dropped or capped in `normalize.py`, and `prefill.py` refuses non-finite stored amounts, which
+had crashed the review page with a 500. Escaping and redirects were already correct; tests pin
+them. The review found nothing further.
+
+**Suite:** 705 tests, coverage 97%. Next: one whole-branch review.
 
 ---
 
