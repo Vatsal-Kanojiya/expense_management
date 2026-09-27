@@ -107,11 +107,15 @@ EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=False)
 
 # Who a production exception is mailed to (LOGGING's mail_admins handler,
 # below). "Name:address" pairs, comma-separated -- e.g.
-# "Priya:priya@example.com,Sam:sam@example.com". Empty by default, the same
+# "Priya:priya@example.com,Sam:sam@example.com", or plain addresses. Empty by default, the same
 # fail-safe default as SECRET_KEY and ALLOWED_HOSTS: nobody receives mail
 # about anybody else's account until this is deliberately set. Security
 # pass 5.
-ADMINS = [tuple(pair.split(":", 1)) for pair in env.list("ADMINS", default=[]) if pair]
+ADMINS = [
+    tuple(entry.split(":", 1)) if ":" in entry else (entry, entry)
+    for entry in env.list("ADMINS", default=[])
+    if entry
+]
 
 # How long a password reset link stays valid. Django's default is 3 days,
 # which is generous for a credential-bearing URL that may sit in an inbox.

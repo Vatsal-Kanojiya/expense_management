@@ -30,6 +30,7 @@ see.
 
 import logging
 
+from django.core.files.storage import default_storage
 from django.db import transaction
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
 
@@ -50,20 +51,20 @@ def delete_account(user):
     """
     counts = {"items": ExpenseItem.objects.filter(expense__user=user).count()}
 
-    # Files first, while the rows that name them still exist. ExportJob and
-    # BillScan rows cascade from the user, but the files on disk do not:
-    # deleting the rows alone would leave a full copy of someone's
-    # financial history -- or a photo of a receipt -- after they asked to
-    # be forgotten. Security pass 5: bill photos were missing here: the
-    # BillScan row went with the user (its FK is CASCADE), but the image
-    # file underneath it stayed on disk with nothing left pointing at it.
-    for job in user.export_jobs.all():
-        if job.file:
-            job.file.delete(save=False)
-
-    for scan in user.bill_scans.all():
-        if scan.image:
-            scan.image.delete(save=False)
+    # The files go too. ExportJob and BillScan rows cascade from the user,
+    # but the files on disk do not: deleting the rows alone would leave a
+    # full copy of someone's financial history -- or a photo of a receipt
+    # -- after they asked to be forgotten. Security pass 5 added the bill
+    # photos, which were missing here.
+    #
+    # Names are collected now, while the rows that hold them exist, and the
+    # files are removed only once the transaction commits. Removed inside
+    # it, a failure further down would roll the rows back but not the
+    # files, leaving an account that still exists pointing at files that
+    # no longer do.
+    names = [job.file.name for job in user.export_jobs.all() if job.file]
+    names += [scan.image.name for scan in user.bill_scans.all() if scan.image]
+    transaction.on_commit(lambda: _delete_files(names))
 
     # The refresh tokens issued to this account. OutstandingToken.user is
     # SET_NULL (rest_framework_simplejwt.token_blacklist), so left alone it
@@ -97,3 +98,8 @@ def delete_account(user):
     user.delete()
 
     return counts
+
+
+def _delete_files(names):
+    for name in names:
+        default_storage.delete(name)

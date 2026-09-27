@@ -532,7 +532,8 @@ class AccountDeletionRemovesFilesTests(TestCase):
         path = scan.image.name
         self.assertTrue(default_storage.exists(path))
 
-        delete_account(self.alice)
+        with self.captureOnCommitCallbacks(execute=True):
+            delete_account(self.alice)
 
         self.assertFalse(default_storage.exists(path))
         self.assertFalse(BillScan.objects.filter(pk=scan.pk).exists())
@@ -547,9 +548,29 @@ class AccountDeletionRemovesFilesTests(TestCase):
         path = job.file.name
         self.assertTrue(default_storage.exists(path))
 
-        delete_account(self.alice)
+        with self.captureOnCommitCallbacks(execute=True):
+            delete_account(self.alice)
 
         self.assertFalse(default_storage.exists(path))
+
+    def test_a_deletion_that_fails_keeps_the_files(self):
+        # Files go only once the rows are really gone: a rollback must not
+        # leave a surviving account pointing at files that were removed.
+        scan = BillScan.objects.create(
+            user=self.alice,
+            image=SimpleUploadedFile("bill.jpg", b"fake-bytes", content_type="image/jpeg"),
+        )
+        path = scan.image.name
+
+        with (
+            self.captureOnCommitCallbacks(execute=True),
+            mock.patch.object(User, "delete", side_effect=RuntimeError("database went away")),
+            self.assertRaises(RuntimeError),
+        ):
+            delete_account(self.alice)
+
+        self.assertTrue(default_storage.exists(path))
+        self.assertTrue(BillScan.objects.filter(pk=scan.pk).exists())
 
     def test_a_scan_with_no_image_yet_is_not_a_problem(self):
         # Guards the `if scan.image:` check: a FileField can be blank.
@@ -600,3 +621,25 @@ class AccountDeletionRemovesTokensAndSessionsTests(TestCase):
         # is redirected to log in, not shown anyone's data.
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse("accounts:login"), response.url)
+
+
+class AdminsSettingTests(TestCase):
+    """ADMINS takes "Name:address" pairs or plain addresses."""
+
+    def parsed(self, value):
+        import importlib
+        import os
+
+        import config.settings as project_settings
+
+        with mock.patch.dict(os.environ, {"ADMINS": value}):
+            admins = importlib.reload(project_settings).ADMINS
+        importlib.reload(project_settings)  # put the real values back
+        return admins
+
+    def test_named_and_plain_addresses_both_give_a_recipient(self):
+        admins = self.parsed("Priya:priya@example.com,sam@example.com")
+
+        self.assertEqual(
+            admins, [("Priya", "priya@example.com"), ("sam@example.com", "sam@example.com")]
+        )
