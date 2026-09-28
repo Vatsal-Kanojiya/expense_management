@@ -3121,7 +3121,7 @@ components:
     cookieAuth:
       type: apiKey
       in: cookie
-      name: sessionid
+      name: __Host-sessionid
     jwtAuth:
       type: http
       scheme: bearer

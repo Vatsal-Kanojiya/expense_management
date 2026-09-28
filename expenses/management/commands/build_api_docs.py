@@ -50,7 +50,12 @@ def run_journey():
 
 
 def write_openapi(path):
-    call_command("spectacular", "--validate", "--fail-on-warn", "--file", str(path))
+    # The session cookie's name depends on the environment: __Host-sessionid
+    # where cookies are Secure (production, CI), sessionid on local HTTP. The
+    # schema documents it, so it is pinned to the production name here, or
+    # the committed schema would differ by where it was generated.
+    with override_settings(SESSION_COOKIE_NAME="__Host-sessionid"):
+        call_command("spectacular", "--validate", "--fail-on-warn", "--file", str(path))
 
 
 class Command(BaseCommand):

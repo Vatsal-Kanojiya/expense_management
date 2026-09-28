@@ -195,6 +195,9 @@ class SignupAndVerificationEventTests(TestCase):
 
         self.assertEqual(events("signed_up").count(), 1)
 
+    # The API mails the frontend's /verify-email/ link only when a frontend
+    # is configured; without this the test depended on a local .env.
+    @override_settings(FRONTEND_URL="http://frontend.test")
     def test_api_email_verified_is_recorded(self):
         api(
             "auth/signup/",
