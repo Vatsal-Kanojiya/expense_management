@@ -1,0 +1,26 @@
+{% load static %}
+{% comment %}
+  Sign in with Google (docs/design/GOOGLE_SIGNIN.md). Included only when
+  google_signin_enabled is true (GoogleButtonContextMixin, accounts/views.py).
+
+  Callback mode, not redirect mode: the client id reaches Google's loader
+  through the data-client_id attribute below, never inline script, and the
+  credential it hands back is posted by static/accounts/google-signin.js to
+  our own accounts:google_login view. The page's CSP is widened for
+  Google's hosts only on this include's two pages
+  (config/middleware.py's ContentSecurityPolicyMiddleware).
+{% endcomment %}
+<div style="margin:1rem 0; text-align:center; color:var(--muted)">or</div>
+
+<div id="google-signin-mount" data-post-url="{% url 'accounts:google_login' %}"
+     style="display:flex; justify-content:center">
+  <div id="g_id_onload"
+       data-client_id="{{ google_client_id }}"
+       data-callback="handleGoogleCredential"
+       data-ux_mode="popup"></div>
+  <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline"
+       data-text="continue_with"></div>
+</div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="{% static 'accounts/google-signin.js' %}" defer></script>

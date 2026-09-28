@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import Http404
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -18,6 +19,7 @@ from . import audit, mfa, qrcode, ratelimit, totp
 from .api import revoke_refresh_tokens
 from .deletion import delete_account
 from .forms import SignUpForm
+from .google import GoogleSignInError, google_signin_enabled, sign_in_with_google
 from .models import RecoveryCode, TOTPDevice
 from .models import mfa_enabled as user_has_mfa
 from .verification import send_verification_email, verify
@@ -25,7 +27,22 @@ from .verification import send_verification_email, verify
 logger = logging.getLogger(__name__)
 
 
-class ThrottledLoginView(auth_views.LoginView):
+class GoogleButtonContextMixin:
+    """Adds what the login/sign-up templates need to show Google's button.
+
+    Shared by both pages rather than duplicated: whether the feature is on
+    at all, and the client id the button's ``data-`` attribute carries
+    (docs/design/GOOGLE_SIGNIN.md) -- never inlined into a ``<script>``.
+    """
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["google_signin_enabled"] = google_signin_enabled()
+        context["google_client_id"] = settings.GOOGLE_OAUTH_CLIENT_ID
+        return context
+
+
+class ThrottledLoginView(GoogleButtonContextMixin, auth_views.LoginView):
     """Login, with attempts counted per (address, username) pair.
 
     Closes the login half of known issue 15. See accounts/ratelimit.py for
@@ -142,13 +159,80 @@ class MFALoginView(View):
         return redirect(settings.LOGIN_REDIRECT_URL)
 
 
+class GoogleLoginView(View):
+    """Sign in (or sign up) with a Google ID token, from the callback JS.
+
+    POST only. static/accounts/google-signin.js, loaded on the login and
+    sign-up pages, receives the credential from Google Identity Services in
+    **callback mode** (never redirect mode) and posts it here with the
+    page's own CSRF token -- so this is an ordinary same-origin form post,
+    not a redirect round trip through Google (docs/design/GOOGLE_SIGNIN.md).
+
+    Always answers with a redirect, which is what the JS follows: to the
+    code step for an MFA account, to `next` (validated exactly as
+    ``ThrottledLoginView`` does) on a plain success, or back to the login
+    page with a message on any refusal.
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        if not google_signin_enabled():
+            raise Http404
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        next_url = request.POST.get("next", "") or ""
+        if not url_has_allowed_host_and_scheme(
+            next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+        ):
+            next_url = ""
+
+        if ratelimit.google_login_blocked(request):
+            audit.record("login_blocked", request=request)
+            messages.error(request, "Too many sign-in attempts. Wait a few minutes and try again.")
+            return redirect("accounts:login")
+
+        try:
+            user, _created = sign_in_with_google(
+                request.POST.get("credential", ""), request=request
+            )
+        except GoogleSignInError:
+            ratelimit.record_google_login_failure(request)
+            messages.error(request, "Google sign-in failed. Try again, or use your password.")
+            return redirect("accounts:login")
+
+        if user_has_mfa(user):
+            # Same second step as a password login (docs/design/MFA.md).
+            request.session.cycle_key()
+            request.session["mfa_ticket"] = mfa.make_ticket(user)
+            request.session["mfa_next"] = next_url
+            return redirect("accounts:login_mfa")
+
+        login(request, user)
+        return redirect(next_url or settings.LOGIN_REDIRECT_URL)
+
+
 class ThrottledPasswordChangeView(auth_views.PasswordChangeView):
     """Password change, with wrong current passwords counted per account.
 
     The current password is asked for so that someone holding a signed-in
     session cannot take the account over for good. Unlimited guesses would
     undo that. Security pass 1.
+
+    A Google-only account (docs/design/GOOGLE_SIGNIN.md) has no current
+    password to give -- ``PasswordChangeForm`` would only ever say "wrong
+    password", which is not what is wrong. Sent to password reset instead,
+    which works for them: they are active, with a real, verified email.
     """
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and not request.user.has_usable_password():
+            messages.info(
+                request,
+                "Your account signs in with Google and has no password yet. "
+                "Request a reset link below to set one.",
+            )
+            return redirect("accounts:password_reset")
+        return super().dispatch(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
         if ratelimit.password_change_blocked(request.user):
@@ -227,7 +311,7 @@ class ThrottledPasswordResetConfirmView(auth_views.PasswordResetConfirmView):
         return response
 
 
-class SignUpView(CreateView):
+class SignUpView(GoogleButtonContextMixin, CreateView):
     """Register a new account and sign the user straight in.
 
     Signup is the one auth view Django does not ship. It provides the form

@@ -21,6 +21,9 @@ urlpatterns = [
         name="login",
     ),
     path("login/mfa/", views.MFALoginView.as_view(), name="login_mfa"),
+    # Sign in with Google (docs/design/GOOGLE_SIGNIN.md): posted to by
+    # static/accounts/google-signin.js on the login and sign-up pages.
+    path("google/", views.GoogleLoginView.as_view(), name="google_login"),
     # LogoutView is POST-only since Django 5.0. A GET logout could be fired
     # by a prefetch, a link scanner or an <img> tag, so the nav uses a form.
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
