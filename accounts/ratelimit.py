@@ -56,6 +56,14 @@ SIGNUP_WINDOW = 60 * 60
 PASSWORD_CHANGE_LIMIT = 5
 PASSWORD_CHANGE_WINDOW = 15 * 60
 
+# Wrong two-step codes per account, during the login ticket step
+# (docs/design/MFA.md). Keyed on the account alone, like the password-change
+# limit above and for the same reason: whoever holds a ticket already knows
+# the password, so an account-only key cannot be used by a stranger to lock
+# the real owner out.
+MFA_LIMIT = 5
+MFA_WINDOW = 15 * 60
+
 # Bill scans and CSV exports per account (security pass 2). Both occupy a
 # background worker for the length of the job, and a scan calls a paid
 # vision API when BILL_SCAN_PROVIDER is a real one -- unlike the limits
@@ -243,3 +251,23 @@ def record_password_change_failure(user):
 
 def clear_password_change(user):
     cache.delete(_user_key("password-change", user.pk))
+
+
+# --- Wrong two-step codes, per account (docs/design/MFA.md) --------------
+#
+# Keyed on the account alone, for the same reason as the password-change
+# guard above: whoever is attempting a code already holds a valid ticket,
+# which means they already knew the password, so an address-based key would
+# add nothing but a way for a stranger to lock the real owner out.
+
+
+def mfa_blocked(user):
+    return (cache.get(_user_key("mfa", user.pk)) or 0) >= MFA_LIMIT
+
+
+def record_mfa_failure(user):
+    _increment(_user_key("mfa", user.pk), MFA_WINDOW)
+
+
+def clear_mfa(user):
+    cache.delete(_user_key("mfa", user.pk))
