@@ -1,25 +1,48 @@
 import logging
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import Http404
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
+from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.generic import CreateView, TemplateView
 
 from expenses.models import Category, Expense, Participant
 
-from . import ratelimit
+from . import audit, mfa, qrcode, ratelimit, totp
+from .api import revoke_refresh_tokens
 from .deletion import delete_account
-from .forms import SignUpForm
+from .forms import AnyActiveAccountPasswordResetForm, SignUpForm
+from .google import GoogleSignInError, google_signin_enabled, sign_in_with_google
+from .models import RecoveryCode, TOTPDevice
+from .models import mfa_enabled as user_has_mfa
 from .verification import send_verification_email, verify
 
 logger = logging.getLogger(__name__)
 
 
-class ThrottledLoginView(auth_views.LoginView):
+class GoogleButtonContextMixin:
+    """Adds what the login/sign-up templates need to show Google's button.
+
+    Shared by both pages rather than duplicated: whether the feature is on
+    at all, and the client id the button's ``data-`` attribute carries
+    (docs/design/GOOGLE_SIGNIN.md) -- never inlined into a ``<script>``.
+    """
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["google_signin_enabled"] = google_signin_enabled()
+        context["google_client_id"] = settings.GOOGLE_OAUTH_CLIENT_ID
+        return context
+
+
+class ThrottledLoginView(GoogleButtonContextMixin, auth_views.LoginView):
     """Login, with attempts counted per (address, username) pair.
 
     Closes the login half of known issue 15. See accounts/ratelimit.py for
@@ -30,7 +53,7 @@ class ThrottledLoginView(auth_views.LoginView):
 
     def form_invalid(self, form):
         username = self.request.POST.get("username", "")
-        ratelimit.record_attempt("login", self.request, username, ratelimit.LOGIN_WINDOW)
+        ratelimit.record_login_failure(self.request, username)
         # Logged to django.security so it lands wherever real security
         # events go, rather than inventing a channel nobody watches.
         logging.getLogger("django.security").warning(
@@ -41,15 +64,28 @@ class ThrottledLoginView(auth_views.LoginView):
     def form_valid(self, form):
         # Clear on success, or ten legitimate logins in a window would lock
         # out exactly the wrong person.
-        ratelimit.clear("login", self.request, self.request.POST.get("username", ""))
+        ratelimit.clear_login(self.request, self.request.POST.get("username", ""))
+
+        user = form.get_user()
+        if user_has_mfa(user):
+            # No django.contrib.auth.login() here -- the password is right,
+            # but the second step is not done yet, so no session for this
+            # user may exist (docs/design/MFA.md). cycle_key() rotates the
+            # session id the same way login() would, without attaching a
+            # user to it, which is what stops a fixation attack on this
+            # still-anonymous session.
+            self.request.session.cycle_key()
+            self.request.session["mfa_ticket"] = mfa.make_ticket(user)
+            self.request.session["mfa_next"] = self.get_redirect_url()
+            return redirect("accounts:login_mfa")
+
         return super().form_valid(form)
 
     def post(self, request, *args, **kwargs):
         username = request.POST.get("username", "")
 
-        if ratelimit.is_limited(
-            "login", request, username, ratelimit.LOGIN_LIMIT, ratelimit.LOGIN_WINDOW
-        ):
+        if ratelimit.login_blocked(request, username):
+            audit.record("login_blocked", request=request, username=username)
             form = self.get_form()
             form.full_clean()
             form.add_error(
@@ -64,6 +100,167 @@ class ThrottledLoginView(auth_views.LoginView):
         return super().post(request, *args, **kwargs)
 
 
+class MFALoginView(View):
+    """The code step after a right password, for an account with MFA on.
+
+    Reached only by ``ThrottledLoginView.form_valid`` stashing a ticket in
+    the session -- there is no session user yet, so
+    ``LoginRequiredMixin`` would be the wrong guard here; the ticket itself
+    is what proves the password was already checked.
+    """
+
+    template_name = "registration/login_mfa.html"
+
+    def get(self, request, *args, **kwargs):
+        if "mfa_ticket" not in request.session:
+            return redirect("accounts:login")
+        return render(request, self.template_name, {})
+
+    def post(self, request, *args, **kwargs):
+        ticket = request.session.get("mfa_ticket")
+        if ticket is None:
+            return redirect("accounts:login")
+
+        user = mfa.user_for_ticket(ticket, get_user_model())
+        if user is None:
+            request.session.pop("mfa_ticket", None)
+            request.session.pop("mfa_next", None)
+            messages.error(request, "That sign-in has expired. Log in again.")
+            return redirect("accounts:login")
+
+        code = request.POST.get("code", "")
+        result = mfa.verify_code(user, code, request=request)
+        if result is None:
+            return render(
+                request,
+                self.template_name,
+                {"error": "Too many attempts. Wait a few minutes and try again."},
+                status=429,
+            )
+        if not result:
+            return render(request, self.template_name, {"error": "That code is wrong."}, status=400)
+
+        next_url = request.session.pop("mfa_next", "") or ""
+        request.session.pop("mfa_ticket", None)
+
+        # login() below fires user_logged_in, which records login_succeeded
+        # (accounts/signals.py); recording it here as well counted it twice.
+        # login() rotates the session key again, which is fine -- there is
+        # no fixation risk in rotating an already-anonymous session key
+        # once more on the way to attaching a user to it.
+        login(request, user)
+
+        if next_url and url_has_allowed_host_and_scheme(
+            next_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            return redirect(next_url)
+        return redirect(settings.LOGIN_REDIRECT_URL)
+
+
+class GoogleLoginView(View):
+    """Sign in (or sign up) with a Google ID token, from the callback JS.
+
+    POST only. static/accounts/google-signin.js, loaded on the login and
+    sign-up pages, receives the credential from Google Identity Services in
+    **callback mode** (never redirect mode) and posts it here with the
+    page's own CSRF token -- so this is an ordinary same-origin form post,
+    not a redirect round trip through Google (docs/design/GOOGLE_SIGNIN.md).
+
+    Always answers with a redirect, which is what the JS follows: to the
+    code step for an MFA account, to `next` (validated exactly as
+    ``ThrottledLoginView`` does) on a plain success, or back to the login
+    page with a message on any refusal.
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        if not google_signin_enabled():
+            raise Http404
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        next_url = request.POST.get("next", "") or ""
+        if not url_has_allowed_host_and_scheme(
+            next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+        ):
+            next_url = ""
+
+        if ratelimit.google_login_blocked(request):
+            audit.record("login_blocked", request=request)
+            messages.error(request, "Too many sign-in attempts. Wait a few minutes and try again.")
+            return redirect("accounts:login")
+
+        try:
+            user, _created = sign_in_with_google(
+                request.POST.get("credential", ""), request=request
+            )
+        except GoogleSignInError:
+            ratelimit.record_google_login_failure(request)
+            messages.error(request, "Google sign-in failed. Try again, or use your password.")
+            return redirect("accounts:login")
+
+        if user_has_mfa(user):
+            # Same second step as a password login (docs/design/MFA.md).
+            request.session.cycle_key()
+            request.session["mfa_ticket"] = mfa.make_ticket(user)
+            request.session["mfa_next"] = next_url
+            return redirect("accounts:login_mfa")
+
+        login(request, user)
+        return redirect(next_url or settings.LOGIN_REDIRECT_URL)
+
+
+class ThrottledPasswordChangeView(auth_views.PasswordChangeView):
+    """Password change, with wrong current passwords counted per account.
+
+    The current password is asked for so that someone holding a signed-in
+    session cannot take the account over for good. Unlimited guesses would
+    undo that. Security pass 1.
+
+    A Google-only account (docs/design/GOOGLE_SIGNIN.md) has no current
+    password to give -- ``PasswordChangeForm`` would only ever say "wrong
+    password", which is not what is wrong. Sent to password reset instead,
+    which works for them: they are active, with a real, verified email.
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and not request.user.has_usable_password():
+            messages.info(
+                request,
+                "Your account signs in with Google and has no password yet. "
+                "Request a reset link below to set one.",
+            )
+            return redirect("accounts:password_reset")
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        if ratelimit.password_change_blocked(request.user):
+            form = self.get_form()
+            form.full_clean()
+            form.add_error(None, "Too many attempts. Wait a few minutes and try again.")
+            return self.render_to_response(self.get_context_data(form=form), status=429)
+        return super().post(request, *args, **kwargs)
+
+    def form_invalid(self, form):
+        if "old_password" in form.errors:
+            ratelimit.record_password_change_failure(self.request.user)
+        return super().form_invalid(form)
+
+    def form_valid(self, form):
+        ratelimit.clear_password_change(self.request.user)
+        response = super().form_valid(form)
+        # update_session_auth_hash (called above, inside super().form_valid)
+        # only keeps *this* session signed in; it says nothing about a
+        # refresh token some other device is holding. Revoke those too, or
+        # a stolen refresh token outlives the password that was supposed to
+        # shut it out -- the same gap PasswordChangeView in accounts/api.py
+        # already closes for a change made through the API. Security pass 4.
+        revoke_refresh_tokens(form.user, request=self.request)
+        audit.record("password_changed", request=self.request, user=form.user)
+        return response
+
+
 class ThrottledPasswordResetView(auth_views.PasswordResetView):
     """Password reset, throttled harder than login.
 
@@ -71,6 +268,8 @@ class ThrottledPasswordResetView(auth_views.PasswordResetView):
     mail to an address the requester may not own, so the limit is about
     protecting third parties, not just this application.
     """
+
+    form_class = AnyActiveAccountPasswordResetForm
 
     def post(self, request, *args, **kwargs):
         email = request.POST.get("email", "")
@@ -86,10 +285,35 @@ class ThrottledPasswordResetView(auth_views.PasswordResetView):
 
         ratelimit.record_attempt("reset", request, email, ratelimit.RESET_WINDOW)
 
+        # Recorded whether or not the address matches an account -- like
+        # the response itself, which never says either way.
+        user = get_user_model().objects.filter(email__iexact=email).first()
+        audit.record("password_reset_requested", request=request, user=user, email=email)
+
         return super().post(request, *args, **kwargs)
 
 
-class SignUpView(CreateView):
+class ThrottledPasswordResetConfirmView(auth_views.PasswordResetConfirmView):
+    """Set a new password from a mailed reset link, and end other sign-ins.
+
+    Everything else -- validating the link, the new-password form -- is
+    exactly ``PasswordResetConfirmView``; the only addition is closing the
+    same gap as ``ThrottledPasswordChangeView.form_valid`` above: a refresh
+    token issued before the reset must not outlive it, on the web page and
+    not only through the API (``accounts/api.py``'s
+    ``PasswordResetConfirmView`` already does this for that path). Not
+    itself throttled -- the link is single-use and the mailed request that
+    produced it already went through ``ThrottledPasswordResetView``.
+    """
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        revoke_refresh_tokens(self.user, request=self.request)
+        audit.record("password_reset_completed", request=self.request, user=self.user)
+        return response
+
+
+class SignUpView(GoogleButtonContextMixin, CreateView):
     """Register a new account and sign the user straight in.
 
     Signup is the one auth view Django does not ship. It provides the form
@@ -109,6 +333,21 @@ class SignUpView(CreateView):
             return redirect("expenses:expense_list")
         return super().dispatch(request, *args, **kwargs)
 
+    def post(self, request, *args, **kwargs):
+        # Every attempt counts, not only successful ones: each success mails
+        # an address the caller chose, and each failure can say whether a
+        # username or email is taken. Security pass 1.
+        if ratelimit.is_limited(
+            "signup", request, "", ratelimit.SIGNUP_LIMIT, ratelimit.SIGNUP_WINDOW
+        ):
+            self.object = None
+            form = self.get_form()
+            form.full_clean()
+            form.add_error(None, "Too many sign-up attempts. Try again later.")
+            return self.render_to_response(self.get_context_data(form=form), status=429)
+        ratelimit.record_attempt("signup", request, "", ratelimit.SIGNUP_WINDOW)
+        return super().post(request, *args, **kwargs)
+
     def form_valid(self, form):
         """Create the account inactive and mail a confirmation link.
 
@@ -127,6 +366,7 @@ class SignUpView(CreateView):
 
         Participant.get_or_create_self(self.object)
         send_verification_email(self.object, self.request)
+        audit.record("signed_up", request=self.request, user=self.object)
 
         return response
 
@@ -157,7 +397,10 @@ class VerifyEmailView(View):
 
         if not user.is_active:
             user.is_active = True
-            user.save(update_fields=["is_active"])
+            user.email_verified_at = timezone.now()
+            user.save(update_fields=["is_active", "email_verified_at"])
+
+        audit.record("email_verified", request=request, user=user)
 
         # login() rotates the session key, which is what prevents session
         # fixation. Passing the backend explicitly is unnecessary here
@@ -200,9 +443,162 @@ class DeleteAccountView(LoginRequiredMixin, View):
         # Log out before deleting. Afterwards the session points at a row
         # that no longer exists, and the next request would fail loading it.
         logout(request)
-        counts = delete_account(user)
+        counts = delete_account(user, request=request)
 
         logger.info("Account %s deleted: %s", username, counts)
         messages.success(request, "Your account and all its data have been deleted.")
 
         return redirect("accounts:login")
+
+
+class MFAView(LoginRequiredMixin, View):
+    """The account page's "Two-step sign-in" section: status, disable, and
+    fresh recovery codes for an account that already has it on.
+    """
+
+    template_name = "registration/mfa.html"
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, self._context(request))
+
+    def _context(self, request, **extra):
+        return {
+            "mfa_enabled": user_has_mfa(request.user),
+            "recovery_codes_left": RecoveryCode.objects.filter(
+                user=request.user, used_at__isnull=True
+            ).count(),
+            **extra,
+        }
+
+
+class MFASetupView(LoginRequiredMixin, View):
+    """Start enrolment and confirm the first code.
+
+    GET starts (or resumes) enrolment: an unconfirmed device always exists
+    by the time the page renders, its secret shown as a QR code and as
+    text. POSTing a correct code confirms it, generates recovery codes, and
+    hands them to :class:`MFARecoveryCodesView` through the session -- the
+    one moment they exist outside whatever the user writes down.
+    """
+
+    template_name = "registration/mfa_setup.html"
+
+    def get(self, request, *args, **kwargs):
+        if user_has_mfa(request.user):
+            return redirect("accounts:mfa")
+
+        device, _ = TOTPDevice.objects.get_or_create(
+            user=request.user,
+            defaults={"secret": totp.generate_secret()},
+        )
+        return render(request, self.template_name, self._context(device))
+
+    def _context(self, device, **extra):
+        uri = totp.otpauth_uri(device.secret, self.request.user.get_username())
+        return {
+            "secret": device.secret,
+            "otpauth_uri": uri,
+            "qr_data_uri": qrcode.otpauth_data_uri(uri),
+            **extra,
+        }
+
+    def post(self, request, *args, **kwargs):
+        if user_has_mfa(request.user):
+            return redirect("accounts:mfa")
+
+        device = TOTPDevice.objects.filter(user=request.user, confirmed=False).first()
+        if device is None:
+            messages.error(request, "Start setup again.")
+            return redirect("accounts:mfa_setup")
+
+        code = request.POST.get("code", "")
+        if not device.verify(code):
+            return render(
+                request,
+                self.template_name,
+                self._context(device, error="That code is wrong."),
+                status=400,
+            )
+
+        device.confirmed = True
+        device.confirmed_at = timezone.now()
+        device.save(update_fields=["confirmed", "confirmed_at"])
+        codes = RecoveryCode.generate_set(request.user)
+
+        # A confirmed device is now this account's second factor, so a
+        # refresh token issued before it existed should not outlive it --
+        # the session itself is left alone, as for a web password change.
+        revoke_refresh_tokens(request.user, request=request)
+        audit.record("mfa_enabled", request=request, user=request.user)
+
+        request.session["mfa_recovery_codes"] = codes
+        return redirect("accounts:mfa_recovery_codes")
+
+
+class MFARecoveryCodesView(LoginRequiredMixin, View):
+    """The ten fresh recovery codes, shown exactly once, straight from the
+    session ``MFASetupView`` or ``MFARegenerateView`` just put them in.
+    """
+
+    template_name = "registration/mfa_recovery_codes.html"
+
+    def get(self, request, *args, **kwargs):
+        codes = request.session.pop("mfa_recovery_codes", None)
+        if not codes:
+            return redirect("accounts:mfa")
+        return render(request, self.template_name, {"recovery_codes": codes})
+
+
+REFUSALS = {
+    "blocked": "Too many attempts. Wait a few minutes and try again.",
+    "password": "Wrong password.",
+    "code": "That code is wrong.",
+}
+
+
+class MFADisableView(LoginRequiredMixin, View):
+    """Turn two-step sign-in off. Needs the password and a current code."""
+
+    def post(self, request, *args, **kwargs):
+        if not user_has_mfa(request.user):
+            return redirect("accounts:mfa")
+
+        password = request.POST.get("password", "")
+        code = request.POST.get("code", "")
+
+        refused = mfa.check_for_change(request.user, code, request=request, password=password)
+        if refused:
+            messages.error(request, REFUSALS[refused])
+            return redirect("accounts:mfa")
+
+        TOTPDevice.objects.filter(user=request.user).delete()
+        RecoveryCode.objects.filter(user=request.user).delete()
+        revoke_refresh_tokens(request.user, request=request)
+        audit.record("mfa_disabled", request=request, user=request.user)
+
+        messages.success(request, "Two-step sign-in is off.")
+        return redirect("accounts:mfa")
+
+
+class MFARegenerateView(LoginRequiredMixin, View):
+    """A fresh set of ten recovery codes. Needs a current authenticator
+    code -- not a recovery code, so spending the last one cannot itself be
+    used to mint ten more.
+    """
+
+    def post(self, request, *args, **kwargs):
+        device = TOTPDevice.objects.filter(user=request.user, confirmed=True).first()
+        if device is None:
+            return redirect("accounts:mfa")
+
+        code = request.POST.get("code", "")
+        refused = mfa.check_for_change(request.user, code, request=request, recovery_allowed=False)
+        if refused:
+            messages.error(request, REFUSALS[refused])
+            return redirect("accounts:mfa")
+
+        codes = RecoveryCode.generate_set(request.user)
+        audit.record("recovery_codes_regenerated", request=request, user=request.user)
+
+        request.session["mfa_recovery_codes"] = codes
+        return redirect("accounts:mfa_recovery_codes")

@@ -75,7 +75,9 @@ class DeploySettingsTests(SimpleTestCase):
         )
 
     def test_production_config_passes_the_deploy_check(self):
-        result = self._check_deploy("False")
+        # A shared cache, as compose.yaml sets: the check only reads the
+        # backend's name, so nothing needs to be listening on that address.
+        result = self._check_deploy("False", CACHE_URL="rediscache://127.0.0.1:6379/2")
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
@@ -97,11 +99,61 @@ class DeploySettingsTests(SimpleTestCase):
         self.assertIn("security.W012", result.stdout + result.stderr)
         self.assertIn("security.W016", result.stdout + result.stderr)
 
+    def _cookie_names(self, debug, **overrides):
+        # Same fresh-process reasoning as _check_deploy: SESSION_COOKIE_NAME
+        # and CSRF_COOKIE_NAME are set inside the same DEBUG-gated block at
+        # import time, so override_settings cannot see what they would be.
+        env = {**os.environ, "DEBUG": debug, "ALLOWED_HOSTS": "example.com"}
+        for relaxed in ("SECURE_SSL_REDIRECT", "SESSION_COOKIE_SECURE", "CSRF_COOKIE_SECURE"):
+            env.pop(relaxed, None)
+        env.update(overrides)
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import django; django.setup(); "
+                "from django.conf import settings; "
+                "print(settings.SESSION_COOKIE_NAME); "
+                "print(settings.CSRF_COOKIE_NAME)",
+            ],
+            cwd=BASE_DIR,
+            env={**env, "DJANGO_SETTINGS_MODULE": "config.settings"},
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        session_name, csrf_name = result.stdout.strip().splitlines()
+        return session_name, csrf_name
+
+    def test_production_config_uses_host_prefixed_cookie_names(self):
+        # ASVS V3.3.1: a Secure cookie must carry the __Host- (or
+        # __Secure-) prefix, so a browser drops it outright if Secure is
+        # ever accidentally lost.
+        session_name, csrf_name = self._cookie_names(
+            "False", CACHE_URL="rediscache://127.0.0.1:6379/2"
+        )
+
+        self.assertEqual(session_name, "__Host-sessionid")
+        self.assertEqual(csrf_name, "__Host-csrftoken")
+
+    def test_relaxed_cookies_keep_the_plain_cookie_names(self):
+        # The local compose stack runs DEBUG=False but SESSION_COOKIE_SECURE
+        # and CSRF_COOKIE_SECURE off (DECISIONS D35), because it serves
+        # plain HTTP. A __Host-/__Secure- name there would make the browser
+        # refuse the cookie entirely and silently break login.
+        session_name, csrf_name = self._cookie_names(
+            "False", SESSION_COOKIE_SECURE="False", CSRF_COOKIE_SECURE="False"
+        )
+
+        self.assertEqual(session_name, "sessionid")
+        self.assertEqual(csrf_name, "csrftoken")
+
 
 class StaticFilesTests(SimpleTestCase):
     """WhiteNoise, and the middleware order that makes it worth having."""
 
-    def test_whitenoise_sits_directly_after_security_middleware(self):
+    def test_whitenoise_sits_directly_after_the_security_header_middleware(self):
         from django.conf import settings
 
         middleware = settings.MIDDLEWARE
@@ -109,7 +161,17 @@ class StaticFilesTests(SimpleTestCase):
 
         # Placed later it would still serve files, having first paid for
         # session lookup, authentication and CSRF on every asset request.
-        self.assertEqual(middleware[index - 1], "django.middleware.security.SecurityMiddleware")
+        # SecurityMiddleware and ContentSecurityPolicyMiddleware (security
+        # pass 4) only ever set response headers -- neither touches the
+        # session, auth or CSRF -- so both can sit ahead of WhiteNoise
+        # without a static file paying for any of that.
+        self.assertEqual(
+            middleware[index - 2 : index],
+            [
+                "django.middleware.security.SecurityMiddleware",
+                "config.middleware.ContentSecurityPolicyMiddleware",
+            ],
+        )
 
     def test_static_root_is_configured(self):
         from django.conf import settings

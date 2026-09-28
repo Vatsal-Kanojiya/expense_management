@@ -39,25 +39,66 @@ LOGIN_WINDOW = 15 * 60
 RESET_LIMIT = 5
 RESET_WINDOW = 60 * 60
 
+# Failed logins from one address across *all* usernames. The per-username
+# key above never counts one guess against each of many accounts; this cap
+# does. High enough for an office behind one NAT, low enough to matter.
+LOGIN_IP_LIMIT = 50
+LOGIN_IP_WINDOW = 15 * 60
+
+# Sign-ups from one address. Each one sends an email to an address the
+# caller chose, so this protects third parties as much as the database.
+SIGNUP_LIMIT = 10
+SIGNUP_WINDOW = 60 * 60
+
+# Wrong current passwords per account. Changing a password needs the old
+# one precisely so that a stolen session cannot lock the owner out; that
+# only holds if the old one cannot be guessed at leisure.
+PASSWORD_CHANGE_LIMIT = 5
+PASSWORD_CHANGE_WINDOW = 15 * 60
+
+# Wrong two-step codes per account, during the login ticket step
+# (docs/design/MFA.md). Keyed on the account alone, like the password-change
+# limit above and for the same reason: whoever holds a ticket already knows
+# the password, so an account-only key cannot be used by a stranger to lock
+# the real owner out.
+MFA_LIMIT = 5
+MFA_WINDOW = 15 * 60
+
+# Bill scans and CSV exports per account (security pass 2). Both occupy a
+# background worker for the length of the job, and a scan calls a paid
+# vision API when BILL_SCAN_PROVIDER is a real one -- unlike the limits
+# above, this is not only about abuse, it is about one account not being
+# able to run the worker pool, or the bill, unbounded. Generous: a person
+# reviewing a stack of receipts or re-running a few exports in an hour
+# should never feel this.
+SCAN_LIMIT = 30
+SCAN_WINDOW = 60 * 60
+
+EXPORT_LIMIT = 20
+EXPORT_WINDOW = 60 * 60
+
 
 def client_ip(request):
-    """The caller's address, trusting X-Forwarded-For only when configured.
+    """The caller's address, as far as the deployment can vouch for it.
 
-    Behind a proxy, REMOTE_ADDR is the proxy. In front of one,
-    X-Forwarded-For is whatever the client typed. Reading the header
-    unconditionally is how a rate limiter becomes decorative: the attacker
-    sends a different value each request.
+    With no proxy in front (TRUSTED_PROXY_COUNT = 0), REMOTE_ADDR is the
+    client, and X-Forwarded-For is ignored: it is whatever the client typed.
 
-    So the header is read only when SECURE_PROXY_SSL_HEADER is configured,
-    which is this project's existing signal that a trusted proxy is in
-    front. The left-most entry is the original client; the proxy appends.
+    Behind N trusted proxies, each appends the address it received the
+    request from, so the entry N places from the right is the one the
+    outermost trusted proxy saw. Everything to its left arrived with the
+    request and is the client's to invent. Reading the left-most entry --
+    as this function did until security pass 1 -- let any caller pick the
+    key its attempts were counted under.
     """
     from django.conf import settings
 
-    if getattr(settings, "SECURE_PROXY_SSL_HEADER", None):
-        forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
+    proxies = getattr(settings, "TRUSTED_PROXY_COUNT", 0)
+    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    if proxies > 0 and forwarded:
+        hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
+        if hops:
+            return hops[-min(proxies, len(hops))]
 
     return request.META.get("REMOTE_ADDR", "unknown")
 
@@ -78,8 +119,8 @@ def is_limited(scope, request, identifier, limit, window):
     return (cache.get(_key(scope, request, identifier)) or 0) >= limit
 
 
-def record_attempt(scope, request, identifier, window):
-    """Count one attempt against this caller.
+def _increment(key, window):
+    """Count one attempt against whatever `key` names, and return the total.
 
     The window is fixed, not sliding: the counter expires as a whole rather
     than ageing entry by entry. A determined caller can therefore get up to
@@ -91,7 +132,6 @@ def record_attempt(scope, request, identifier, window):
     would reset the expiry on every attempt -- which would make the window
     restart forever and the limit unreachable.
     """
-    key = _key(scope, request, identifier)
     cache.add(key, 0, window)
 
     try:
@@ -103,6 +143,11 @@ def record_attempt(scope, request, identifier, window):
         return 1
 
 
+def record_attempt(scope, request, identifier, window):
+    """Count one attempt against this caller (see _increment)."""
+    return _increment(_key(scope, request, identifier), window)
+
+
 def clear(scope, request, identifier):
     """Forget a caller's attempts, on success.
 
@@ -110,3 +155,137 @@ def clear(scope, request, identifier):
     which punishes exactly the wrong person.
     """
     cache.delete(_key(scope, request, identifier))
+
+
+# --- The login guard, shared by every login door -------------------------
+#
+# The web page, the API and the admin site each take a password. One guard
+# for all three means attempts through any of them count against the same
+# budgets, and a door added later cannot forget half the rules.
+
+
+def login_blocked(request, username):
+    """Whether this attempt must be refused before the password is checked."""
+    return is_limited("login", request, username, LOGIN_LIMIT, LOGIN_WINDOW) or is_limited(
+        "login-ip", request, "", LOGIN_IP_LIMIT, LOGIN_IP_WINDOW
+    )
+
+
+def record_login_failure(request, username):
+    record_attempt("login", request, username, LOGIN_WINDOW)
+    record_attempt("login-ip", request, "", LOGIN_IP_WINDOW)
+
+
+def clear_login(request, username):
+    """Forget this username's failures. The per-address count stays."""
+    clear("login", request, username)
+
+
+# --- Sign in with Google (docs/design/GOOGLE_SIGNIN.md) ------------------
+#
+# There is no username to key on before the token is verified -- Google's
+# credential names the account, not a form field -- so this shares the
+# per-address cap above (the same "login-ip" counter, not merely the same
+# numbers) rather than inventing a separate one. An attacker alternating
+# between a stolen password and a forged/guessed Google flow from one
+# address buys nothing by switching.
+
+
+def google_login_blocked(request):
+    return is_limited("login-ip", request, "", LOGIN_IP_LIMIT, LOGIN_IP_WINDOW)
+
+
+def record_google_login_failure(request):
+    record_attempt("login-ip", request, "", LOGIN_IP_WINDOW)
+
+
+# --- Per-user job limits, shared by the web pages and the API ------------
+#
+# Keyed on the account, not the address: the login guards above are about
+# who is knocking, but a scan or an export is something a *signed-in*
+# account does to the worker pool (and, for a scan, to a paid API) no
+# matter which network it does it from. Keying this by IP the way the
+# login guards are would let the same account reset its budget by moving
+# to another address, or would lock an office's shared address on one
+# person's behalf -- both wrong for a per-account cost.
+
+
+def _user_key(scope, user_id):
+    return f"ratelimit:{scope}:user:{user_id}"
+
+
+def take_user_budget(scope, user_id, limit, window):
+    """Spend one unit of this account's budget for `scope`; False if none is left.
+
+    Counts first and decides from the new total, in one cache operation,
+    rather than reading the count and adding to it later: two requests
+    sent at the same moment would otherwise both read the same old count
+    and both be let through, however many were sent.
+    """
+    return _increment(_user_key(scope, user_id), window) <= limit
+
+
+def refund_user_budget(scope, user_id):
+    """Give back a unit spent on a request that then made no job."""
+    try:
+        cache.decr(_user_key(scope, user_id))
+    except ValueError:
+        # Expired in between: nothing to give back.
+        pass
+
+
+def take_scan(user):
+    return take_user_budget("scan", user.pk, SCAN_LIMIT, SCAN_WINDOW)
+
+
+def refund_scan(user):
+    refund_user_budget("scan", user.pk)
+
+
+def take_export(user):
+    return take_user_budget("export", user.pk, EXPORT_LIMIT, EXPORT_WINDOW)
+
+
+def refund_export(user):
+    refund_user_budget("export", user.pk)
+
+
+# --- Wrong current passwords, per account --------------------------------
+#
+# Keyed on the account alone, like the job limits above. Only a signed-in
+# session can reach a password change, so the address adds nothing but a
+# way out: a session held elsewhere could reset its count by changing
+# network. And since only that session can spend this budget, dropping the
+# address cannot let a stranger lock the owner out.
+
+
+def password_change_blocked(user):
+    return (cache.get(_user_key("password-change", user.pk)) or 0) >= PASSWORD_CHANGE_LIMIT
+
+
+def record_password_change_failure(user):
+    _increment(_user_key("password-change", user.pk), PASSWORD_CHANGE_WINDOW)
+
+
+def clear_password_change(user):
+    cache.delete(_user_key("password-change", user.pk))
+
+
+# --- Wrong two-step codes, per account (docs/design/MFA.md) --------------
+#
+# Keyed on the account alone, for the same reason as the password-change
+# guard above: whoever is attempting a code already holds a valid ticket,
+# which means they already knew the password, so an address-based key would
+# add nothing but a way for a stranger to lock the real owner out.
+
+
+def mfa_blocked(user):
+    return (cache.get(_user_key("mfa", user.pk)) or 0) >= MFA_LIMIT
+
+
+def record_mfa_failure(user):
+    _increment(_user_key("mfa", user.pk), MFA_WINDOW)
+
+
+def clear_mfa(user):
+    cache.delete(_user_key("mfa", user.pk))

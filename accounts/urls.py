@@ -20,11 +20,29 @@ urlpatterns = [
         views.ThrottledLoginView.as_view(),
         name="login",
     ),
+    path("login/mfa/", views.MFALoginView.as_view(), name="login_mfa"),
+    # Sign in with Google (docs/design/GOOGLE_SIGNIN.md): posted to by
+    # static/accounts/google-signin.js on the login and sign-up pages.
+    path("google/", views.GoogleLoginView.as_view(), name="google_login"),
     # LogoutView is POST-only since Django 5.0. A GET logout could be fired
     # by a prefetch, a link scanner or an <img> tag, so the nav uses a form.
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("signup/", views.SignUpView.as_view(), name="signup"),
     path("delete/", views.DeleteAccountView.as_view(), name="delete_account"),
+    # Two-step sign-in (docs/design/MFA.md): the account page's own section.
+    path("mfa/", views.MFAView.as_view(), name="mfa"),
+    path("mfa/setup/", views.MFASetupView.as_view(), name="mfa_setup"),
+    path(
+        "mfa/recovery-codes/",
+        views.MFARecoveryCodesView.as_view(),
+        name="mfa_recovery_codes",
+    ),
+    path("mfa/disable/", views.MFADisableView.as_view(), name="mfa_disable"),
+    path(
+        "mfa/recovery-codes/regenerate/",
+        views.MFARegenerateView.as_view(),
+        name="mfa_regenerate",
+    ),
     path(
         "signup/check-email/",
         views.VerifyEmailSentView.as_view(),
@@ -38,7 +56,7 @@ urlpatterns = [
     # Changing a known password (user is logged in).
     path(
         "password/change/",
-        auth_views.PasswordChangeView.as_view(
+        views.ThrottledPasswordChangeView.as_view(
             success_url=reverse_lazy("accounts:password_change_done")
         ),
         name="password_change",
@@ -70,7 +88,7 @@ urlpatterns = [
     # it self-invalidates once the password changes.
     path(
         "password/reset/<uidb64>/<token>/",
-        auth_views.PasswordResetConfirmView.as_view(
+        views.ThrottledPasswordResetConfirmView.as_view(
             success_url=reverse_lazy("accounts:password_reset_complete")
         ),
         name="password_reset_confirm",

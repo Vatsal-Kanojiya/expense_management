@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Create an account · Expense Tracker{% endblock %}
 
 {% block content %}
@@ -10,6 +11,10 @@
       {{ form.as_p }}
       <button class="btn btn-primary" type="submit">Sign up</button>
     </form>
+
+    {% if google_signin_enabled %}
+      {% include "registration/_google_signin.html" %}
+    {% endif %}
 
     <p class="helptext" style="margin-top:1rem">
       Already have an account? <a href="{% url 'accounts:login' %}">Log in</a>.

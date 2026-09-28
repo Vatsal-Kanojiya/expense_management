@@ -15,6 +15,10 @@ from pathlib import Path
 
 import environ
 
+# The 5 MB bill-photo rule, read here rather than restated -- see the
+# upload-size settings below, in the "Upload size" section.
+from expenses.extraction import MAX_UPLOAD_SIZE
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -39,6 +43,20 @@ SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
+
+# How many reverse proxies (nginx, a load balancer) stand in front of the
+# app. Each one appends the address it received the request from to
+# X-Forwarded-For, so the trustworthy client address is that many entries
+# from the *right*; anything further left was written by the client and can
+# be anything. 0 means no proxy: REMOTE_ADDR is the client. Every rate limit
+# (DRF's throttles and accounts/ratelimit.py) reads the address this way.
+# Defaults to 1 when USE_X_FORWARDED_PROTO says a proxy terminates TLS.
+# Where the admin site lives, with a trailing slash. See config/urls.py.
+ADMIN_URL = env("ADMIN_URL", default="admin/").strip("/") + "/"
+
+TRUSTED_PROXY_COUNT = env.int(
+    "TRUSTED_PROXY_COUNT", default=1 if env.bool("USE_X_FORWARDED_PROTO", default=False) else 0
+)
 
 
 # Application definition
@@ -87,6 +105,18 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=False)
 
+# Who a production exception is mailed to (LOGGING's mail_admins handler,
+# below). "Name:address" pairs, comma-separated -- e.g.
+# "Priya:priya@example.com,Sam:sam@example.com", or plain addresses. Empty by default, the same
+# fail-safe default as SECRET_KEY and ALLOWED_HOSTS: nobody receives mail
+# about anybody else's account until this is deliberately set. Security
+# pass 5.
+ADMINS = [
+    tuple(entry.split(":", 1)) if ":" in entry else (entry, entry)
+    for entry in env.list("ADMINS", default=[])
+    if entry
+]
+
 # How long a password reset link stays valid. Django's default is 3 days,
 # which is generous for a credential-bearing URL that may sit in an inbox.
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24  # 24 hours
@@ -97,7 +127,17 @@ TEST_RUNNER = "config.test_runner.FastTestRunner"
 
 
 MIDDLEWARE = [
+    # First, so nothing else -- not even CsrfViewMiddleware reading
+    # request.POST for its token -- gets a chance to read an oversized
+    # body before this rejects it from Content-Length alone. Security
+    # pass 2; see the middleware's own docstring.
+    "config.middleware.MaxUploadSizeMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # Right after SecurityMiddleware, which sets the other security
+    # response headers (HSTS, nosniff): grouped together, and before
+    # WhiteNoise so a static file is not made to carry a CSP header it does
+    # not need. Security pass 4; see the middleware's own docstring.
+    "config.middleware.ContentSecurityPolicyMiddleware",
     # Directly after SecurityMiddleware and before everything else, so a
     # static file is served without paying for session lookup, auth or CSRF.
     # Ordering is not cosmetic here: placed last it would still work and
@@ -176,7 +216,20 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
+    # CommonPasswordValidator above catches ~20,000 common passwords, but
+    # not one that is merely common in a *breach* -- someone else's leaked,
+    # perfectly "strong" password is exactly as dangerous once it is in a
+    # credential-stuffing list. Roadmap A2 (SECURITY_ROADMAP.md).
+    {
+        "NAME": "accounts.password_validation.PwnedPasswordValidator",
+    },
 ]
+
+# Whether PwnedPasswordValidator calls the Have I Been Pwned API at all.
+# The test runner (config/test_runner.py) forces this off so no test run
+# ever makes a network call; the validator's own tests turn it back on and
+# mock the request.
+PWNED_PASSWORDS_ENABLED = env.bool("PWNED_PASSWORDS_ENABLED", default=True)
 
 
 # Internationalization
@@ -278,6 +331,28 @@ BILL_SCAN_MODELS = {
 }
 
 
+# Upload size (security pass 2)
+#
+# Django's own defaults (2.5 MB) would refuse the 5 MB bill photo the
+# extraction boundary (expenses/extraction/__init__.py) already allows, so
+# these are sized from the same MAX_UPLOAD_SIZE rather than picked again
+# here -- one place this number is a decision, everywhere else it is a
+# read. DATA_UPLOAD_MAX_MEMORY_SIZE caps a raw request body (a JSON POST)
+# outright; FILE_UPLOAD_MAX_MEMORY_SIZE only decides whether an uploaded
+# file is held in memory or spooled to disk while it is read. Neither one
+# rejects an oversized *file* in a multipart body early -- Django does not
+# offer that hook -- which is what MaxUploadSizeMiddleware
+# (config/middleware.py) and, in production, the reverse proxy's own body
+# limit (HANDOVER.md section 4) are for.
+#
+# Headroom above the 5 MB rule for multipart's own overhead: the boundary
+# markers, part headers, and the form's other fields. A legitimate photo
+# is never what either of these rejects -- BillScanForm.clean_image still
+# enforces the exact 5 MB rule and gives a message a person can act on.
+DATA_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_SIZE + 1024 * 1024  # +1 MB headroom
+FILE_UPLOAD_MAX_MEMORY_SIZE = DATA_UPLOAD_MAX_MEMORY_SIZE
+
+
 # Media files (generated exports, uploaded bills)
 MEDIA_URL = "media/"
 # Overridable because the Docker image keeps media on a volume at
@@ -298,7 +373,8 @@ if not DEBUG:
     # Send Strict-Transport-Security. Start LOW (a few hours) when first
     # deploying: browsers cache this, so a wrong value with preload set
     # makes the domain unreachable over HTTP for up to a year with no way
-    # to take it back.
+    # to take it back. DECISIONS D5: the default is deliberately below
+    # ASVS V3.4.1's "at least 1 year" -- see docs/ASVS_L1.md's gap list.
     SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=3600)
     SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", default=True)
     # Deliberately opt-in. Preload submits the domain to a browser-baked
@@ -328,6 +404,27 @@ if not DEBUG:
     SESSION_COOKIE_SAMESITE = "Lax"
     CSRF_COOKIE_SAMESITE = "Lax"
 
+    # ASVS V3.3.1: a cookie that sets Secure must also carry the __Host- or
+    # __Secure- prefix, so a browser refuses to store it at all unless
+    # Secure is genuinely set (and, for __Host-, unless Path=/ and no Domain
+    # is set -- both already true of Django's defaults here). This is a
+    # second, browser-enforced backstop behind SESSION_COOKIE_SECURE /
+    # CSRF_COOKIE_SECURE above: a bug or a future override that drops
+    # Secure while leaving the plain name in place would otherwise send the
+    # cookie over HTTP anyway. __Host- rather than __Secure-: both cookies
+    # are already Path=/ with no explicit Domain.
+    #
+    # Gated on the cookies actually being Secure, not just on DEBUG: the
+    # local compose stack runs with DEBUG=False but SESSION_COOKIE_SECURE
+    # and CSRF_COOKIE_SECURE forced off (DECISIONS D35) because it serves
+    # plain HTTP. A browser drops a __Host-/__Secure- cookie outright when
+    # Secure is not set, which would silently break login there; only
+    # switch to the prefixed name once Secure is genuinely on.
+    if SESSION_COOKIE_SECURE:
+        SESSION_COOKIE_NAME = "__Host-sessionid"
+    if CSRF_COOKIE_SECURE:
+        CSRF_COOKIE_NAME = "__Host-csrftoken"
+
     SECURE_CONTENT_TYPE_NOSNIFF = True
 
     # W021 warns that HSTS preload is off. That is deliberate, not an
@@ -355,6 +452,10 @@ LOGGING = {
     "disable_existing_loggers": False,
     "filters": {
         "request_id": {"()": "config.middleware.RequestIDFilter"},
+        # Django's own filter: true only when DEBUG is False, so the admin
+        # mailbox is never sent a copy of every exception a developer sees
+        # on their own screen locally.
+        "require_debug_false": {"()": "django.utils.log.RequireDebugFalse"},
     },
     "formatters": {
         "verbose": {
@@ -370,6 +471,19 @@ LOGGING = {
             "formatter": "verbose",
             "filters": ["request_id"],
         },
+        # Mails a 5xx traceback to ADMINS. Empty by default (ADMINS above),
+        # so this handler exists but never fires until an operator opts in.
+        # Django's AdminEmailHandler builds the message with
+        # ExceptionReporter, which runs SafeExceptionReporterFilter over it
+        # -- the same filter DEBUG=True's error page uses -- so a local
+        # variable or POST parameter marked with @sensitive_variables or
+        # sensitive_post_parameters (accounts/api.py, security pass 5) is
+        # starred out here too, not only on screen.
+        "mail_admins": {
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+            "class": "django.utils.log.AdminEmailHandler",
+        },
     },
     "root": {
         "handlers": ["console"],
@@ -377,8 +491,11 @@ LOGGING = {
     },
     "loggers": {
         # Requests that 4xx/5xx. Off by default without an explicit handler.
+        # mail_admins only actually sends for this logger's ERROR+ records
+        # (an unhandled 5xx) -- its own level filters out the WARNING
+        # records a 4xx logs, so a bad request never becomes admin mail.
         "django.request": {
-            "handlers": ["console"],
+            "handlers": ["console", "mail_admins"],
             "level": "WARNING",
             "propagate": False,
         },
@@ -433,6 +550,10 @@ REST_FRAMEWORK = {
         "user": env("API_USER_THROTTLE", default="3000/hour"),
         "anon": env("API_ANON_THROTTLE", default="60/hour"),
     },
+    # Unset, DRF identifies an anonymous caller by the whole X-Forwarded-For
+    # header -- which the caller writes -- so a new value per request resets
+    # the throttle. Pinned to the same trusted-proxy count as the login limiter.
+    "NUM_PROXIES": TRUSTED_PROXY_COUNT,
     "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.NamespaceVersioning",
     "DEFAULT_VERSION": "v1",
     "ALLOWED_VERSIONS": ["v1"],
@@ -528,4 +649,39 @@ CELERY_BEAT_SCHEDULE = {
         # Daily. Hourly would be wasted work on a table that changes slowly.
         "schedule": 24 * 60 * 60,
     },
+    # Roadmap A1: an account that never verifies must not squat its email
+    # or username forever. Same daily cadence, same reasoning.
+    "purge-unverified-accounts": {
+        "task": "expenses.tasks.purge_unverified",
+        "schedule": 24 * 60 * 60,
+    },
+    # Roadmap A3: the security event trail keeps growing otherwise.
+    "purge-old-security-events": {
+        "task": "expenses.tasks.purge_security_events",
+        "schedule": 24 * 60 * 60,
+    },
 }
+
+
+# Account retention (roadmap A1, A3 -- SECURITY_ROADMAP.md)
+#
+# How long an account may sit unverified before purge_unverified removes it,
+# and how long a security event is kept before purge_security_events does.
+# Read here, not hardcoded in the commands, so an operator can tune either
+# without a deploy -- the commands' own --days flag still overrides this
+# for a one-off run.
+UNVERIFIED_ACCOUNT_DAYS = env.int("UNVERIFIED_ACCOUNT_DAYS", default=7)
+SECURITY_EVENT_RETENTION_DAYS = env.int("SECURITY_EVENT_RETENTION_DAYS", default=365)
+
+# Multi-factor sign-in (roadmap L2 §3, docs/design/MFA.md). The issuer name
+# an authenticator app shows next to the account -- cosmetic only, not a
+# secret, so it needs no k-anonymity or hashing treatment like the values
+# above.
+MFA_ISSUER = env("MFA_ISSUER", default="Expense Tracker")
+
+# Sign in with Google (roadmap §4, docs/design/GOOGLE_SIGNIN.md). Off (both
+# the API endpoint and the web button) unless this is set to a real OAuth
+# client id from the Google Cloud console -- see .env.example for how to
+# get one. Not a secret: it identifies the app to Google, and reaches the
+# browser in a `data-` attribute on the login/sign-up pages.
+GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")
