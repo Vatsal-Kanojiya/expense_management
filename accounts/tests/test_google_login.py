@@ -1,9 +1,7 @@
 """Sign in with Google (docs/design/GOOGLE_SIGNIN.md): verifying the ID
-token and finding or creating the local account (``accounts/google.py``),
-and the API endpoint (``auth/google/``) that is the first thing built on it.
-
-The web view and the CSP get their own test classes in this file once a
-later commit adds them.
+token (``accounts/google.py``), finding or creating the local account, the
+API endpoint (``auth/google/``), the web view (``accounts:google_login``),
+the MFA interplay, the CSP, and the Google-only-account password change.
 
 Never calls Google: every test mocks
 ``google.oauth2.id_token.verify_oauth2_token`` directly, so nothing here
@@ -76,6 +74,14 @@ class GoogleSignInOffTests(TestCase):
     def test_the_api_endpoint_404s_when_unconfigured(self):
         response = self.client.post(api_url("auth-google"), {"credential": "x"})
         self.assertEqual(response.status_code, 404)
+
+    def test_the_web_endpoint_404s_when_unconfigured(self):
+        response = self.client.post(reverse("accounts:google_login"), {"credential": "x"})
+        self.assertEqual(response.status_code, 404)
+
+    def test_the_login_page_shows_no_button_when_unconfigured(self):
+        response = self.client.get(reverse("accounts:login"))
+        self.assertNotContains(response, "accounts.google.com/gsi/client")
 
 
 # --- accounts/google.py: verification and find-or-create -------------------
@@ -307,3 +313,134 @@ class GoogleLoginApiTests(TestCase):
         )
         self.assertTrue(me_response.json()["has_password"])
         self.assertEqual(me_response.json()["id"], user.pk)
+
+
+# --- The web view --------------------------------------------------------
+
+
+@with_cache
+@with_google
+class GoogleLoginWebTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def post(self, credential="token", next_url=""):
+        return self.client.post(
+            reverse("accounts:google_login"), {"credential": credential, "next": next_url}
+        )
+
+    def test_a_new_user_is_signed_in(self):
+        with mock_verify(return_value=payload(email="brandnew@example.com")):
+            response = self.post()
+
+        self.assertRedirects(response, "/")
+        self.assertIn("_auth_user_id", self.client.session)
+        user = User.objects.get(email="brandnew@example.com")
+        self.assertFalse(user.has_usable_password())
+
+    def test_a_failure_redirects_to_login_with_a_message(self):
+        with mock_verify(return_value=payload(email_verified=False)):
+            response = self.post()
+
+        self.assertRedirects(response, reverse("accounts:login"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_an_mfa_user_stops_at_the_code_page(self):
+        user = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+        TOTPDevice.objects.create(user=user, secret=RFC_SECRET, confirmed=True)
+
+        with mock_verify(return_value=payload()):
+            response = self.post()
+
+        self.assertRedirects(response, reverse("accounts:login_mfa"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertIn("mfa_ticket", self.client.session)
+
+        code_response = self.client.post(
+            reverse("accounts:login_mfa"), {"code": code_for(RFC_SECRET)}
+        )
+        self.assertRedirects(code_response, "/", fetch_redirect_response=False)
+
+    def test_a_safe_next_is_honoured(self):
+        with mock_verify(return_value=payload(email="brandnew@example.com")):
+            response = self.post(next_url="/categories/")
+
+        self.assertRedirects(response, "/categories/", fetch_redirect_response=False)
+
+    def test_an_off_site_next_is_refused(self):
+        with mock_verify(return_value=payload(email="brandnew@example.com")):
+            response = self.post(next_url="https://evil.example.com/")
+
+        self.assertRedirects(response, "/", fetch_redirect_response=False)
+
+    @patch.object(ratelimit, "LOGIN_IP_LIMIT", 2)
+    def test_rate_limited(self):
+        with mock_verify(return_value=payload(email_verified=False)):
+            self.post()
+            self.post()
+            response = self.post()
+
+        self.assertRedirects(response, reverse("accounts:login"))
+
+
+# --- CSP -------------------------------------------------------------------
+
+
+@with_google
+class GoogleSigninCSPTests(TestCase):
+    def test_the_login_page_gets_googles_hosts(self):
+        response = self.client.get(reverse("accounts:login"))
+        csp = response["Content-Security-Policy"]
+        self.assertIn("accounts.google.com/gsi/client", csp)
+        self.assertIn("accounts.google.com/gsi/", csp)
+
+    def test_the_signup_page_gets_googles_hosts(self):
+        response = self.client.get(reverse("accounts:signup"))
+        csp = response["Content-Security-Policy"]
+        self.assertIn("accounts.google.com/gsi/client", csp)
+
+    def test_other_pages_keep_the_default_policy(self):
+        response = self.client.get(reverse("accounts:password_reset"))
+        csp = response["Content-Security-Policy"]
+        self.assertNotIn("accounts.google.com", csp)
+
+    def test_the_login_page_shows_the_button_when_configured(self):
+        response = self.client.get(reverse("accounts:login"))
+        self.assertContains(response, "accounts.google.com/gsi/client")
+        self.assertContains(response, "test-client-id.apps.googleusercontent.com")
+
+    def test_no_inline_script_is_added(self):
+        response = self.client.get(reverse("accounts:login"))
+        content = response.content.decode()
+        # The button markup is data attributes only -- no <script> body
+        # containing our callback's logic, just a src= reference.
+        self.assertNotIn("handleGoogleCredential(", content)
+
+
+# --- Google-only accounts and password change -----------------------------
+
+
+@with_google
+class GoogleOnlyAccountTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        with mock_verify(return_value=payload(email="brandnew@example.com")):
+            self.post_login()
+        self.user = User.objects.get(email="brandnew@example.com")
+
+    def post_login(self):
+        return self.client.post(
+            reverse("accounts:google_login"), {"credential": "token", "next": ""}
+        )
+
+    def test_password_change_page_redirects_to_reset(self):
+        response = self.client.get(reverse("accounts:password_change"))
+        self.assertRedirects(response, reverse("accounts:password_reset"))
+
+    def test_a_normal_account_reaches_the_password_change_form(self):
+        self.client.logout()
+        User.objects.create_user("alice", "alice@example.com", PASSWORD)
+        self.client.login(username="alice", password=PASSWORD)
+
+        response = self.client.get(reverse("accounts:password_change"))
+        self.assertEqual(response.status_code, 200)

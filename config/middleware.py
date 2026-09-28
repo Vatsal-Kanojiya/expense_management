@@ -89,6 +89,14 @@ class ContentSecurityPolicyMiddleware:
     wider policy instead of loosening the default for every other page.
     The DRF browsable API needs no such allowance -- its JS and CSS ship as
     static files under STATIC_URL, so the default policy already covers it.
+
+    The login and sign-up pages get the same treatment for Google's own
+    hosts, when Sign in with Google is on (``GOOGLE_OAUTH_CLIENT_ID``,
+    docs/design/GOOGLE_SIGNIN.md): the button is drawn by Google's script,
+    in an iframe, with its own network calls and stylesheet. Everywhere
+    else keeps the default policy -- the button's own script is a static
+    file (accounts/static/accounts/google-signin.js), not inline, so
+    ``script-src`` needs only the one extra host, not ``'unsafe-inline'``.
     """
 
     DEFAULT_POLICY = (
@@ -121,12 +129,34 @@ class ContentSecurityPolicyMiddleware:
         "object-src 'none'"
     )
 
+    # Google Identity Services' own hosts, exactly as docs/design/GOOGLE_SIGNIN.md
+    # lists them -- one for the loader script, one (with a trailing /gsi/)
+    # covering the iframe it draws the button in and the requests it makes.
+    GOOGLE_POLICY = (
+        "default-src 'self'; "
+        "script-src 'self' https://accounts.google.com/gsi/client; "
+        "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; "
+        "img-src 'self' data:; "
+        "font-src 'self'; "
+        "connect-src 'self' https://accounts.google.com/gsi/; "
+        "frame-src https://accounts.google.com/gsi/; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'none'; "
+        "object-src 'none'"
+    )
+
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
         response = self.get_response(request)
-        policy = self.DOCS_POLICY if request.path == self._docs_path() else self.DEFAULT_POLICY
+        if request.path == self._docs_path():
+            policy = self.DOCS_POLICY
+        elif request.path in self._google_signin_paths():
+            policy = self.GOOGLE_POLICY
+        else:
+            policy = self.DEFAULT_POLICY
         response.setdefault("Content-Security-Policy", policy)
         return response
 
@@ -145,6 +175,20 @@ class ContentSecurityPolicyMiddleware:
             # reverse() from turning every response into a 500 rather than
             # just falling back to the strict default policy.
             return None
+
+    @staticmethod
+    def _google_signin_paths():
+        # Same reasoning as _docs_path() -- resolved, not hardcoded. Applied
+        # whether or not Sign in with Google is actually configured: the
+        # button is simply absent from the page then (accounts/views.py's
+        # GoogleButtonContextMixin), and a wider policy on a page that
+        # loads nothing extra grants nothing.
+        from django.urls import NoReverseMatch, reverse
+
+        try:
+            return {reverse("accounts:login"), reverse("accounts:signup")}
+        except NoReverseMatch:
+            return set()
 
 
 class RequestIDMiddleware:
