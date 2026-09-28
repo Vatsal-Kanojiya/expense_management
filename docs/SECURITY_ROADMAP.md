@@ -1,0 +1,82 @@
+# Security roadmap — towards OWASP ASVS Level 2
+
+> Started in session 31, after security passes 1–6 and the whole-branch review. This is the plan of
+> action from here. Tick items as they land, and record each one in `BUILD_LOG.md` as usual.
+
+## Where we stand
+
+OWASP ASVS (Application Security Verification Standard) grades an application in three levels:
+
+| Level | For | In short |
+|---|---|---|
+| L1 — Opportunistic | Every internet-facing app | Resists common, automated attacks |
+| L2 — Standard | Apps holding personal or business data (most real apps) | Verified from the source: access control, sessions, logging, errors, usually multi-factor sign-in |
+| L3 — Advanced | Banking, healthcare, critical systems | L2, plus threat modelling, formal architecture review, key management |
+
+**Today: L1 essentially met, L2 substantially covered, neither formally verified.** Passes 1–6
+(`docs/HANDOVER.md` §3) map closely onto L2's access-control, session, logging, error-handling,
+upload and input chapters. What stands between us and an honest L2 claim is below.
+
+## The plan, in order
+
+### 1. Claim L1 formally
+- [ ] Walk the ASVS Level 1 requirements one by one. For each: met (with the file, test or
+      setting as evidence), not applicable (why), or a gap (added below). Keep the result in
+      `docs/ASVS_L1.md`.
+
+### 2. Close what we already know about
+- [ ] **Unverified accounts squat addresses.** A sign-up creates an inactive account, and sign-up
+      then refuses that email and username. Nothing removes an account that never verifies, and
+      password reset ignores inactive accounts, so an address's real owner can be locked out of
+      registering. Fix: purge accounts left unverified after N days (a beat task, like
+      `purge_exports`), and let a fresh sign-up for an address replace an unverified account for it.
+- [ ] **Per-account login cap — decide.** Logins are limited per address and username, and per
+      address. Guesses at one account spread across many addresses meet only the per-address cap.
+      A per-account cap closes that but lets a stranger lock the owner out. Decide, and record the
+      decision in `DECISIONS.md`.
+- [ ] **Minor:** send CORS headers on the early 413 (so the React app sees "too large", not a
+      network error); pin the Swagger UI version instead of `swagger-ui-dist@latest`.
+
+### 3. The L2 gaps
+- [ ] **Multi-factor sign-in (TOTP).** An authenticator-app code after the password, with
+      one-time recovery codes. Web pages and API both; the React app needs enrol, challenge and
+      recovery screens. The biggest item here.
+- [ ] **Breached-password check.** Django's `CommonPasswordValidator` rejects common passwords but
+      not known-leaked ones. Add a validator using the Have I Been Pwned range API (k-anonymity: only
+      the first five characters of the password's SHA-1 leave the server), failing open if the
+      service is unreachable.
+- [ ] **A security event trail.** One structured log (or table) of: sign-ins and failures, password
+      changes and resets, token revocations, verification, account deletion, admin changes — each
+      with user, time, address and request id. Today only failed logins are logged.
+
+### 4. Features that touch security
+
+- [ ] **Sign in with Google.** Design notes below.
+- [ ] **Optional: a 6-digit emailed code** as an alternative to the verification link, which suits a
+      mobile app better. Same signed, expiring, single-use rules as the link.
+
+## Design notes: Sign in with Google
+
+It fits the current architecture without changing anything that exists.
+
+- **API / React (the main path).** The React app shows Google's own button (Google Identity
+  Services) and receives a signed **ID token** from Google. It posts that to a new endpoint,
+  `POST /api/v1/auth/google/`. The server verifies the token's signature, audience (our client id)
+  and expiry with Google's `google-auth` library, then finds or creates the user and returns our own
+  token pair through the existing `issue_tokens()`. From there, everything — refresh, logout,
+  revocation, rate limits — works exactly as it does now.
+- **Web pages.** The same button on the login page, posting to a matching Django view that signs
+  the user in with a session. (`django-allauth` is the alternative if many providers are wanted
+  later; for Google alone, one endpoint is less to maintain.)
+- **Rules that keep it safe:**
+  - Link to an existing account by email **only if Google says `email_verified`**; otherwise a
+    stranger's Google account could claim someone's account here.
+  - A Google-created account is active at once (Google has verified the address) and has an
+    unusable password; "set a password" then goes through password reset.
+  - The endpoint is rate-limited like login, and the ID token is marked sensitive in error reports.
+  - The CSP gains Google's sign-in hosts (`accounts.google.com`) on the pages that show the button.
+- **Needs from you:** a Google Cloud project with an OAuth client id (free), the site's real
+  domains added as authorised origins, and HTTPS in production (localhost is allowed for
+  development).
+- **Bonus for L2:** users who sign in with Google get Google's own multi-factor protection. It does
+  not replace MFA for password accounts.
