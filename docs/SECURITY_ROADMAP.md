@@ -66,6 +66,8 @@ upload and input chapters. What stands between us and an honest L2 claim is belo
 
 ## Design notes: Sign in with Google
 
+The full designs: [design/MFA.md](design/MFA.md) and [design/GOOGLE_SIGNIN.md](design/GOOGLE_SIGNIN.md).
+
 It fits the current architecture without changing anything that exists.
 
 - **API / React (the main path).** The React app shows Google's own button (Google Identity
