@@ -252,8 +252,8 @@ of 5 per 15 minutes for that account (§11) — so a client should not cache or 
 | `GET auth/mfa/` | `{enabled, recovery_codes_left}` |
 | `POST auth/mfa/setup/` | Starts enrolment: `{secret, otpauth_uri}`. Build a QR code from `otpauth_uri` (e.g. with a JS QR library) and also show `secret` for manual entry. Calling it again before confirming replaces the pending secret. 400 `mfa_already_enabled` if already on. |
 | `POST auth/mfa/confirm/ {code}` | Confirms the pending device with a code from the app. Returns `{recovery_codes: [...ten strings], access, refresh, user}` — **the only time the codes are shown**; tell the user to save them. Every other refresh token is revoked. |
-| `POST auth/mfa/disable/ {password, code}` | Turns it off. Needs the **current password and a current code** (or a recovery code) — neither alone is enough. Revokes every other refresh token. |
-| `POST auth/mfa/recovery-codes/ {code}` | A fresh set of ten, replacing the old one. Needs a current **authenticator** code — a recovery code does not work here, so spending the last one cannot itself mint ten more. |
+| `POST auth/mfa/disable/ {password, code}` | Turns it off. Needs the **current password and a current code** (or a recovery code) — neither alone is enough. Revokes every other refresh token. Wrong passwords and wrong codes count against the account's limits (429 `rate_limited`). |
+| `POST auth/mfa/recovery-codes/ {code}` | A fresh set of ten, replacing the old one. Needs a current **authenticator** code — a recovery code does not work here, so spending the last one cannot itself mint ten more. Wrong codes count against the sign-in code limit (429). |
 
 ---
 

@@ -595,6 +595,7 @@ class MFADisableView(APIView):
         responses={
             200: TokenPairSerializer,
             400: OpenApiResponse(ValidationErrorSerializer, description="Wrong password or code."),
+            429: OpenApiResponse(MessageSerializer, description="Too many wrong attempts."),
         },
     )
     @sensitive_variables()
@@ -608,14 +609,14 @@ class MFADisableView(APIView):
                 {"detail": "Two-step sign-in is not on.", "code": "mfa_not_enabled"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if not request.user.check_password(data["password"]):
-            return Response({"password": ["Wrong password."]}, status=status.HTTP_400_BAD_REQUEST)
-
-        device = TOTPDevice.objects.filter(user=request.user, confirmed=True).first()
-        code_ok = (device is not None and device.verify(data["code"])) or RecoveryCode.try_use(
-            request.user, data["code"]
+        refused = mfa.check_for_change(
+            request.user, data["code"], request=request, password=data["password"]
         )
-        if not code_ok:
+        if refused == "blocked":
+            return rate_limited("Too many attempts. Wait a few minutes and try again.")
+        if refused == "password":
+            return Response({"password": ["Wrong password."]}, status=status.HTTP_400_BAD_REQUEST)
+        if refused == "code":
             return WRONG_CODE
 
         TOTPDevice.objects.filter(user=request.user).delete()
@@ -638,6 +639,7 @@ class MFARegenerateView(APIView):
         responses={
             200: MFARecoveryCodesSerializer,
             400: OpenApiResponse(ValidationErrorSerializer, description="Wrong code, or MFA off."),
+            429: OpenApiResponse(MessageSerializer, description="Too many wrong attempts."),
         },
     )
     @sensitive_variables()
@@ -651,7 +653,12 @@ class MFARegenerateView(APIView):
                 {"detail": "Two-step sign-in is not on.", "code": "mfa_not_enabled"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if not device.verify(body.validated_data["code"]):
+        refused = mfa.check_for_change(
+            request.user, body.validated_data["code"], request=request, recovery_allowed=False
+        )
+        if refused == "blocked":
+            return rate_limited("Too many attempts. Wait a few minutes and try again.")
+        if refused == "code":
             return WRONG_CODE
 
         codes = RecoveryCode.generate_set(request.user)

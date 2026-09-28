@@ -462,6 +462,13 @@ class MFARecoveryCodesView(LoginRequiredMixin, View):
         return render(request, self.template_name, {"recovery_codes": codes})
 
 
+REFUSALS = {
+    "blocked": "Too many attempts. Wait a few minutes and try again.",
+    "password": "Wrong password.",
+    "code": "That code is wrong.",
+}
+
+
 class MFADisableView(LoginRequiredMixin, View):
     """Turn two-step sign-in off. Needs the password and a current code."""
 
@@ -472,16 +479,9 @@ class MFADisableView(LoginRequiredMixin, View):
         password = request.POST.get("password", "")
         code = request.POST.get("code", "")
 
-        if not request.user.check_password(password):
-            messages.error(request, "Wrong password.")
-            return redirect("accounts:mfa")
-
-        device = TOTPDevice.objects.filter(user=request.user, confirmed=True).first()
-        code_ok = (device is not None and device.verify(code)) or RecoveryCode.try_use(
-            request.user, code
-        )
-        if not code_ok:
-            messages.error(request, "That code is wrong.")
+        refused = mfa.check_for_change(request.user, code, request=request, password=password)
+        if refused:
+            messages.error(request, REFUSALS[refused])
             return redirect("accounts:mfa")
 
         TOTPDevice.objects.filter(user=request.user).delete()
@@ -505,8 +505,9 @@ class MFARegenerateView(LoginRequiredMixin, View):
             return redirect("accounts:mfa")
 
         code = request.POST.get("code", "")
-        if not device.verify(code):
-            messages.error(request, "That code is wrong.")
+        refused = mfa.check_for_change(request.user, code, request=request, recovery_allowed=False)
+        if refused:
+            messages.error(request, REFUSALS[refused])
             return redirect("accounts:mfa")
 
         codes = RecoveryCode.generate_set(request.user)
