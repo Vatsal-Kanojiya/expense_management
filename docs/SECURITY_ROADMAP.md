@@ -45,10 +45,12 @@ upload and input chapters. What stands between us and an honest L2 claim is belo
 - [ ] **Multi-factor sign-in (TOTP).** An authenticator-app code after the password, with
       one-time recovery codes. Web pages and API both; the React app needs enrol, challenge and
       recovery screens. The biggest item here.
-- [ ] **Breached-password check.** Django's `CommonPasswordValidator` rejects common passwords but
+- [x] **Breached-password check.** Django's `CommonPasswordValidator` rejects common passwords but
       not known-leaked ones. Add a validator using the Have I Been Pwned range API (k-anonymity: only
       the first five characters of the password's SHA-1 leave the server), failing open if the
       service is unreachable.
+      Done: `accounts/password_validation.py`'s `PwnedPasswordValidator`, setting
+      `PWNED_PASSWORDS_ENABLED` (off in tests, `config/test_runner.py`).
 - [ ] **A security event trail.** One structured log (or table) of: sign-ins and failures, password
       changes and resets, token revocations, verification, account deletion, admin changes — each
       with user, time, address and request id. Today only failed logins are logged.

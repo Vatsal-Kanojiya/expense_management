@@ -334,6 +334,7 @@ A robust client handles all three: show `detail` as a message, map field keys on
 | `user_not_found` | 401 | any | The account no longer exists | Sign out |
 | `token_invalid` | 400 | `auth/logout/` | That refresh token is already revoked | Treat as signed out |
 | `invalid_link` | 400 | `auth/verify-email/`, `auth/password/reset/confirm/` | The link is wrong, used, or expired (24 h) | Explain; offer to start again |
+| `password_breached` | 400 | `auth/signup/`, `auth/password/change/`, `auth/password/reset/confirm/` | The password has appeared in a known data breach (Have I Been Pwned) | "Choose a different password." beside the password field |
 | `verification_sent` | 201 | `auth/signup/` | Account created, email sent | "Check your email" page |
 | `reset_sent` | 200 | `auth/password/reset/` | Always the answer, whatever the address | Same confirmation for everyone |
 | `password_set` | 200 | `auth/password/reset/confirm/` | New password saved | Go to login |

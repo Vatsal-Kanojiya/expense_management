@@ -39,3 +39,10 @@ openai==3.19.0
 djangorestframework-simplejwt==5.5.1
 django-cors-headers==4.9.0
 drf-spectacular==0.30.0
+
+# Roadmap A2: accounts/password_validation.py calls the Have I Been Pwned
+# range API. Already installed transitively (djangorestframework-simplejwt
+# and the bill-scan SDKs all pull it in) but never listed here -- known
+# issue 27's exact shape, so it is pinned outright now that something in
+# this codebase, not just a dependency, imports it directly.
+requests==2.34.2

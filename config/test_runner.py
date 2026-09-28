@@ -73,6 +73,13 @@ class FastTestRunner(DiscoverRunner):
         settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}
         settings.MEDIA_ROOT = tempfile.mkdtemp(prefix="test-media-")
 
+        # The sixth swap: PwnedPasswordValidator (accounts/password_validation.py)
+        # calls out to the Have I Been Pwned API. Off here, unconditionally,
+        # so no test run ever makes a real network call by forgetting to
+        # mock it -- the validator's own tests turn this back on with
+        # override_settings and mock requests.get themselves.
+        settings.PWNED_PASSWORDS_ENABLED = False
+
     def teardown_test_environment(self, **kwargs):
         shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
         super().teardown_test_environment(**kwargs)

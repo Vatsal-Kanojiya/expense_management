@@ -216,7 +216,20 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
+    # CommonPasswordValidator above catches ~20,000 common passwords, but
+    # not one that is merely common in a *breach* -- someone else's leaked,
+    # perfectly "strong" password is exactly as dangerous once it is in a
+    # credential-stuffing list. Roadmap A2 (SECURITY_ROADMAP.md).
+    {
+        "NAME": "accounts.password_validation.PwnedPasswordValidator",
+    },
 ]
+
+# Whether PwnedPasswordValidator calls the Have I Been Pwned API at all.
+# The test runner (config/test_runner.py) forces this off so no test run
+# ever makes a network call; the validator's own tests turn it back on and
+# mock the request.
+PWNED_PASSWORDS_ENABLED = env.bool("PWNED_PASSWORDS_ENABLED", default=True)
 
 
 # Internationalization
