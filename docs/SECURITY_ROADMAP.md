@@ -42,9 +42,13 @@ upload and input chapters. What stands between us and an honest L2 claim is belo
       network error); pin the Swagger UI version instead of `swagger-ui-dist@latest`.
 
 ### 3. The L2 gaps
-- [ ] **Multi-factor sign-in (TOTP).** An authenticator-app code after the password, with
+- [x] **Multi-factor sign-in (TOTP).** An authenticator-app code after the password, with
       one-time recovery codes. Web pages and API both; the React app needs enrol, challenge and
       recovery screens. The biggest item here.
+      Done: `accounts.TOTPDevice`/`RecoveryCode` (`accounts/models.py`), the TOTP math in
+      `accounts/totp.py`, the signed login ticket and shared code check in `accounts/mfa.py`,
+      the `auth/mfa/*` API endpoints and web pages, and the admin login redirecting to the site
+      login so it gets the same second step. See `docs/design/MFA.md`.
 - [x] **Breached-password check.** Django's `CommonPasswordValidator` rejects common passwords but
       not known-leaked ones. Add a validator using the Have I Been Pwned range API (k-anonymity: only
       the first five characters of the password's SHA-1 leave the server), failing open if the

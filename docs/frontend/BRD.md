@@ -377,6 +377,17 @@ the user's local time.
 long as the job takes, and a scan spends money with a real vision provider, so the limit is the
 account's regardless of which device or network it uploads or requests from.
 
+**BR-31 · Two-step sign-in (MFA)** is optional, per user, off by default. Once a user turns it on,
+**every** sign-in — this API, the web pages, and the admin site, which has no login form of its own
+and redirects to the web login — asks for a 6-digit code from an authenticator app, or a one-time
+recovery code, after the password. No session or token is issued between the password and the
+code: a signed, short-lived ticket (5 minutes) stands in for that gap, and it stops working the
+moment the password changes. Five wrong codes for one account in 15 minutes lock it for 15 minutes
+(429 `rate_limited`) — a limit that cannot be used to lock out someone else's account, since
+reaching this step already proves the password was known. Turning it on shows ten recovery codes
+**exactly once**; turning it off needs the current password **and** a current code. Either change
+revokes every refresh token but the one making the request.
+
 ---
 
 ## 6. Information architecture
@@ -389,6 +400,7 @@ flowchart LR
         L[Log in] --- S[Sign up] --- F[Forgot password]
         VE["/verify-email/:uid/:token"]
         RP["/reset-password/:uid/:token"]
+        LM[Enter code]
     end
     subgraph App["Signed in"]
         O[Overview] --- E[Expenses] --- C[Categories]
@@ -396,10 +408,13 @@ flowchart LR
         E --> EN[New expense] & ED[Expense: edit / split]
         SC --> SR[Review scan]
         X --> XD["/exports/:id"]
-        A[Account] --> CP[Change password] & DA[Delete account]
+        A[Account] --> CP[Change password] & MF[Two-step sign-in] & DA[Delete account]
     end
+    L --> LM
+    LM --> O
     L --> O
     VE --> O
+    LM --> O
 ```
 
 ### 6.2 Routes
@@ -410,6 +425,7 @@ so their exact paths are part of the contract with the server.
 | Route | Screen | Sign-in | Requirements |
 |---|---|---|---|
 | `/login` | Log in | no | FR-AUTH-01 |
+| `/login/code` | Enter two-step code | no (mid-login) | FR-AUTH-11 |
 | `/signup` | Sign up | no | FR-AUTH-05 |
 | `/verify-email/:uid/:token` ✉ | Confirm email | no | FR-AUTH-06 |
 | `/forgot-password` | Request a reset | no | FR-AUTH-07 |
@@ -425,7 +441,7 @@ so their exact paths are part of the contract with the server.
 | `/exports/:id` ✉ | One export (opened from the email) | yes | FR-XPT-05 |
 | `/scans` | Scan a bill, and past scans | yes | FR-SCAN |
 | `/scans/:id` | Review a scan | yes | FR-SCAN |
-| `/account` | Profile, password, delete account | yes | FR-ACC |
+| `/account` | Profile, password, two-step sign-in, delete account | yes | FR-ACC |
 | `*` | Not found | — | FR-SYS-04 |
 
 A signed-out user opening a signed-in route must be sent to `/login` and, after signing in, returned
@@ -463,6 +479,7 @@ and acceptance criteria. States common to every screen are in [7.12](#712-common
 | FR-AUTH-08 | **Reset password** at `/reset-password/:uid/:token`: ask for the new password twice, send it with the uid and token, and on success go to `/login` with "Your password has been set." Show password-rule errors beside the fields, and handle `invalid_link` as in FR-AUTH-06. |
 | FR-AUTH-09 | Signed-in users opening `/login` or `/signup` go to Overview. |
 | FR-AUTH-10 | Every form that submits a password must allow showing the typed password, and must use the right `autocomplete` values (`username`, `current-password`, `new-password`). |
+| FR-AUTH-11 | **Two-step sign-in (BR-31).** When `auth/login/` answers `{mfa_required: true, mfa_ticket}`, show a code-entry screen (not the tokens/profile flow) and send the ticket plus the typed code to `auth/mfa/verify/`; a right code continues exactly like FR-AUTH-01's success path. Accept a recovery code in the same box. Show "That code is wrong." on 400 with a `code` field error, "Too many attempts" on 429 `rate_limited`, and send the user back to `/login` on 400 `invalid_ticket` ("That sign-in has expired. Log in again."). |
 
 **Acceptance criteria**
 
@@ -474,16 +491,24 @@ and acceptance criteria. States common to every screen are in [7.12](#712-common
 - **AC-AUTH-4** Given a new account, when I open the emailed link, I am signed in and see Overview.
   Opening the same link again shows the "invalid or expired" message.
 - **AC-AUTH-5** Given 10 wrong passwords, the 11th attempt shows the "too many attempts" message.
+- **AC-AUTH-6** Given an account with two-step sign-in on, when I enter the right password, I see
+  the code screen, not Overview, and no token is stored yet.
+- **AC-AUTH-7** Given the code screen, when I enter the right code from my authenticator app, I land
+  on the page I originally asked for (or Overview).
+- **AC-AUTH-8** Given the code screen, when I enter a wrong code five times, the sixth attempt shows
+  "Too many attempts", even with the right code.
 
 ### 7.2 Account — FR-ACC
 
-**API:** `me/` (GET, PATCH, DELETE), `auth/password/change/`.
+**API:** `me/` (GET, PATCH, DELETE), `auth/password/change/`, `auth/mfa/`, `auth/mfa/setup/`,
+`auth/mfa/confirm/`, `auth/mfa/disable/`, `auth/mfa/recovery-codes/`.
 
 | ID | Requirement |
 |---|---|
 | FR-ACC-01 | Show username, email, first and last name, and date joined. First and last name are editable; username and email are read-only. |
 | FR-ACC-02 | **Change password** with the current password and the new one twice. On success, store the new tokens from the response and confirm "Password changed. Other devices have been signed out." Show "current password is incorrect" on 400 `old_password`. |
 | FR-ACC-03 | **Delete account** in a separate, clearly dangerous section. Explain that it permanently deletes all expenses, categories, people and history. Require the username to be typed exactly before the button is enabled, then call `DELETE me/` with `confirm`. On 204, clear everything locally and show `/login` with "Your account has been deleted." |
+| FR-ACC-04 | **Two-step sign-in (BR-31).** A "Two-step sign-in" section shows on/off (`GET auth/mfa/`) and, when on, how many recovery codes are left. **Turn on:** call `auth/mfa/setup/`, show the `otpauth_uri` as a QR code plus `secret` for manual entry, and a code box; on `auth/mfa/confirm/` succeeding, show the ten `recovery_codes` **once**, with a clear "save these now, they won't be shown again" and a way to copy or download them, then store the new tokens. **Turn off:** ask for the password and a code together (`auth/mfa/disable/`); show "Wrong password" or "That code is wrong" as the response says. **New recovery codes:** ask for a current authenticator code (`auth/mfa/recovery-codes/`) and show the new ten once, the same as turning on. |
 
 ### 7.3 Overview (dashboard) — FR-DASH
 
@@ -807,6 +832,7 @@ Run on a fresh account, in this order. The expected numbers are the API's real a
 | 1.0 | 24 Sep 2026 | First issue |
 | 1.1 | Oct 2026 | BR-24, BR-25, BR-27: the limits added by security pass 1 |
 | 1.2 | Oct 2026 | BR-30: the scan and export limits added by security pass 2 |
+| 1.3 | Oct 2026 | BR-31, FR-AUTH-11, FR-ACC-04: multi-factor sign-in (roadmap L2) |
 
 ---
 
@@ -817,10 +843,11 @@ Run on a fresh account, in this order. The expected numbers are the API's real a
 | Screen | Reads | Writes |
 |---|---|---|
 | Log in | — | `POST auth/login/` |
+| Enter two-step code | — | `POST auth/mfa/verify/` |
 | Sign up | — | `POST auth/signup/` |
 | Verify email | — | `POST auth/verify-email/` |
 | Forgot / reset password | — | `POST auth/password/reset/`, `POST auth/password/reset/confirm/` |
-| Account | `GET me/` | `PATCH me/`, `POST auth/password/change/`, `DELETE me/` |
+| Account | `GET me/`, `GET auth/mfa/` | `PATCH me/`, `POST auth/password/change/`, `DELETE me/`, `POST auth/mfa/setup/`, `POST auth/mfa/confirm/`, `POST auth/mfa/disable/`, `POST auth/mfa/recovery-codes/` |
 | Overview | `GET summary/` | — |
 | Expenses | `GET expenses/`, `GET categories/` | — |
 | Expense form | `GET expenses/{id}/`, `GET categories/`, `GET participants/`, `GET me/` | `POST expenses/`, `PUT expenses/{id}/`, `DELETE expenses/{id}/`, `POST categories/` |
