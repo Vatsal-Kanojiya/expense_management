@@ -591,7 +591,10 @@ the per-address cap. A per-account cap would close that but lets a stranger lock
 Minor, not fixed: an oversized upload's 413 is sent before CORS headers are added; the Swagger UI
 loads `swagger-ui-dist@latest` from a CDN, unpinned.
 
-**Suite:** 708 tests. Next: merge the three branches (HANDOVER task 4).
+**Suite:** 708 tests. Next: merge the three branches (HANDOVER task 4), then
+`docs/SECURITY_ROADMAP.md`: ASVS L1 formally, then the L2 gaps. Found while writing it: an
+unverified sign-up is never purged and blocks its email and username, so an address's real owner
+can be locked out of registering.
 
 ---
 

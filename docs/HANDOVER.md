@@ -205,6 +205,11 @@ Tick each task here as you finish it, and commit after each one.
 - [x] **Whole-branch security review.** (Session 31, `d81ace5`, `cb78939`.) One decision is left
       for you: whether to add a per-account login cap (see BUILD_LOG session 31).
 
+- [ ] **Next — towards ASVS Level 2.** The plan, in order, is in
+      [SECURITY_ROADMAP.md](SECURITY_ROADMAP.md): claim L1 formally, fix unverified accounts
+      squatting addresses, then multi-factor sign-in, a breached-password check, a security event
+      trail, and Sign in with Google.
+
 - [ ] **Later — more security review.** Good free starting points:
   - `python manage.py check --deploy` with the production settings;
   - `pip install pip-audit && pip-audit -r requirements.txt`, for dependencies with known
