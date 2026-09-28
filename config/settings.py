@@ -650,3 +650,9 @@ CELERY_BEAT_SCHEDULE = {
 # for a one-off run.
 UNVERIFIED_ACCOUNT_DAYS = env.int("UNVERIFIED_ACCOUNT_DAYS", default=7)
 SECURITY_EVENT_RETENTION_DAYS = env.int("SECURITY_EVENT_RETENTION_DAYS", default=365)
+
+# Multi-factor sign-in (roadmap L2 §3, docs/design/MFA.md). The issuer name
+# an authenticator app shows next to the account -- cosmetic only, not a
+# secret, so it needs no k-anonymity or hashing treatment like the values
+# above.
+MFA_ISSUER = env("MFA_ISSUER", default="Expense Tracker")
