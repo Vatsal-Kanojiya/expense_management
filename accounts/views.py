@@ -18,7 +18,7 @@ from expenses.models import Category, Expense, Participant
 from . import audit, mfa, qrcode, ratelimit, totp
 from .api import revoke_refresh_tokens
 from .deletion import delete_account
-from .forms import SignUpForm
+from .forms import AnyActiveAccountPasswordResetForm, SignUpForm
 from .google import GoogleSignInError, google_signin_enabled, sign_in_with_google
 from .models import RecoveryCode, TOTPDevice
 from .models import mfa_enabled as user_has_mfa
@@ -268,6 +268,8 @@ class ThrottledPasswordResetView(auth_views.PasswordResetView):
     mail to an address the requester may not own, so the limit is about
     protecting third parties, not just this application.
     """
+
+    form_class = AnyActiveAccountPasswordResetForm
 
     def post(self, request, *args, **kwargs):
         email = request.POST.get("email", "")

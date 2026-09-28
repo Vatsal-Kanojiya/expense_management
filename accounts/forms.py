@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import PasswordResetForm, UserCreationForm
 from django.db import models, transaction
 
 from .deletion import delete_account
@@ -98,3 +98,17 @@ class SignUpForm(UserCreationForm):
             delete_account(squatter)
 
         return super().save(commit=commit)
+
+
+class AnyActiveAccountPasswordResetForm(PasswordResetForm):
+    """Password reset that also reaches accounts with no password yet.
+
+    Django's own form skips accounts whose password is unusable. An account
+    created through Sign in with Google has exactly that, and reset is how
+    it sets a first password (docs/design/GOOGLE_SIGNIN.md) -- so without
+    this, the reset mail simply never arrived. The address is verified (by
+    Google, or by the sign-up link), which is what reset relies on.
+    """
+
+    def get_users(self, email):
+        return User._default_manager.filter(email__iexact=email, is_active=True)
