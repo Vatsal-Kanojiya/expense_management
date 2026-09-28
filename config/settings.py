@@ -262,9 +262,14 @@ BILL_SCAN_MODELS = {
 }
 
 
-# Media files (generated exports)
+# Media files (generated exports, uploaded bills)
 MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+# Overridable because the Docker image keeps media on a volume at
+# /data/media, outside the code: web writes an upload that the worker
+# reads, and the worker writes an export that web serves, so both mount
+# the same volume. Inside /app it would also land in a bind-mounted
+# checkout during development. DECISIONS D34.
+MEDIA_ROOT = Path(env("MEDIA_ROOT", default=str(BASE_DIR / "media")))
 
 
 # Security
@@ -288,8 +293,14 @@ if not DEBUG:
 
     # Cookies never travel over plain HTTP. Without these, one request on a
     # hostile network hands over the session.
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    #
+    # Overridable for the same reason as SECURE_SSL_REDIRECT above: the local
+    # compose stack serves plain HTTP, and a browser drops a Secure cookie on
+    # a LAN address, so a phone on the same network could never stay logged
+    # in. Only compose.yaml turns them off; a test asserts that doing so
+    # fails check --deploy. DECISIONS D35.
+    SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=True)
+    CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=True)
 
     # Blocks the cookie from JavaScript, limiting what an XSS can steal.
     SESSION_COOKIE_HTTPONLY = True

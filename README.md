@@ -39,14 +39,20 @@ python manage.py runserver
 
 Then open http://127.0.0.1:8000/.
 
-### Or the whole stack at once
+### Or the whole stack in Docker
 
 ```bash
-docker compose up --build
+make up      # production-like: gunicorn, DEBUG off           -> http://127.0.0.1:8765
+make dev     # the same stack, with your checkout mounted live -> http://127.0.0.1:8765
+make help    # every other target: logs, update, test, backup, ...
 ```
 
 Brings up web, Celery worker, beat, Redis and Postgres together, which is the only configuration
-where row locking, the cache and the scheduler all behave as they do in production.
+where row locking, the cache and the scheduler all behave as they do in production. The first
+`make up` creates `.env` with a fresh secret key. Data lives in named volumes and survives
+`make down`; Postgres and Redis are published on 127.0.0.1:5433 and :6380. Everything — ports,
+volumes, updating after a `git pull`, backups, troubleshooting — is in
+[docs/DOCKER.md](docs/DOCKER.md).
 
 > **Note:** sign up at `/accounts/signup/` for a normal account. A superuser is only needed for
 > the Django admin at `/admin/`.
@@ -200,6 +206,7 @@ Tracked in full in [docs/BUILD_LOG.md](docs/BUILD_LOG.md). The two that matter m
 | [docs/DJANGO_CHEATSHEET.md](docs/DJANGO_CHEATSHEET.md) | Commands with the reasoning behind them |
 | [docs/STUDY_MAP.md](docs/STUDY_MAP.md) | Topics ranked by depth required, and why |
 | [docs/RUNNING_ASYNC.md](docs/RUNNING_ASYNC.md) | Running the worker, the digest, cron and systemd |
+| [docs/DOCKER.md](docs/DOCKER.md) | The Docker stack: two modes, ports, volumes, updating, backups |
 
 ---
 

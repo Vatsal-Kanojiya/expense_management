@@ -41,3 +41,6 @@ Thumbs.db
 
 # Generated exports (dev). Regenerated on demand; never committed.
 /media/
+
+# Database dumps and media archives from `make backup`.
+backups/
