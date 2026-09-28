@@ -634,6 +634,10 @@ Themed passes, each confirmed, fixed, recorded and then paused for the owner's a
 | 5 | Errors, logs, admin site, account deletion | `75a5786`–`c2a6de1`; review fix `10a3d44` | ✅ Done |
 | 6 | Input and output: amounts, escaping, redirects, scanner output | `58969e8`–`061d8d1` | ✅ Done |
 | — | Whole-branch review | `d81ace5`, `cb78939` | ✅ Done: 2 gaps fixed, 1 decision open |
+| R-A | Roadmap: unverified accounts, breached passwords, security events | `5d3c9d1`–`684acae`; review `0e2dc44` | ✅ Done |
+| R-B | Roadmap: multi-factor sign-in (TOTP) | `00af710`–`3c8b8e9`; review `3b661d7`, `004287c` | ✅ Done |
+| R-C | Roadmap: Sign in with Google | `3475ed3`–`abda994`; review `183d782`, `cd63adf` | ✅ Done |
+| R-D | Roadmap: ASVS Level 1 walkthrough | `2d9ce0c`, `30b1482`; review `353cb0c`; Postgres run `eabb81a` | ✅ 54 met, 14 N/A, 2 gaps (policy) |
 
 ---
 

@@ -545,6 +545,46 @@ cursor bug fails `TransactionTestCase` only.
 
 ---
 
+### Session 32 — The security roadmap: towards ASVS Level 2
+
+The owner asked for the whole roadmap (`docs/SECURITY_ROADMAP.md`) to be built, with work given to
+the right model: designs and reviews in the main session (Opus), implementation by Sonnet
+subagents, one stage at a time because every stage touches the login code.
+
+**Stage A** (`5d3c9d1`–`684acae`): unverified accounts no longer squat an address (sign-up replaces
+them; a daily purge removes them after 7 days; `email_verified_at` tells them apart from
+deactivated accounts); a Have I Been Pwned range check refuses breached passwords, failing open; a
+`SecurityEvent` trail records sign-ins, failures, password and verification events, token
+revocation and deletion. **Review** `0e2dc44`: the "email taken" check read only the first of
+several case-variant rows; an audit write failing inside a transaction would abort it on Postgres
+(now a savepoint).
+
+**Stage B, multi-factor sign-in** (`00af710`–`3c8b8e9`, design `docs/design/MFA.md`): TOTP with
+recovery codes, a signed five-minute ticket between the password and the code, no step replay, a
+per-account attempt limit; the admin login now goes through the site login. **Review**
+`3b661d7`: disabling MFA and minting recovery codes checked the password and code with no limit, so
+a stolen session could guess its way to turning MFA off; `004287c`: a web MFA login was recorded
+twice.
+
+**Stage C, Sign in with Google** (`3475ed3`–`abda994`, design `docs/design/GOOGLE_SIGNIN.md`).
+**Review** found a flaw in the design itself: linking to an unverified account activated it,
+keeping a password anyone could have set — now replaced instead (`183d782`). Google-only accounts
+could never set a password, as Django's reset form skips them (`cd63adf`).
+
+**Stage D, ASVS Level 1** (`docs/ASVS_L1.md`, ASVS 5.0.0 fetched from OWASP's repository): 70
+requirements, 54 met, 14 not applicable, 2 gaps. `__Host-` cookie names in production
+(`2d9ce0c`). **Review** `353cb0c`: the Google button's script read the CSRF cookie by its old
+name, which would have broken web Google sign-in in production.
+
+**Before merging, the suite ran on Postgres** (it had only run on SQLite, as CI does). One real
+bug: an event with no client address failed to save on Postgres's IP column (`eabb81a`).
+
+**Left for the owner:** HSTS max-age (1 hour by D5; ASVS asks for a year), a written time frame for
+fixing vulnerable dependencies, and the per-account login cap. CI still tests on SQLite only.
+**Suite:** 895 tests, passing on SQLite and Postgres.
+
+---
+
 ### Session 31 — Security passes 2 to 5, run by subagents
 
 The owner asked for the passes to be run by cheaper subagents, with the main session reviewing

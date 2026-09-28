@@ -9,14 +9,14 @@
 
 ### Branches
 
-Three branches are stacked, each on the one before. **None is merged into `master` yet**, and
-`master` is untouched at `9371cc5`.
+Three branches are stacked, each on the one before. **All three were merged into `master` in
+session 32**, in the order below.
 
 | Order | Branch | What it adds | Status |
 |---|---|---|---|
 | 1 | `project-dockerization` | Docker for daily use: two modes, volumes, `Makefile` (phase 19) | Done, verified |
 | 2 | `frontend-api` | A full API for React or mobile, and the frontend pack in `docs/frontend/` (phases 20–21) | Done, verified |
-| 3 | `security-hardening` | Security passes 1–6 and this file | Passes 1–6 done, with tests |
+| 3 | `security-hardening` | Security passes 1–6, the ASVS roadmap (MFA, Google sign-in, …) and this file | Done, verified on SQLite and Postgres |
 
 **To merge**, merge them in that order. On GitHub, open a pull request into `master` for each
 branch in turn: after the first is merged, the next one's pull request shows only its own commits.
@@ -107,7 +107,7 @@ Tick each task here as you finish it, and commit after each one.
       shape of session 28. Then add a phase 22 section, "Security passes", to
       `docs/COMMIT_PLAN.md`.
 
-- [ ] **Task 4 — Merge** the three branches, in the order in section 1, once CI is green on each.
+- [x] **Task 4 — Merge** the three branches, in the order in section 1, once CI is green on each.
 
 - [ ] **Task 5 — Host it.** See section 4.
 
