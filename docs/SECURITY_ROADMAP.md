@@ -64,7 +64,10 @@ upload and input chapters. What stands between us and an honest L2 claim is belo
 
 ### 4. Features that touch security
 
-- [ ] **Sign in with Google.** Design notes below.
+- [x] **Sign in with Google.** Design notes below. `POST /api/v1/auth/google/` and the login/
+      sign-up pages' button (callback mode); verified with `google-auth`, linked by email with
+      the three cases the design lists, multi-factor sign-in still applies through the same
+      ticket as a password login. `accounts/google.py`, `accounts/tests/test_google_login.py`.
 - [ ] **Optional: a 6-digit emailed code** as an alternative to the verification link, which suits a
       mobile app better. Same signed, expiring, single-use rules as the link.
 
