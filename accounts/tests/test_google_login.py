@@ -474,3 +474,26 @@ class GoogleOnlyAccountCanSetAPasswordTests(TestCase):
         )
 
         self.assertEqual(len(mail.outbox), 1)
+
+
+@override_settings(GOOGLE_OAUTH_CLIENT_ID="client-id.apps.googleusercontent.com")
+class GoogleButtonCsrfTokenTests(TestCase):
+    """The script posts with the page's token, whatever the cookie is named.
+
+    In production the CSRF cookie is __Host-csrftoken, so a script reading
+    the cookie by the default name would send no token at all.
+    """
+
+    def test_the_login_page_carries_the_token(self):
+        import re
+
+        page = self.client.get(reverse("accounts:login")).content.decode()
+
+        match = re.search(r'data-csrf-token="([^"]+)"', page)
+        self.assertIsNotNone(match)
+
+    def test_the_script_does_not_read_cookies(self):
+        from django.contrib.staticfiles import finders
+
+        with open(finders.find("accounts/google-signin.js")) as script:
+            self.assertNotIn("document.cookie", script.read())

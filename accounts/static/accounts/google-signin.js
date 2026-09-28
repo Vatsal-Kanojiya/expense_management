@@ -15,9 +15,11 @@
  * needs no 'unsafe-inline' for script-src (config/middleware.py).
  */
 
+// From the page, not the cookie: in production the cookie is named
+// __Host-csrftoken (config/settings.py), so reading it by a fixed name breaks.
 function googleSigninCsrfToken() {
-  var match = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : "";
+  var mount = document.getElementById("google-signin-mount");
+  return mount ? mount.dataset.csrfToken || "" : "";
 }
 
 function handleGoogleCredential(response) {
