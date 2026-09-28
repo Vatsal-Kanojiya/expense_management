@@ -373,7 +373,8 @@ if not DEBUG:
     # Send Strict-Transport-Security. Start LOW (a few hours) when first
     # deploying: browsers cache this, so a wrong value with preload set
     # makes the domain unreachable over HTTP for up to a year with no way
-    # to take it back.
+    # to take it back. DECISIONS D5: the default is deliberately below
+    # ASVS V3.4.1's "at least 1 year" -- see docs/ASVS_L1.md's gap list.
     SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=3600)
     SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", default=True)
     # Deliberately opt-in. Preload submits the domain to a browser-baked
@@ -402,6 +403,27 @@ if not DEBUG:
     # from email keeps you logged in) while blocking cross-site POSTs.
     SESSION_COOKIE_SAMESITE = "Lax"
     CSRF_COOKIE_SAMESITE = "Lax"
+
+    # ASVS V3.3.1: a cookie that sets Secure must also carry the __Host- or
+    # __Secure- prefix, so a browser refuses to store it at all unless
+    # Secure is genuinely set (and, for __Host-, unless Path=/ and no Domain
+    # is set -- both already true of Django's defaults here). This is a
+    # second, browser-enforced backstop behind SESSION_COOKIE_SECURE /
+    # CSRF_COOKIE_SECURE above: a bug or a future override that drops
+    # Secure while leaving the plain name in place would otherwise send the
+    # cookie over HTTP anyway. __Host- rather than __Secure-: both cookies
+    # are already Path=/ with no explicit Domain.
+    #
+    # Gated on the cookies actually being Secure, not just on DEBUG: the
+    # local compose stack runs with DEBUG=False but SESSION_COOKIE_SECURE
+    # and CSRF_COOKIE_SECURE forced off (DECISIONS D35) because it serves
+    # plain HTTP. A browser drops a __Host-/__Secure- cookie outright when
+    # Secure is not set, which would silently break login there; only
+    # switch to the prefixed name once Secure is genuinely on.
+    if SESSION_COOKIE_SECURE:
+        SESSION_COOKIE_NAME = "__Host-sessionid"
+    if CSRF_COOKIE_SECURE:
+        CSRF_COOKIE_NAME = "__Host-csrftoken"
 
     SECURE_CONTENT_TYPE_NOSNIFF = True
 
