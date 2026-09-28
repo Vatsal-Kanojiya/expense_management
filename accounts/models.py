@@ -78,6 +78,8 @@ class SecurityEvent(models.Model):
         MFA_DISABLED = "mfa_disabled", "Two-step sign-in turned off"
         RECOVERY_CODE_USED = "recovery_code_used", "Recovery code used"
         RECOVERY_CODES_REGENERATED = "recovery_codes_regenerated", "Recovery codes regenerated"
+        GOOGLE_LOGIN_SUCCEEDED = "google_login_succeeded", "Google sign-in succeeded"
+        GOOGLE_LOGIN_FAILED = "google_login_failed", "Google sign-in failed"
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     event = models.CharField(max_length=32, choices=Event.choices)
