@@ -53,13 +53,18 @@ class DeploySettingsTests(SimpleTestCase):
     process without DEBUG, which is also exactly what CI does.
     """
 
-    def _check_deploy(self, debug):
+    def _check_deploy(self, debug, **overrides):
         env = {**os.environ, "DEBUG": debug, "ALLOWED_HOSTS": "example.com"}
         # CI sets this to False for the test job so the SSL redirect does not
         # 301 every test client request. Inheriting it here would have this
         # test assert the production config is clean while measuring the
         # relaxed one, which is the exact hole it exists to close.
-        env.pop("SECURE_SSL_REDIRECT", None)
+        #
+        # The cookie flags are popped for the same reason: compose.yaml turns
+        # them off, and `make test` runs inside that environment.
+        for relaxed in ("SECURE_SSL_REDIRECT", "SESSION_COOKIE_SECURE", "CSRF_COOKIE_SECURE"):
+            env.pop(relaxed, None)
+        env.update(overrides)
 
         return subprocess.run(
             [sys.executable, "manage.py", "check", "--deploy", "--fail-level", "WARNING"],
@@ -79,6 +84,18 @@ class DeploySettingsTests(SimpleTestCase):
         # redirect makes http://localhost unreachable, so local development
         # must fail these checks.
         self.assertNotEqual(self._check_deploy("True").returncode, 0)
+
+    def test_relaxed_cookies_fail_the_deploy_check(self):
+        # The local compose stack serves plain HTTP and turns these off. The
+        # switch must be loud anywhere else: CI's deploy job never sets it,
+        # and this proves that if something did, the build would go red.
+        result = self._check_deploy(
+            "False", SESSION_COOKIE_SECURE="False", CSRF_COOKIE_SECURE="False"
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("security.W012", result.stdout + result.stderr)
+        self.assertIn("security.W016", result.stdout + result.stderr)
 
 
 class StaticFilesTests(SimpleTestCase):

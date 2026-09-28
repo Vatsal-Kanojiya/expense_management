@@ -413,6 +413,78 @@ this phase, so tag at `0e1e602` or later, **not** at `bafcc68`:
 **Phase 17 is the last phase.** The project is frozen after it — see DECISIONS D27. The next build is
 project 2, done solo.
 
+### Phase 18 — Bill scanning ✅ *(session 25, not yet tagged)*
+
+Planned and tracked in its own handoff document, `docs/HANDOFF_BILL_SCAN.md`: six tasks, S1–S6,
+with a progress table in its §P. D28 lifted the freeze for it.
+
+### Phase 19 — Docker for daily use ✅ *(session 26, built and verified on branch `project-dockerization`; not merged, not tagged)*
+
+> **Prerequisite:** `master` at `9371cc5`. This phase touches the Docker files, a new `Makefile`,
+> two settings, the test runner and the docs. It does **not** touch models, views, templates or
+> migrations.
+
+Phase 11 containerised the stack. Running it before starting this phase showed that, in Docker,
+the app could not upload a bill, export a CSV or keep beat alive (BUILD_LOG issues 38–40). The
+rest of the brief: two modes, state in volumes, ports that do not collide with the owner's other
+projects, and documentation first. Decisions D31–D39; runbook `docs/DOCKER.md`.
+
+| # | Commit | Files | Architecture note |
+|---|---|---|---|
+| 19.1 | `docs: plan phase 19, Docker for daily use` | `docs/` | D31–D38, this section, and `docs/DOCKER.md` written **first**, as the spec the build is checked against |
+| 19.2 | `feat(config): read media root and secure-cookie flags from the environment` | `config/settings.py`, `config/test_runner.py`, tests | Defaults unchanged. The test runner moves `MEDIA_ROOT` to a temp dir (issue 41) |
+| 19.3 | `feat(docker): add a dev target and take the host UID in the image` | `Dockerfile`, `requirements-dev.txt`, `.dockerignore` | Stages builder → dev-builder → dev → runtime, with runtime last so a bare `docker build` still ships production. `/app` and `/data/*` owned by the app user (issues 38, 39) |
+| 19.4 | `feat(docker): keep state in volumes, move host ports, gate start-up on health` | `compose.yaml`, `.env.example` | Four volumes, 8765/5433/6380 on loopback, one image for three services, restart policy, log rotation |
+| 19.5 | `feat(docker): add a development overlay with live code` | `compose.dev.yaml` | Bind mount, `runserver`, `watchfiles` restarts worker and beat |
+| 19.6 | `feat(docker): add a Makefile front door` | `Makefile`, `.gitignore` | `make help` lists every target |
+| 19.7 | `docs: record session 26 and the phase 19 verification` | `docs/`, `README.md` | BUILD_LOG, and the runbook corrected against what actually ran |
+
+**Definition of done.** Each check is run for real, and its result is recorded in BUILD_LOG
+session 26:
+
+| # | Check |
+|---|---|
+| V1 | Both Compose file sets validate; `make help` lists the targets |
+| V2 | From nothing (no `.env`, no volumes), `make up` produces a `.env` with a real key and five healthy or running services. Web answers on 127.0.0.1:8765, Postgres on 5433, Redis on 6380, and nothing listens on `0.0.0.0` |
+| V3 | Static files are served with hashed names while `DEBUG` is off |
+| V4 | In a real browser: sign up, open the verification link from the log, log in, add a category and an expense, and see them on the dashboard |
+| V5 | A bill is uploaded on web, scanned by the worker, and reviewed and saved (issues 39, 40) |
+| V6 | A CSV export is queued on web, built by the worker, and downloaded from web (issues 39, 40) |
+| V7 | Beat stays up and its schedule file is written to the volume (issues 38, 42) |
+| V8 | `make down` then `make up` keeps the user, expenses, uploads and exports |
+| V9 | A code change followed by the update path is served, and a new migration is applied automatically |
+| V10 | `make dev` switches mode with the same data. A template or view edit is live without a restart, a `tasks.py` edit restarts the worker, and files created from inside are owned by the host user |
+| V11 | `make test` passes on Postgres, including the Postgres-only tests, and the media volume stays clean |
+| V12 | `make backup`, `make destroy`, `make up`, then both restores bring the data back |
+| V13 | Opened to a non-loopback address, login works with the cookie switches off and fails with them on (D35) |
+| V14 | The repo's own checks are unchanged: ruff, format, the migrations check, `check`, `check --deploy` and the suite outside Docker |
+
+**Progress.** Updated as each commit lands.
+
+| Task | Status | Commit |
+|---|---|---|
+| 19.1 | done | `7abddb9` |
+| 19.2 | done | `e15f2f2` |
+| 19.3 | done | `cea809c` |
+| 19.4 | done | `6db7734` |
+| 19.5 | done | `37a8869` |
+| 19.6 | done | `21ced62` |
+| — | done, found by verification | `9e69951` `fix(docker): build the app image once, and keep an idle make up idle` |
+| 19.7 | done | the commit that records session 26 |
+
+**As built.** V1–V14 all pass; the results are in BUILD_LOG session 26. The plan held apart from
+one commit that running it forced. Every `make up` recreated the app containers with nothing
+changed, and that had two causes: Compose labels each service's build differently, and Docker 29
+stamps build time into an attestation. So now only web builds the image, and the Makefile turns
+the default attestations off (D39). `.env` is also created with mode 600 rather than
+world-readable.
+
+**Out of scope:** CI/CD (the owner's next request) · TLS in front of the stack · a mail catcher
+such as Mailpit (settings would need `EMAIL_HOST`/`EMAIL_PORT` first) · deploying to a server ·
+pushing images to a registry · merging to `master`.
+
+**Tag:** `phase-19-docker-daily-use`, once the owner has run the stack on their own machine.
+
 ---
 
 ## 3. Practice branches — re-implementing a phase by hand

@@ -526,3 +526,201 @@ through one normaliser, so money and date parsing is written once.
 
 **The rule that makes it safe:** model output only ever fills a form a human confirms. No expense
 is created from a scan without the user pressing Save.
+
+---
+
+## Session 26 — Docker for daily use
+
+The brief, in the owner's words: dockerize the whole project on its own branch; the database and
+anything else that must survive goes in volumes; code updates when the code is pulled; Django and
+Postgres reachable from outside the containers on ports that do not collide with the owner's other
+projects; a production-like and a development way to run it; and all of it documented. Phase 11 had
+already containerised the stack, so this is a rework of that, not a first attempt — and running
+phase 11's stack before touching it turned up three bugs of its own (BUILD_LOG issues 38–40).
+
+### D31. Two modes from two files: `compose.yaml` is production-like, `compose.dev.yaml` an overlay
+
+**Decided:** `compose.yaml` is the whole stack, production-like — code baked into the image,
+`DEBUG` off, gunicorn. `compose.dev.yaml` is layered on top of it (`-f compose.yaml -f
+compose.dev.yaml`) and states only what differs in development: the image target, `DEBUG`, the
+commands, and a bind mount of the checkout.
+
+**Alternatives:** one file with Compose profiles; two standalone files; a development setup only.
+
+**Why:** profiles choose *which services* run, not *how* a service runs. Web is the same service in
+both modes with a different command, so profiles would mean `web` and `web-dev` side by side with
+every dependency written twice. Two standalone files drift — a port changed in one is forgotten in
+the other. An overlay can only say what is different, so ports, volumes and healthchecks have one
+home.
+
+**Reverse it if:** the overlay ends up overriding most of the base. Then the modes are really two
+stacks.
+
+### D32. Code never lives in a named volume
+
+**Decided:** in the production-like mode the code is copied into the image at build time and
+updated by rebuilding. In development it is bind-mounted from the checkout. No named volume ever
+holds code.
+
+**Alternative:** a named volume at `/app`, as the owner asked about.
+
+**Why:** Docker fills a named volume from the image once, when the volume is created. From then
+on the volume wins over the image at that path, so a rebuilt image with new code starts and runs
+the *old* code, silently. It is the classic stale-code trap. The two sound shapes are the two
+modes: the image is the unit of deployment (pull, rebuild — `make update`), or the checkout is
+(pull, and that is all — edits are live).
+
+**Reverse it if:** never, for code. Named volumes are for state.
+
+### D33. Host ports 8765, 5433 and 6380, loopback-only by default, all configurable
+
+**Decided:** on the host, web is 8765, Postgres 5433 and Redis 6380. Inside the containers the
+standard 8000, 5432 and 6379 are unchanged. Every host port is a `.env` variable, and they listen on
+127.0.0.1 unless told otherwise, through two separate switches: `WEB_BIND_ADDRESS` and
+`DATA_BIND_ADDRESS`.
+
+**Alternative:** phase 11's `8000:8000` on every interface.
+
+**Why:** the owner runs several projects, and 8000, 5432 and 6379 are exactly the ports every other
+Django project and every locally installed Postgres and Redis already hold. 5433 and 6380 are "the
+default plus one", so they still read as Postgres and Redis at a glance. Only the host side moves,
+so nothing inside the stack — `DATABASE_URL`, the broker URLs — changes with it.
+
+Loopback by default because **Docker publishes ports by writing firewall rules ahead of ufw**. A
+ufw rule does not close a published port. Postgres with a local-only password on `0.0.0.0` is open
+to the LAN and to every café network the laptop joins. Web and data have separate switches so the
+site can be opened to a phone without opening the database.
+
+**Reverse it if:** a port collides. Change it in `.env`; nothing else refers to it.
+
+### D34. Four named volumes hold everything that must survive; media moves out of `/app`
+
+**Decided:**
+
+| Volume | Holds | Mounted in |
+|---|---|---|
+| `postgres-data` | the database | db |
+| `redis-data` | Redis with append-only persistence: queued tasks survive a restart | redis |
+| `media` | uploaded bill photos and generated CSV exports, at `/data/media` | web, worker |
+| `beat-schedule` | when each periodic task last ran, at `/data/beat` | beat |
+
+`MEDIA_ROOT` becomes an environment setting (default unchanged), and the image sets it to
+`/data/media`.
+
+**Alternative:** phase 11's single `postgres-data` volume, with media inside `/app`.
+
+**Why:** each volume holds a fact that exists nowhere else. **Media** is handed between containers:
+web writes the upload and the worker reads it; the worker writes the export and web serves it.
+Under phase 11 each container had its own `/app/media`, so no file could cross (issue 40).
+**Beat** measures each interval from the last run, which it keeps in a file. Lose the file on
+restart and the 24-hour `purge_exports` clock starts again from zero, so a machine that is never up
+for 24 hours straight never purges (issue 42). **Redis** holds a queued task that no worker has
+picked up yet, and nowhere else.
+
+Media sits outside `/app` because in development `/app` is your checkout. A volume mounted
+inside a bind mount makes Docker create the mount point in your checkout, owned by root.
+
+**Deliberately not volumes:** static files are built into the image by `collectstatic` and must
+change with it — a volume would pin the first build's CSS, which is D32 again. The cache is Redis
+database 2, disposable by design.
+
+**Reverse it if:** media moves to object storage. The `media` volume then goes away.
+
+### D35. Secure cookies can be switched off by environment, as the SSL redirect already could
+
+**Decided:** `SESSION_COOKIE_SECURE` and `CSRF_COOKIE_SECURE` are read from the environment,
+default `True`. `compose.yaml` sets both to `False` next to the existing `SECURE_SSL_REDIRECT:
+"False"`, for the same reason: nothing in this stack terminates TLS.
+
+**Alternative:** leave them hardcoded, since Chromium treats loopback as a secure context. Measured
+before the change: with phase 11's stack, a real Chromium logs in at `http://localhost:8000` and
+`http://127.0.0.1:8000` with Secure cookies.
+
+**Why:** loopback is the only place that holds. Over plain HTTP to a LAN address — the phone case in
+D33 — the browser drops a Secure cookie, so the session never sticks and every POST fails CSRF.
+Defaults stay `True` everywhere else. A test asserts that switching them off fails `check --deploy`,
+and CI's deploy job never sets them, so a real deployment cannot pick the switch up quietly.
+
+**Measured after the change (BUILD_LOG session 26, V13):** with the site opened on a non-loopback
+address, login works with the switches off. With them on — Django's secure default — the same
+login fails with 403 CSRF, while `127.0.0.1` still works.
+
+**Reverse it if:** the local stack gains TLS, for example Caddy in front. Then the switches go back
+to their defaults.
+
+### D36. One project, one dataset: both modes share the same volumes
+
+**Decided:** both modes run as the compose project `expense-tracker` and use the same four volumes.
+Switching mode is one command, and the data comes along.
+
+**Alternative:** a separate project name for development, with its own volumes.
+
+**Why:** one developer on one machine. The data's value is that it is the same data; a second copy
+means signing up twice and wondering which one is on screen. Tests need no isolation from it —
+Django's runner creates its own test database, and after issue 41 the test runner keeps test
+uploads out of the media volume too.
+
+**Reverse it if:** development experiments start damaging data worth keeping. Then
+`COMPOSE_PROJECT_NAME` in the dev commands is a one-line change.
+
+### D37. The container user takes the host user's UID and GID
+
+**Decided:** the image creates its non-root user from the build arguments `APP_UID` and `APP_GID`,
+fed from `HOST_UID` and `HOST_GID` in `.env`, which `make env` fills with `id -u` and `id -g`. The
+default stays 1000. The user also owns `/app` itself, not just the files copied into it.
+
+**Alternative:** phase 11's fixed UID 1000, whose `COPY --chown` changed the files but left `/app`
+owned by root — the cause of issues 38 and 39.
+
+**Why:** in development the container writes into your checkout — a migration from
+`makemigrations`, a file `ruff --fix` rewrote. Those files belong to whoever the container runs as.
+With a fixed 1000 on a machine where you are 1001, a migration Django just generated is not yours
+to edit, and as root it needs sudo to delete. With matching IDs the container's writes cannot be
+told apart from your own. The production-like image uses the same IDs so the two modes can share
+the media volume (D36): what one writes, the other can overwrite.
+
+**Reverse it if:** the image is built for a registry by CI/CD. Build it with the defaults; the
+arguments default to exactly that.
+
+### D38. Make is the front door; Compose stays the mechanism
+
+**Decided:** a `Makefile` wraps the everyday operations. Each target is a thin `docker compose`
+call, and `docs/DOCKER.md` shows the raw command next to every target.
+
+**Alternatives:** shell scripts; raw Compose commands only.
+
+**Why:** the development command is `docker compose -f compose.yaml -f compose.dev.yaml up -d
+--build`. That is long enough to get wrong, and getting it wrong silently starts the other mode.
+Make is on every Linux machine, gives `make help` for free, and needs nothing installed. The targets
+stay thin on purpose so that Make does not become a second place where the stack is defined.
+
+**Reverse it if:** targets start to grow logic. That logic belongs in Compose or in a management
+command.
+
+### D39. Only web builds the image, and local builds skip the default attestations
+
+*Taken during verification, after D31–D38 were written.*
+
+**Decided:** in both compose files only `web` has a `build`. Worker and beat name the image web
+builds, with `pull_policy: never`. The Makefile exports `BUILDX_NO_DEFAULT_ATTESTATIONS=1`.
+
+**Alternatives:** a `build` on all three services, which the phase 19 plan had; setting
+`provenance: false` in the compose file.
+
+**Why:** measured, not assumed. With the plan's layout, every `make up` recreated all three app
+containers even when nothing had changed, and it had two causes. First, Compose writes the building
+service's name into the image as a label, so three `build` sections produce three images that
+differ only by that label, and the last one to finish takes the tag. Second, Docker 29's
+containerd image store attaches a provenance attestation stamped with the build time, so even a
+fully cached build gets a new image ID. Building once removes the first cause, and the variable
+removes the second. `provenance: false` in the compose file was tried and did not make the ID
+stable. `pull_policy: never` stops a first run from asking Docker Hub for an image that only
+exists locally, which printed "not found" errors before web's build created it.
+
+**Cost:** local images carry no provenance attestation, the record of how an image was built.
+That record matters for images pulled from a registry, not for images that never leave the
+machine. Raw `docker compose up --build`, without the variable, still works; it just recreates
+the app containers each time.
+
+**Reverse it if:** CI/CD starts building images for a registry. Build those with the default
+attestations, or more.

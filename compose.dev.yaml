@@ -1,0 +1,56 @@
+# Development overlay: the same stack, with your checkout mounted into the
+# app containers so an edit -- or a `git pull` -- is live without a rebuild.
+#
+#   make dev             or   docker compose -f compose.yaml -f compose.dev.yaml up -d --build
+#   http://127.0.0.1:8765
+#
+# Not a standalone file. Services, ports, volumes, healthchecks and the
+# environment all come from compose.yaml; this states only what differs in
+# development (D31). Both modes are the same project and share the same
+# volumes, so the data follows you when you switch (D36).
+#
+# Code is bind-mounted, never kept in a named volume: a named volume keeps
+# the first copy of the code it was given and would go on serving it after
+# every rebuild (D32).
+
+x-dev: &dev
+  image: expense-tracker:dev
+  environment:
+    DEBUG: "True"
+
+services:
+  web:
+    <<: *dev
+    # Only web builds; worker and beat run the image it produces, exactly as
+    # in compose.yaml.
+    build:
+      target: dev
+    # runserver reloads itself when a .py file changes. A new migration
+    # still needs `make migrate`; docs/DOCKER.md §8.
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+
+  # Celery has no reloader. watchfiles restarts the worker and beat when a
+  # .py file changes in the project's own packages -- not the whole
+  # checkout, which may hold a .venv with thousands of files to watch.
+  # Add a new Django app to both lists.
+  worker:
+    <<: *dev
+    command: >
+      watchfiles --filter python
+      "celery -A config worker --loglevel=info"
+      config expenses accounts
+    volumes:
+      - .:/app
+
+  beat:
+    <<: *dev
+    command: >
+      watchfiles --filter python
+      "celery -A config beat --loglevel=info --schedule /data/beat/celerybeat-schedule"
+      config expenses accounts
+    volumes:
+      - .:/app
