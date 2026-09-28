@@ -656,3 +656,10 @@ SECURITY_EVENT_RETENTION_DAYS = env.int("SECURITY_EVENT_RETENTION_DAYS", default
 # secret, so it needs no k-anonymity or hashing treatment like the values
 # above.
 MFA_ISSUER = env("MFA_ISSUER", default="Expense Tracker")
+
+# Sign in with Google (roadmap §4, docs/design/GOOGLE_SIGNIN.md). Off (both
+# the API endpoint and the web button) unless this is set to a real OAuth
+# client id from the Google Cloud console -- see .env.example for how to
+# get one. Not a secret: it identifies the app to Google, and reaches the
+# browser in a `data-` attribute on the login/sign-up pages.
+GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")
