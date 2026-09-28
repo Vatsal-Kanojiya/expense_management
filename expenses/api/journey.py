@@ -165,6 +165,40 @@ def _make_unverified(journey):
     )
 
 
+def _enable_google_signin(journey):
+    """Mock the one call to Google this example makes (docs/design/GOOGLE_SIGNIN.md).
+
+    ``GOOGLE_OAUTH_CLIENT_ID`` is already set for the whole journey run
+    (``build_api_docs``'s ``JOURNEY_SETTINGS``), so ``auth/google/`` exists;
+    only Google's own verification is faked, exactly as the tests do
+    (``accounts/tests/test_google_login.py``) -- the journey never talks to
+    Google either.
+    """
+    from unittest.mock import patch
+
+    from django.conf import settings
+
+    from accounts import google as google_accounts
+
+    patcher = patch.object(
+        google_accounts.google_id_token,
+        "verify_oauth2_token",
+        return_value={
+            "iss": "https://accounts.google.com",
+            "aud": settings.GOOGLE_OAUTH_CLIENT_ID,
+            "email": "journey.google@example.com",
+            "email_verified": True,
+            "exp": 9999999999,
+        },
+    )
+    patcher.start()
+    journey.vars["_google_patcher"] = patcher
+
+
+def _disable_google_signin(journey):
+    journey.vars.pop("_google_patcher").stop()
+
+
 def _placeholder_expense(journey, share_with=None):
     from expenses.models import Category, Expense, ExpenseItem, ItemShare
 
@@ -347,6 +381,24 @@ STEPS = [
                 note="Said only when the password was right; otherwise a plain 401.",
             ),
         ],
+    ),
+    Step(
+        START,
+        "Sign in with Google",
+        "POST",
+        "/auth/google/",
+        200,
+        "An alternative to the step above: `credential` is the ID token Google Identity "
+        "Services returns from its own button. The server verifies it with Google, then finds "
+        "or creates the account by its (Google-verified) email and answers exactly like a "
+        "plain login -- a token pair, or `{mfa_required: true, mfa_ticket}` for an account with "
+        "two-step sign-in on. `404` when the server has no `GOOGLE_OAUTH_CLIENT_ID` "
+        "configured -- the feature does not exist at all until then, and the button is not "
+        "shown.",
+        body={"credential": "google-id-token"},
+        public=True,
+        before=_enable_google_signin,
+        after=lambda journey, body: _disable_google_signin(journey),
     ),
     Step(
         START,

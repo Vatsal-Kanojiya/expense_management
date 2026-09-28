@@ -20,6 +20,7 @@ from django.contrib.auth.forms import PasswordChangeForm, PasswordResetForm, Set
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import update_last_login
 from django.contrib.auth.tokens import default_token_generator
+from django.http import Http404
 from django.urls import path
 from django.utils import timezone
 from django.utils.http import urlsafe_base64_decode
@@ -40,6 +41,7 @@ from expenses.models import Participant
 from . import audit, mfa, ratelimit, totp
 from .deletion import delete_account
 from .forms import SignUpForm
+from .google import GoogleSignInError, google_signin_enabled, sign_in_with_google
 from .models import RecoveryCode, TOTPDevice
 from .models import mfa_enabled as user_has_mfa
 from .verification import send_verification_email, verify
@@ -66,6 +68,10 @@ class MeSerializer(serializers.ModelSerializer):
     """
 
     self_participant = serializers.SerializerMethodField()
+    has_password = serializers.SerializerMethodField(
+        help_text="False for a Google-only account: it has no password to change, only "
+        "to set (docs/design/GOOGLE_SIGNIN.md)."
+    )
 
     class Meta:
         model = User
@@ -79,6 +85,7 @@ class MeSerializer(serializers.ModelSerializer):
             "date_joined",
             "last_login",
             "self_participant",
+            "has_password",
         ]
         read_only_fields = ["id", "username", "email", "is_staff", "date_joined", "last_login"]
 
@@ -86,6 +93,10 @@ class MeSerializer(serializers.ModelSerializer):
     def get_self_participant(self, user):
         participant = Participant.get_or_create_self(user)
         return {"id": participant.id, "name": participant.name}
+
+    @extend_schema_field(serializers.BooleanField)
+    def get_has_password(self, user):
+        return user.has_usable_password()
 
 
 class TokenPairSerializer(serializers.Serializer):
@@ -115,6 +126,10 @@ class LinkSerializer(serializers.Serializer):
 
 class RefreshSerializer(serializers.Serializer):
     refresh = serializers.CharField()
+
+
+class GoogleLoginSerializer(serializers.Serializer):
+    credential = serializers.CharField(help_text="The ID token Google Identity Services returns.")
 
 
 class PasswordChangeSerializer(serializers.Serializer):
@@ -259,6 +274,11 @@ INVALID_TICKET = Response(
 )
 
 WRONG_CODE = Response({"code": ["That code is wrong."]}, status=status.HTTP_400_BAD_REQUEST)
+
+GOOGLE_FAILED = Response(
+    {"detail": "Google sign-in failed.", "code": "google_failed"},
+    status=status.HTTP_400_BAD_REQUEST,
+)
 
 
 class PublicView(APIView):
@@ -447,6 +467,59 @@ class LoginView(PublicView):
 
         # No django.contrib.auth.login() call here -- a JWT pair is handed
         # back instead of a session -- so nothing else records this login.
+        audit.record("login_succeeded", request=request, user=user)
+        return Response(issue_tokens(user))
+
+
+class GoogleLoginView(PublicView):
+    """Sign in (or sign up) with a Google ID token.
+
+    404 when ``GOOGLE_OAUTH_CLIENT_ID`` is unset -- Sign in with Google does
+    not exist as a feature at all until then (docs/design/GOOGLE_SIGNIN.md).
+    Rate-limited like the login's per-address cap (``login-ip``): there is
+    no username to key an attempt on before the token is verified, only an
+    address.
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        if not google_signin_enabled():
+            raise Http404
+        return super().dispatch(request, *args, **kwargs)
+
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Sign in with Google",
+        request=GoogleLoginSerializer,
+        responses={
+            200: OpenApiResponse(
+                TokenPairSerializer,
+                description="Signed in -- or, for an account with two-step sign-in on, "
+                "`{mfa_required: true, mfa_ticket}` instead, exactly as `auth/login/`.",
+            ),
+            400: OpenApiResponse(MessageSerializer, description="Google sign-in failed."),
+            404: OpenApiResponse(MessageSerializer, description="Not configured."),
+            429: OpenApiResponse(MessageSerializer, description="Too many attempts."),
+        },
+    )
+    @sensitive_variables()
+    def post(self, request, *args, **kwargs):
+        if ratelimit.google_login_blocked(request):
+            return rate_limited("Too many attempts. Wait a few minutes and try again.")
+
+        body = GoogleLoginSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+
+        try:
+            user, _created = sign_in_with_google(body.validated_data["credential"], request=request)
+        except GoogleSignInError:
+            ratelimit.record_google_login_failure(request)
+            return GOOGLE_FAILED
+
+        if user_has_mfa(user):
+            # Same second step as a password login (docs/design/MFA.md):
+            # no tokens yet, just a ticket.
+            return Response({"mfa_required": True, "mfa_ticket": mfa.make_ticket(user)})
+
         audit.record("login_succeeded", request=request, user=user)
         return Response(issue_tokens(user))
 
@@ -900,6 +973,7 @@ urlpatterns = [
     path("auth/signup/", SignupView.as_view(), name="auth-signup"),
     path("auth/verify-email/", VerifyEmailView.as_view(), name="auth-verify-email"),
     path("auth/login/", LoginView.as_view(), name="auth-login"),
+    path("auth/google/", GoogleLoginView.as_view(), name="auth-google"),
     path("auth/mfa/verify/", MFAVerifyView.as_view(), name="auth-mfa-verify"),
     path("auth/mfa/", MFAStatusView.as_view(), name="auth-mfa-status"),
     path("auth/mfa/setup/", MFASetupView.as_view(), name="auth-mfa-setup"),

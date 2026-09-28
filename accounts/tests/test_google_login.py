@@ -1,8 +1,9 @@
 """Sign in with Google (docs/design/GOOGLE_SIGNIN.md): verifying the ID
-token and finding or creating the local account (``accounts/google.py``).
+token and finding or creating the local account (``accounts/google.py``),
+and the API endpoint (``auth/google/``) that is the first thing built on it.
 
-The API endpoint, the web view and the CSP get their own test classes in
-this file as later commits add them.
+The web view and the CSP get their own test classes in this file once a
+later commit adds them.
 
 Never calls Google: every test mocks
 ``google.oauth2.id_token.verify_oauth2_token`` directly, so nothing here
@@ -12,14 +13,33 @@ does network I/O.
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import TestCase, override_settings
+from django.urls import reverse
 
-from accounts import google
+from accounts import google, ratelimit, totp
+from accounts.models import SecurityEvent, TOTPDevice
 
 User = get_user_model()
 PASSWORD = "Str0ng-Enough-Pass"
 
+with_cache = override_settings(
+    CACHES={
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "google-login-tests",
+        }
+    }
+)
+
 with_google = override_settings(GOOGLE_OAUTH_CLIENT_ID="test-client-id.apps.googleusercontent.com")
+
+# base32("12345678901234567890") -- the RFC 6238 test secret, as in test_mfa.py.
+RFC_SECRET = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+
+
+def code_for(secret, at=None):
+    return totp._hotp(secret, totp.current_step(at=at))
 
 
 def payload(email="alice@example.com", email_verified=True, iss="https://accounts.google.com"):
@@ -38,6 +58,10 @@ def mock_verify(**overrides):
     return patch.object(google.google_id_token, "verify_oauth2_token", **overrides)
 
 
+def api_url(name):
+    return reverse(f"api:v1:{name}")
+
+
 # --- Off unless configured -------------------------------------------------
 
 
@@ -48,6 +72,10 @@ class GoogleSignInOffTests(TestCase):
     @with_google
     def test_google_signin_enabled_is_true_once_configured(self):
         self.assertTrue(google.google_signin_enabled())
+
+    def test_the_api_endpoint_404s_when_unconfigured(self):
+        response = self.client.post(api_url("auth-google"), {"credential": "x"})
+        self.assertEqual(response.status_code, 404)
 
 
 # --- accounts/google.py: verification and find-or-create -------------------
@@ -151,3 +179,131 @@ class FindOrCreateUserTests(TestCase):
     def test_a_dotted_local_part_becomes_a_clean_username(self):
         user, _created = google.find_or_create_user("first.last+tag@example.com")
         self.assertEqual(user.username, "first.last+tag")
+
+
+# --- The API endpoint --------------------------------------------------
+
+
+@with_cache
+@with_google
+class GoogleLoginApiTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def post(self, credential="token", **extra):
+        return self.client.post(
+            api_url("auth-google"),
+            {"credential": credential, **extra},
+            content_type="application/json",
+        )
+
+    def test_a_new_user_is_signed_up_and_signed_in(self):
+        with mock_verify(return_value=payload(email="brandnew@example.com")):
+            response = self.post()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("access", response.json())
+        user = User.objects.get(email="brandnew@example.com")
+        self.assertTrue(user.is_active)
+        self.assertFalse(user.has_usable_password())
+        self.assertTrue(
+            SecurityEvent.objects.filter(
+                event="signed_up", user=user, detail={"via": "google"}
+            ).exists()
+        )
+        self.assertTrue(
+            SecurityEvent.objects.filter(event="google_login_succeeded", user=user).exists()
+        )
+        self.assertTrue(SecurityEvent.objects.filter(event="login_succeeded", user=user).exists())
+
+    def test_an_existing_active_user_is_signed_in(self):
+        user = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+
+        with mock_verify(return_value=payload()):
+            response = self.post()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["user"]["id"], user.pk)
+        self.assertFalse(SecurityEvent.objects.filter(event="signed_up", user=user).exists())
+
+    def test_email_not_verified_is_refused(self):
+        with mock_verify(return_value=payload(email_verified=False)):
+            response = self.post()
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["code"], "google_failed")
+        self.assertTrue(SecurityEvent.objects.filter(event="google_login_failed").exists())
+
+    def test_a_deactivated_verified_account_is_refused(self):
+        from django.utils import timezone
+
+        User.objects.create_user(
+            "alice",
+            "alice@example.com",
+            PASSWORD,
+            is_active=False,
+            email_verified_at=timezone.now(),
+        )
+
+        with mock_verify(return_value=payload()):
+            response = self.post()
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["code"], "google_failed")
+
+    def test_verifier_failure_is_refused(self):
+        with mock_verify(side_effect=ValueError("boom")):
+            response = self.post()
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["code"], "google_failed")
+
+    def test_an_mfa_user_gets_a_ticket_not_tokens(self):
+        user = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+        TOTPDevice.objects.create(user=user, secret=RFC_SECRET, confirmed=True)
+
+        with mock_verify(return_value=payload()):
+            response = self.post()
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["mfa_required"])
+        self.assertNotIn("access", data)
+
+        # The ticket works at the usual endpoint.
+        verify_response = self.client.post(
+            api_url("auth-mfa-verify"),
+            {"mfa_ticket": data["mfa_ticket"], "code": code_for(RFC_SECRET)},
+            content_type="application/json",
+        )
+        self.assertEqual(verify_response.status_code, 200)
+
+    @patch.object(ratelimit, "LOGIN_IP_LIMIT", 2)
+    def test_rate_limited(self):
+        with mock_verify(return_value=payload(email_verified=False)):
+            self.post()
+            self.post()
+            response = self.post()
+
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.json()["code"], "rate_limited")
+
+    def test_has_password_on_me(self):
+        with mock_verify(return_value=payload(email="brandnew@example.com")):
+            login_response = self.post()
+
+        me_response = self.client.get(
+            api_url("me"), HTTP_AUTHORIZATION=f"Bearer {login_response.json()['access']}"
+        )
+        self.assertFalse(me_response.json()["has_password"])
+
+    def test_has_password_true_for_a_normal_account(self):
+        user = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+        with mock_verify(return_value=payload()):
+            login_response = self.post()
+
+        me_response = self.client.get(
+            api_url("me"), HTTP_AUTHORIZATION=f"Bearer {login_response.json()['access']}"
+        )
+        self.assertTrue(me_response.json()["has_password"])
+        self.assertEqual(me_response.json()["id"], user.pk)
