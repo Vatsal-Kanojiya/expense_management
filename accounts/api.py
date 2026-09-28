@@ -16,7 +16,7 @@ import logging
 from django.conf import settings
 from django.contrib.auth import authenticate as django_authenticate
 from django.contrib.auth import get_user_model, logout, update_session_auth_hash
-from django.contrib.auth.forms import PasswordChangeForm, PasswordResetForm, SetPasswordForm
+from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import update_last_login
 from django.contrib.auth.tokens import default_token_generator
@@ -40,7 +40,7 @@ from expenses.models import Participant
 
 from . import audit, mfa, ratelimit, totp
 from .deletion import delete_account
-from .forms import SignUpForm
+from .forms import AnyActiveAccountPasswordResetForm, SignUpForm
 from .google import GoogleSignInError, google_signin_enabled, sign_in_with_google
 from .models import RecoveryCode, TOTPDevice
 from .models import mfa_enabled as user_has_mfa
@@ -860,7 +860,7 @@ class PasswordResetView(PublicView):
         matched_user = User.objects.filter(email__iexact=email).first()
         audit.record("password_reset_requested", request=request, user=matched_user, email=email)
 
-        form = PasswordResetForm(data={"email": email})
+        form = AnyActiveAccountPasswordResetForm(data={"email": email})
         if form.is_valid():
             options = {
                 "request": request,

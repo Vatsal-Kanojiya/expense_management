@@ -447,3 +447,30 @@ class GoogleOnlyAccountTests(TestCase):
 
         response = self.client.get(reverse("accounts:password_change"))
         self.assertEqual(response.status_code, 200)
+
+
+class GoogleOnlyAccountCanSetAPasswordTests(TestCase):
+    """Reset is how a Google-only account sets its first password."""
+
+    def setUp(self):
+        self.user = User.objects.create_user("gina", "gina@example.com")
+        self.user.set_unusable_password()
+        self.user.save()
+
+    def test_the_web_reset_mails_it(self):
+        from django.core import mail
+
+        self.client.post(reverse("accounts:password_reset"), {"email": "gina@example.com"})
+
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_the_api_reset_mails_it(self):
+        from django.core import mail
+
+        self.client.post(
+            reverse("api:v1:auth-password-reset"),
+            {"email": "gina@example.com"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(len(mail.outbox), 1)
