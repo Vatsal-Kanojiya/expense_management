@@ -10,7 +10,7 @@ import re
 
 from django.contrib.auth import get_user_model
 from django.core import mail
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -188,6 +188,9 @@ class EmailVerifiedAtTests(TestCase):
         user = User.objects.get(username="carol")
         self.assertIsNotNone(user.email_verified_at)
 
+    # The API mails the frontend's /verify-email/ link only when a frontend
+    # is configured; without this the test depended on a local .env.
+    @override_settings(FRONTEND_URL="http://frontend.test")
     def test_verifying_through_the_api_sets_email_verified_at(self):
         self.client.post(
             url("auth-signup"),
