@@ -22,6 +22,8 @@ belong in a table admins can browse.
 
 import logging
 
+from django.db import transaction
+
 from .models import SecurityEvent
 from .ratelimit import client_ip
 
@@ -54,13 +56,18 @@ def record(event, request=None, user=None, username="", **detail):
         request_id = get_request_id()
 
     try:
-        SecurityEvent.objects.create(
-            event=event,
-            user=user,
-            username=username[:150],
-            ip=ip,
-            request_id=request_id,
-            detail=detail,
-        )
+        # Its own savepoint: on Postgres a failed statement aborts the
+        # whole surrounding transaction (account deletion runs in one), so
+        # catching the error is only enough if the failure is rolled back
+        # to here first.
+        with transaction.atomic():
+            SecurityEvent.objects.create(
+                event=event,
+                user=user,
+                username=username[:150],
+                ip=ip,
+                request_id=request_id,
+                detail=detail,
+            )
     except Exception:
         logger.warning("Failed to record security event %r", event, exc_info=True)

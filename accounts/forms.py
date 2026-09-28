@@ -42,10 +42,13 @@ class SignUpForm(UserCreationForm):
         replaced by this sign-up (see save(), below), so it does not count
         as held.
         """
-        user = User.objects.filter(**lookup).first()
-        if user is None:
-            return False
-        return user.is_active or user.email_verified_at is not None
+        # Any matching row that is verified counts, not merely the first: an
+        # iexact email lookup can match several rows differing in case.
+        return (
+            User.objects.filter(**lookup)
+            .filter(models.Q(is_active=True) | models.Q(email_verified_at__isnull=False))
+            .exists()
+        )
 
     def clean_username(self):
         username = self.cleaned_data["username"]

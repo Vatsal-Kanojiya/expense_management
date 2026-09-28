@@ -83,6 +83,21 @@ class SignUpFormSquattingTests(TestCase):
         self.assertIn("email", response.context["form"].errors)
         self.assertEqual(User.objects.filter(email="alice@example.com").count(), 1)
 
+    def test_a_verified_account_blocks_even_beside_an_unverified_one_in_another_case(self):
+        # Two rows can differ only in the email's case. The check must look
+        # at all of them, not whichever comes back first.
+        User.objects.create_user(
+            "pending", email="alice@example.com", password="x-1", is_active=False
+        )
+        User.objects.create_user("real", email="Alice@example.com", password="x-2")
+
+        response = self.client.post(
+            reverse("accounts:signup"), self._data(email="ALICE@example.com")
+        )
+
+        self.assertContains(response, "An account with this email already exists.")
+        self.assertFalse(User.objects.filter(username="alice").exists())
+
     def test_an_active_account_still_blocks(self):
         User.objects.create_user("alice", email="alice@example.com", password="whatever-1")
 
