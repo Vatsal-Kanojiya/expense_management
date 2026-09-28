@@ -388,6 +388,18 @@ reaching this step already proves the password was known. Turning it on shows te
 **exactly once**; turning it off needs the current password **and** a current code. Either change
 revokes every refresh token but the one making the request.
 
+**BR-32 · Sign in with Google** is an alternative to a password, not a replacement for it: an
+account can have either, or both. Off entirely — no button, no `auth/google/` — unless the server
+has a Google OAuth client id configured. The server verifies Google's ID token itself and matches
+the account by its (Google-verified) email, case-insensitively: an active account signs in; an
+account that signed up but never verified its email is activated by it; an account deactivated
+after being verified is refused, the same as a password login would refuse it. No match creates a
+new account, active at once, with no password set. Two-step sign-in (BR-31) still applies: an
+account with it on stops at the same code step, with the same ticket, whichever way the password
+check was passed. At most 50 failed attempts per network address in 15 minutes — the same budget
+signing in with a password shares (BR-25), since there is no username to count one against before
+the token is verified.
+
 ---
 
 ## 6. Information architecture
@@ -464,8 +476,8 @@ and acceptance criteria. States common to every screen are in [7.12](#712-common
 
 ### 7.1 Authentication and session — FR-AUTH
 
-**API:** `auth/login/`, `auth/refresh/`, `auth/logout/`, `auth/signup/`, `auth/verify-email/`,
-`auth/password/reset/`, `auth/password/reset/confirm/`, `me/`.
+**API:** `auth/login/`, `auth/google/`, `auth/refresh/`, `auth/logout/`, `auth/signup/`,
+`auth/verify-email/`, `auth/password/reset/`, `auth/password/reset/confirm/`, `me/`.
 
 | ID | Requirement |
 |---|---|
@@ -480,6 +492,7 @@ and acceptance criteria. States common to every screen are in [7.12](#712-common
 | FR-AUTH-09 | Signed-in users opening `/login` or `/signup` go to Overview. |
 | FR-AUTH-10 | Every form that submits a password must allow showing the typed password, and must use the right `autocomplete` values (`username`, `current-password`, `new-password`). |
 | FR-AUTH-11 | **Two-step sign-in (BR-31).** When `auth/login/` answers `{mfa_required: true, mfa_ticket}`, show a code-entry screen (not the tokens/profile flow) and send the ticket plus the typed code to `auth/mfa/verify/`; a right code continues exactly like FR-AUTH-01's success path. Accept a recovery code in the same box. Show "That code is wrong." on 400 with a `code` field error, "Too many attempts" on 429 `rate_limited`, and send the user back to `/login` on 400 `invalid_ticket` ("That sign-in has expired. Log in again."). |
+| FR-AUTH-12 | **Sign in with Google (BR-32).** Show Google's own button on `/login` and `/signup`, in callback mode, only when the deployment names a Google client id. Send the credential it returns to `auth/google/`; the response is exactly `auth/login/`'s -- a token pair (continue as FR-AUTH-01's success path) or `{mfa_required, mfa_ticket}` (continue as FR-AUTH-11). Show "Google sign-in failed. Try again, or use your password." on 400 `google_failed`, and the same 429 handling as FR-AUTH-01. |
 
 **Acceptance criteria**
 
@@ -497,6 +510,10 @@ and acceptance criteria. States common to every screen are in [7.12](#712-common
   on the page I originally asked for (or Overview).
 - **AC-AUTH-8** Given the code screen, when I enter a wrong code five times, the sixth attempt shows
   "Too many attempts", even with the right code.
+- **AC-AUTH-9** Given no account yet, when I pick an account through Google's button on `/signup`,
+  I am signed in at once, with a profile whose `has_password` is `false`.
+- **AC-AUTH-10** Given an account with two-step sign-in on, when I sign in with Google, I see the
+  code screen, exactly as AC-AUTH-6.
 
 ### 7.2 Account — FR-ACC
 
@@ -506,7 +523,7 @@ and acceptance criteria. States common to every screen are in [7.12](#712-common
 | ID | Requirement |
 |---|---|
 | FR-ACC-01 | Show username, email, first and last name, and date joined. First and last name are editable; username and email are read-only. |
-| FR-ACC-02 | **Change password** with the current password and the new one twice. On success, store the new tokens from the response and confirm "Password changed. Other devices have been signed out." Show "current password is incorrect" on 400 `old_password`. |
+| FR-ACC-02 | **Change password** with the current password and the new one twice. On success, store the new tokens from the response and confirm "Password changed. Other devices have been signed out." Show "current password is incorrect" on 400 `old_password`. When the profile's `has_password` (BR-32) is `false` -- a Google-only account -- show "Set a password" instead of this form, pointing to the forgot-password screen (FR-AUTH-07), which works for them since they are active with a real email. |
 | FR-ACC-03 | **Delete account** in a separate, clearly dangerous section. Explain that it permanently deletes all expenses, categories, people and history. Require the username to be typed exactly before the button is enabled, then call `DELETE me/` with `confirm`. On 204, clear everything locally and show `/login` with "Your account has been deleted." |
 | FR-ACC-04 | **Two-step sign-in (BR-31).** A "Two-step sign-in" section shows on/off (`GET auth/mfa/`) and, when on, how many recovery codes are left. **Turn on:** call `auth/mfa/setup/`, show the `otpauth_uri` as a QR code plus `secret` for manual entry, and a code box; on `auth/mfa/confirm/` succeeding, show the ten `recovery_codes` **once**, with a clear "save these now, they won't be shown again" and a way to copy or download them, then store the new tokens. **Turn off:** ask for the password and a code together (`auth/mfa/disable/`); show "Wrong password" or "That code is wrong" as the response says. **New recovery codes:** ask for a current authenticator code (`auth/mfa/recovery-codes/`) and show the new ten once, the same as turning on. |
 
@@ -833,6 +850,7 @@ Run on a fresh account, in this order. The expected numbers are the API's real a
 | 1.1 | Oct 2026 | BR-24, BR-25, BR-27: the limits added by security pass 1 |
 | 1.2 | Oct 2026 | BR-30: the scan and export limits added by security pass 2 |
 | 1.3 | Oct 2026 | BR-31, FR-AUTH-11, FR-ACC-04: multi-factor sign-in (roadmap L2) |
+| 1.4 | Oct 2026 | BR-32, FR-AUTH-12, FR-ACC-02: Sign in with Google |
 
 ---
 
@@ -842,9 +860,9 @@ Run on a fresh account, in this order. The expected numbers are the API's real a
 
 | Screen | Reads | Writes |
 |---|---|---|
-| Log in | — | `POST auth/login/` |
+| Log in | — | `POST auth/login/`, `POST auth/google/` |
 | Enter two-step code | — | `POST auth/mfa/verify/` |
-| Sign up | — | `POST auth/signup/` |
+| Sign up | — | `POST auth/signup/`, `POST auth/google/` |
 | Verify email | — | `POST auth/verify-email/` |
 | Forgot / reset password | — | `POST auth/password/reset/`, `POST auth/password/reset/confirm/` |
 | Account | `GET me/`, `GET auth/mfa/` | `PATCH me/`, `POST auth/password/change/`, `DELETE me/`, `POST auth/mfa/setup/`, `POST auth/mfa/confirm/`, `POST auth/mfa/disable/`, `POST auth/mfa/recovery-codes/` |

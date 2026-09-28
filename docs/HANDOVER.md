@@ -242,6 +242,7 @@ On the server, in `.env` (see `.env.example` for each key):
 | `ADMINS` | Who gets mailed a production error: `Name:address` or plain addresses, comma-separated. Empty means no error mail |
 | `CORS_ALLOWED_ORIGINS` | The frontend's origin(s) |
 | `FRONTEND_URL` | Where the frontend is served |
+| `GOOGLE_OAUTH_CLIENT_ID` | Turns on Sign in with Google (docs/design/GOOGLE_SIGNIN.md). Empty by default -- no button, no `auth/google/` endpoint. From the Google Cloud console: APIs & Services → Credentials → an OAuth client id, type "Web application", with the site's and the React app's origins under "Authorised JavaScript origins" (no redirect URI needed -- it runs in callback mode) |
 | `EMAIL_BACKEND` and `EMAIL_*` | A real SMTP provider, so sign-up and reset emails arrive |
 
 In `compose.yaml`, the secure-cookie and SSL-redirect switches are turned **off** for local HTTP
