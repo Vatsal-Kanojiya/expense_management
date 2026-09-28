@@ -102,3 +102,18 @@ class TicketForDeactivatedAccountTests(TestCase):
         User.objects.filter(pk=user.pk).update(is_active=False)
 
         self.assertIsNone(mfa.user_for_ticket(ticket, User))
+
+
+class WebMfaLoginIsRecordedOnceTests(TestCase):
+    def test_one_login_succeeded_event(self):
+        from accounts.models import SecurityEvent
+
+        user = User.objects.create_user("carol", "carol@example.com", PASSWORD)
+        TOTPDevice.objects.create(user=user, secret=SECRET, confirmed=True)
+
+        self.client.post(reverse("accounts:login"), {"username": "carol", "password": PASSWORD})
+        self.client.post(reverse("accounts:login_mfa"), {"code": current_code()})
+
+        self.assertEqual(
+            SecurityEvent.objects.filter(user=user, event="login_succeeded").count(), 1
+        )
