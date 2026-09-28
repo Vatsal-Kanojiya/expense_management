@@ -135,17 +135,20 @@ class FindOrCreateUserTests(TestCase):
         self.assertEqual(found.pk, user.pk)
         self.assertFalse(created)
 
-    def test_an_unverified_account_is_activated(self):
-        user = User.objects.create_user("alice", "alice@example.com", PASSWORD)
-        user.is_active = False
-        user.save(update_fields=["is_active"])
+    def test_an_unverified_account_is_replaced_not_activated(self):
+        # Whoever created it chose its password. Activating it would let
+        # that password into the real owner's account.
+        squatter = User.objects.create_user("alice", "alice@example.com", PASSWORD)
+        squatter.is_active = False
+        squatter.save(update_fields=["is_active"])
 
         found, created = google.find_or_create_user("alice@example.com")
 
-        found.refresh_from_db()
+        self.assertTrue(created)
+        self.assertNotEqual(found.pk, squatter.pk)
+        self.assertFalse(User.objects.filter(pk=squatter.pk).exists())
+        self.assertFalse(found.has_usable_password())
         self.assertTrue(found.is_active)
-        self.assertIsNotNone(found.email_verified_at)
-        self.assertFalse(created)
 
     def test_a_deactivated_verified_account_is_refused(self):
         from django.utils import timezone

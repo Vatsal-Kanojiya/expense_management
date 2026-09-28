@@ -286,8 +286,8 @@ code screen.
 Matching is by the token's own email, case-insensitively:
 
 * An existing, active account signs in.
-* An account that signed up but never verified its email is activated (Google has just proved the
-  address) and signed in.
+* An account that signed up but never verified its email is **replaced** by a fresh account, which
+  is signed in. (Its password was set by whoever signed up, which might not be the address's owner.)
 * An account an admin deactivated after it was verified is **refused**, 400 `google_failed` —
   Google proving the address again does not undo that.
 * No match creates a new account: active immediately, with `has_password: false` (§3.1) until it

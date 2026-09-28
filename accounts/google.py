@@ -8,8 +8,9 @@ so the rules live once:
   an ID token, and requires ``email_verified``.
 * :func:`find_or_create_user` matches or creates the local account for a
   verified email, exactly as the design describes -- active account signs
-  in, an unverified one is activated (Google has just proved the address),
-  a deactivated verified one is refused, and no match creates a new account
+  in, an unverified one is replaced by a fresh account (never activated:
+  its password was chosen by whoever created it), a deactivated verified
+  one is refused, and no match creates a new account
   through the same path sign-up uses.
 
 Both are wrapped by :func:`sign_in_with_google`, which is what callers use:
@@ -31,6 +32,7 @@ from google.oauth2 import id_token as google_id_token
 from expenses.models import Participant
 
 from . import audit
+from .deletion import delete_account
 
 logger = logging.getLogger(__name__)
 
@@ -151,17 +153,15 @@ def find_or_create_user(email):
     if active is not None:
         return active, False
 
-    unverified = next(
-        (u for u in candidates if not u.is_active and u.email_verified_at is None), None
-    )
-    if unverified is not None:
-        # Google has just proved this address, which is exactly what the
-        # mailed link would have proved -- so this activates the account
-        # the same way clicking that link does.
-        unverified.is_active = True
-        unverified.email_verified_at = timezone.now()
-        unverified.save(update_fields=["is_active", "email_verified_at"])
-        return unverified, False
+    # An unverified account is replaced, never activated. Anyone can create
+    # one for any address, with a password of their choosing; activating it
+    # because the real owner then proved the address through Google would
+    # hand the account to whoever set that password. It has never been
+    # signed into, so removing it loses nothing -- the same rule sign-up
+    # follows (accounts/forms.py).
+    for unverified in [u for u in candidates if not u.is_active and u.email_verified_at is None]:
+        delete_account(unverified)
+    candidates = [u for u in candidates if u.is_active or u.email_verified_at is not None]
 
     deactivated = next(
         (u for u in candidates if not u.is_active and u.email_verified_at is not None), None
