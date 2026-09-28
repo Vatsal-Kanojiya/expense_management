@@ -13,6 +13,7 @@
 <div style="margin:1rem 0; text-align:center; color:var(--muted)">or</div>
 
 <div id="google-signin-mount" data-post-url="{% url 'accounts:google_login' %}"
+     data-csrf-token="{{ csrf_token }}"
      style="display:flex; justify-content:center">
   <div id="g_id_onload"
        data-client_id="{{ google_client_id }}"
