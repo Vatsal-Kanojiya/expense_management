@@ -10,65 +10,66 @@ Base URL in these examples: `http://127.0.0.1:8765/api/v1`. Tokens are shortened
 |---|---|---|---|---|
 | 1 | `GET` | `/health/` | [Health check](#health-check) | — |
 | 2 | `POST` | `/auth/login/` | [Log in](#log-in) | — |
-| 3 | `GET` | `/me/` | [Your profile](#your-profile) | Bearer |
-| 4 | `PATCH` | `/me/` | [Update your name](#update-your-name) | Bearer |
-| 5 | `POST` | `/categories/` | [Create a category](#create-a-category) | Bearer |
-| 6 | `POST` | `/categories/` | [Create another category](#create-another-category) | Bearer |
-| 7 | `GET` | `/categories/` | [List categories](#list-categories) | Bearer |
-| 8 | `GET` | `/categories/{id}/` | [Get a category](#get-a-category) | Bearer |
-| 9 | `PATCH` | `/categories/{id}/` | [Rename a category](#rename-a-category) | Bearer |
-| 10 | `PUT` | `/categories/{id}/` | [Replace a category](#replace-a-category) | Bearer |
-| 11 | `POST` | `/categories/` | [Create a category to delete](#create-a-category-to-delete) | Bearer |
-| 12 | `DELETE` | `/categories/{id}/` | [Delete a category](#delete-a-category) | Bearer |
-| 13 | `POST` | `/participants/` | [Add a person](#add-a-person) | Bearer |
-| 14 | `POST` | `/participants/` | [Add another person](#add-another-person) | Bearer |
-| 15 | `GET` | `/participants/` | [List people](#list-people) | Bearer |
-| 16 | `GET` | `/participants/{id}/` | [Get a person](#get-a-person) | Bearer |
-| 17 | `PATCH` | `/participants/{id}/` | [Rename a person](#rename-a-person) | Bearer |
-| 18 | `PUT` | `/participants/{id}/` | [Replace a person](#replace-a-person) | Bearer |
-| 19 | `POST` | `/participants/` | [Add a person to remove](#add-a-person-to-remove) | Bearer |
-| 20 | `DELETE` | `/participants/{id}/` | [Remove a person](#remove-a-person) | Bearer |
-| 21 | `POST` | `/expenses/` | [Create an expense](#create-an-expense) | Bearer |
-| 22 | `POST` | `/expenses/` | [Create an even split](#create-an-even-split) | Bearer |
-| 23 | `POST` | `/expenses/` | [Create an itemised bill](#create-an-itemised-bill) | Bearer |
-| 24 | `GET` | `/expenses/` | [List expenses](#list-expenses) | Bearer |
-| 25 | `GET` | `/expenses/` | [Filter expenses](#filter-expenses) | Bearer |
-| 26 | `GET` | `/expenses/{id}/` | [Get an expense](#get-an-expense) | Bearer |
-| 27 | `PATCH` | `/expenses/{id}/` | [Change part of an expense](#change-part-of-an-expense) | Bearer |
-| 28 | `PUT` | `/expenses/{id}/` | [Replace an expense](#replace-an-expense) | Bearer |
-| 29 | `GET` | `/expenses/{id}/split/` | [Split breakdown](#split-breakdown) | Bearer |
-| 30 | `DELETE` | `/expenses/{id}/` | [Delete an expense](#delete-an-expense) | Bearer |
-| 31 | `GET` | `/summary/` | [Spending summary](#spending-summary) | Bearer |
-| 32 | `GET` | `/balances/` | [Balances](#balances) | Bearer |
-| 33 | `POST` | `/balances/{participant_id}/settle/` | [Settle up](#settle-up) | Bearer |
-| 34 | `GET` | `/settlements/` | [Repayment history](#repayment-history) | Bearer |
-| 35 | `GET` | `/settlements/{id}/` | [Get a repayment](#get-a-repayment) | Bearer |
-| 36 | `POST` | `/exports/` | [Request an export](#request-an-export) | Bearer |
-| 37 | `GET` | `/exports/{id}/` | [Wait for the export](#wait-for-the-export) | Bearer |
-| 38 | `GET` | `/exports/` | [List exports](#list-exports) | Bearer |
-| 39 | `GET` | `/exports/{id}/download/` | [Download the export](#download-the-export) | Bearer |
-| 40 | `POST` | `/bill-scans/` | [Upload a bill](#upload-a-bill) | Bearer |
-| 41 | `GET` | `/bill-scans/{id}/` | [Wait for the scan](#wait-for-the-scan) | Bearer |
-| 42 | `GET` | `/bill-scans/` | [List scans](#list-scans) | Bearer |
-| 43 | `GET` | `/bill-scans/{id}/image/` | [Get the photo](#get-the-photo) | Bearer |
-| 44 | `GET` | `/bill-scans/{id}/prefill/` | [Get the draft expense](#get-the-draft-expense) | Bearer |
-| 45 | `POST` | `/expenses/` | [Save the scanned bill](#save-the-scanned-bill) | Bearer |
-| 46 | `POST` | `/auth/refresh/` | [Refresh the tokens](#refresh-the-tokens) | — |
-| 47 | `POST` | `/auth/logout/` | [Log out](#log-out) | — |
-| 48 | `POST` | `/auth/signup/` | [Sign up](#sign-up) | — |
-| 49 | `POST` | `/auth/verify-email/` | [Verify the email](#verify-the-email) | — |
-| 50 | `POST` | `/auth/password/change/` | [Change password](#change-password) | Bearer |
-| 51 | `POST` | `/auth/password/reset/` | [Request a password reset](#request-a-password-reset) | — |
-| 52 | `POST` | `/auth/password/reset/confirm/` | [Set a new password](#set-a-new-password) | — |
-| 53 | `POST` | `/auth/login/` | [Log in with the new password](#log-in-with-the-new-password) | — |
-| 54 | `GET` | `/auth/mfa/` | [Check two-step sign-in status](#check-two-step-sign-in-status) | Bearer |
-| 55 | `POST` | `/auth/mfa/setup/` | [Start two-step sign-in setup](#start-two-step-sign-in-setup) | Bearer |
-| 56 | `POST` | `/auth/mfa/confirm/` | [Confirm and turn it on](#confirm-and-turn-it-on) | Bearer |
-| 57 | `POST` | `/auth/login/` | [Log in again](#log-in-again) | — |
-| 58 | `POST` | `/auth/mfa/verify/` | [Enter the two-step code](#enter-the-two-step-code) | — |
-| 59 | `POST` | `/auth/mfa/recovery-codes/` | [Get new recovery codes](#get-new-recovery-codes) | Bearer |
-| 60 | `POST` | `/auth/mfa/disable/` | [Turn off two-step sign-in](#turn-off-two-step-sign-in) | Bearer |
-| 61 | `DELETE` | `/me/` | [Delete the account](#delete-the-account) | Bearer |
+| 3 | `POST` | `/auth/google/` | [Sign in with Google](#sign-in-with-google) | — |
+| 4 | `GET` | `/me/` | [Your profile](#your-profile) | Bearer |
+| 5 | `PATCH` | `/me/` | [Update your name](#update-your-name) | Bearer |
+| 6 | `POST` | `/categories/` | [Create a category](#create-a-category) | Bearer |
+| 7 | `POST` | `/categories/` | [Create another category](#create-another-category) | Bearer |
+| 8 | `GET` | `/categories/` | [List categories](#list-categories) | Bearer |
+| 9 | `GET` | `/categories/{id}/` | [Get a category](#get-a-category) | Bearer |
+| 10 | `PATCH` | `/categories/{id}/` | [Rename a category](#rename-a-category) | Bearer |
+| 11 | `PUT` | `/categories/{id}/` | [Replace a category](#replace-a-category) | Bearer |
+| 12 | `POST` | `/categories/` | [Create a category to delete](#create-a-category-to-delete) | Bearer |
+| 13 | `DELETE` | `/categories/{id}/` | [Delete a category](#delete-a-category) | Bearer |
+| 14 | `POST` | `/participants/` | [Add a person](#add-a-person) | Bearer |
+| 15 | `POST` | `/participants/` | [Add another person](#add-another-person) | Bearer |
+| 16 | `GET` | `/participants/` | [List people](#list-people) | Bearer |
+| 17 | `GET` | `/participants/{id}/` | [Get a person](#get-a-person) | Bearer |
+| 18 | `PATCH` | `/participants/{id}/` | [Rename a person](#rename-a-person) | Bearer |
+| 19 | `PUT` | `/participants/{id}/` | [Replace a person](#replace-a-person) | Bearer |
+| 20 | `POST` | `/participants/` | [Add a person to remove](#add-a-person-to-remove) | Bearer |
+| 21 | `DELETE` | `/participants/{id}/` | [Remove a person](#remove-a-person) | Bearer |
+| 22 | `POST` | `/expenses/` | [Create an expense](#create-an-expense) | Bearer |
+| 23 | `POST` | `/expenses/` | [Create an even split](#create-an-even-split) | Bearer |
+| 24 | `POST` | `/expenses/` | [Create an itemised bill](#create-an-itemised-bill) | Bearer |
+| 25 | `GET` | `/expenses/` | [List expenses](#list-expenses) | Bearer |
+| 26 | `GET` | `/expenses/` | [Filter expenses](#filter-expenses) | Bearer |
+| 27 | `GET` | `/expenses/{id}/` | [Get an expense](#get-an-expense) | Bearer |
+| 28 | `PATCH` | `/expenses/{id}/` | [Change part of an expense](#change-part-of-an-expense) | Bearer |
+| 29 | `PUT` | `/expenses/{id}/` | [Replace an expense](#replace-an-expense) | Bearer |
+| 30 | `GET` | `/expenses/{id}/split/` | [Split breakdown](#split-breakdown) | Bearer |
+| 31 | `DELETE` | `/expenses/{id}/` | [Delete an expense](#delete-an-expense) | Bearer |
+| 32 | `GET` | `/summary/` | [Spending summary](#spending-summary) | Bearer |
+| 33 | `GET` | `/balances/` | [Balances](#balances) | Bearer |
+| 34 | `POST` | `/balances/{participant_id}/settle/` | [Settle up](#settle-up) | Bearer |
+| 35 | `GET` | `/settlements/` | [Repayment history](#repayment-history) | Bearer |
+| 36 | `GET` | `/settlements/{id}/` | [Get a repayment](#get-a-repayment) | Bearer |
+| 37 | `POST` | `/exports/` | [Request an export](#request-an-export) | Bearer |
+| 38 | `GET` | `/exports/{id}/` | [Wait for the export](#wait-for-the-export) | Bearer |
+| 39 | `GET` | `/exports/` | [List exports](#list-exports) | Bearer |
+| 40 | `GET` | `/exports/{id}/download/` | [Download the export](#download-the-export) | Bearer |
+| 41 | `POST` | `/bill-scans/` | [Upload a bill](#upload-a-bill) | Bearer |
+| 42 | `GET` | `/bill-scans/{id}/` | [Wait for the scan](#wait-for-the-scan) | Bearer |
+| 43 | `GET` | `/bill-scans/` | [List scans](#list-scans) | Bearer |
+| 44 | `GET` | `/bill-scans/{id}/image/` | [Get the photo](#get-the-photo) | Bearer |
+| 45 | `GET` | `/bill-scans/{id}/prefill/` | [Get the draft expense](#get-the-draft-expense) | Bearer |
+| 46 | `POST` | `/expenses/` | [Save the scanned bill](#save-the-scanned-bill) | Bearer |
+| 47 | `POST` | `/auth/refresh/` | [Refresh the tokens](#refresh-the-tokens) | — |
+| 48 | `POST` | `/auth/logout/` | [Log out](#log-out) | — |
+| 49 | `POST` | `/auth/signup/` | [Sign up](#sign-up) | — |
+| 50 | `POST` | `/auth/verify-email/` | [Verify the email](#verify-the-email) | — |
+| 51 | `POST` | `/auth/password/change/` | [Change password](#change-password) | Bearer |
+| 52 | `POST` | `/auth/password/reset/` | [Request a password reset](#request-a-password-reset) | — |
+| 53 | `POST` | `/auth/password/reset/confirm/` | [Set a new password](#set-a-new-password) | — |
+| 54 | `POST` | `/auth/login/` | [Log in with the new password](#log-in-with-the-new-password) | — |
+| 55 | `GET` | `/auth/mfa/` | [Check two-step sign-in status](#check-two-step-sign-in-status) | Bearer |
+| 56 | `POST` | `/auth/mfa/setup/` | [Start two-step sign-in setup](#start-two-step-sign-in-setup) | Bearer |
+| 57 | `POST` | `/auth/mfa/confirm/` | [Confirm and turn it on](#confirm-and-turn-it-on) | Bearer |
+| 58 | `POST` | `/auth/login/` | [Log in again](#log-in-again) | — |
+| 59 | `POST` | `/auth/mfa/verify/` | [Enter the two-step code](#enter-the-two-step-code) | — |
+| 60 | `POST` | `/auth/mfa/recovery-codes/` | [Get new recovery codes](#get-new-recovery-codes) | Bearer |
+| 61 | `POST` | `/auth/mfa/disable/` | [Turn off two-step sign-in](#turn-off-two-step-sign-in) | Bearer |
+| 62 | `DELETE` | `/me/` | [Delete the account](#delete-the-account) | Bearer |
 
 ---
 
@@ -122,12 +123,13 @@ Ten failed attempts for one username from one address lock it for 15 minutes: 42
     "first_name": "",
     "last_name": "",
     "is_staff": false,
-    "date_joined": "2026-09-29T00:02:00.764141+05:30",
-    "last_login": "2026-09-29T00:02:00.808657+05:30",
+    "date_joined": "2026-09-29T00:16:46.706031+05:30",
+    "last_login": "2026-09-29T00:16:46.725486+05:30",
     "self_participant": {
       "id": 1,
       "name": "priya (self)"
-    }
+    },
+    "has_password": true
   }
 }
 ```
@@ -170,6 +172,46 @@ Said only when the password was right; otherwise a plain 401.
 }
 ```
 
+### Sign in with Google
+
+`POST /auth/google/` · no sign-in · success `200 OK`
+
+An alternative to the step above: `credential` is the ID token Google Identity Services returns from its own button. The server verifies it with Google, then finds or creates the account by its (Google-verified) email and answers exactly like a plain login -- a token pair, or `{mfa_required: true, mfa_ticket}` for an account with two-step sign-in on. `404` when the server has no `GOOGLE_OAUTH_CLIENT_ID` configured -- the feature does not exist at all until then, and the button is not shown.
+
+**Request**
+
+`POST /api/v1/auth/google/`
+
+```json
+{
+  "credential": "google-id-token"
+}
+```
+
+**Response** `200 OK` · `application/json`
+
+```json
+{
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>",
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>",
+  "user": {
+    "id": 3,
+    "username": "journey.google",
+    "email": "journey.google@example.com",
+    "first_name": "",
+    "last_name": "",
+    "is_staff": false,
+    "date_joined": "2026-09-29T00:16:46.735978+05:30",
+    "last_login": "2026-09-29T00:16:46.738253+05:30",
+    "self_participant": {
+      "id": 2,
+      "name": "journey.google (self)"
+    },
+    "has_password": false
+  }
+}
+```
+
 ### Your profile
 
 `GET /me/` · Bearer token · success `200 OK`
@@ -186,12 +228,13 @@ The signed-in user. Call it when the app starts, to check that a stored token st
   "first_name": "",
   "last_name": "",
   "is_staff": false,
-  "date_joined": "2026-09-29T00:02:00.764141+05:30",
-  "last_login": "2026-09-29T00:02:00.808657+05:30",
+  "date_joined": "2026-09-29T00:16:46.706031+05:30",
+  "last_login": "2026-09-29T00:16:46.725486+05:30",
   "self_participant": {
     "id": 1,
     "name": "priya (self)"
-  }
+  },
+  "has_password": true
 }
 ```
 
@@ -230,12 +273,13 @@ Only `first_name` and `last_name` can change; `username` and `email` are read-on
   "first_name": "Priya",
   "last_name": "Sharma",
   "is_staff": false,
-  "date_joined": "2026-09-29T00:02:00.764141+05:30",
-  "last_login": "2026-09-29T00:02:00.808657+05:30",
+  "date_joined": "2026-09-29T00:16:46.706031+05:30",
+  "last_login": "2026-09-29T00:16:46.725486+05:30",
   "self_participant": {
     "id": 1,
     "name": "priya (self)"
-  }
+  },
+  "has_password": true
 }
 ```
 
@@ -267,7 +311,7 @@ Names are unique per user, ignoring case: `Food` and `food` are one category.
 {
   "id": 1,
   "name": "Food",
-  "created_at": "2026-09-29T00:02:00.828119+05:30",
+  "created_at": "2026-09-29T00:16:46.748522+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -315,7 +359,7 @@ A second category, used by the plain expense in folder 3.
 {
   "id": 2,
   "name": "Home",
-  "created_at": "2026-09-29T00:02:00.835041+05:30",
+  "created_at": "2026-09-29T00:16:46.755197+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -339,7 +383,7 @@ Alphabetical, with the Categories screen's usage columns: `expense_count`, `tota
     {
       "id": 2,
       "name": "Home",
-      "created_at": "2026-09-29T00:02:00.835041+05:30",
+      "created_at": "2026-09-29T00:16:46.755197+05:30",
       "expense_count": 0,
       "total": null,
       "last_spent_on": null,
@@ -348,7 +392,7 @@ Alphabetical, with the Categories screen's usage columns: `expense_count`, `tota
     {
       "id": 1,
       "name": "Food",
-      "created_at": "2026-09-29T00:02:00.828119+05:30",
+      "created_at": "2026-09-29T00:16:46.748522+05:30",
       "expense_count": 0,
       "total": null,
       "last_spent_on": null,
@@ -370,7 +414,7 @@ One category with its usage columns. Another user's id is a 404, never a 403.
 {
   "id": 1,
   "name": "Food",
-  "created_at": "2026-09-29T00:02:00.828119+05:30",
+  "created_at": "2026-09-29T00:16:46.748522+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -400,7 +444,7 @@ PATCH changes only the fields sent.
 {
   "id": 2,
   "name": "Household",
-  "created_at": "2026-09-29T00:02:00.835041+05:30",
+  "created_at": "2026-09-29T00:16:46.755197+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -430,7 +474,7 @@ PUT sends every writable field; for a category that is only `name`.
 {
   "id": 2,
   "name": "Home & utilities",
-  "created_at": "2026-09-29T00:02:00.835041+05:30",
+  "created_at": "2026-09-29T00:16:46.755197+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -460,7 +504,7 @@ A throwaway category for the delete that follows.
 {
   "id": 3,
   "name": "Travel",
-  "created_at": "2026-09-29T00:02:00.855646+05:30",
+  "created_at": "2026-09-29T00:16:46.773703+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -518,10 +562,10 @@ Someone bills are split with. People are private to each user, and names are uni
 
 ```json
 {
-  "id": 2,
+  "id": 3,
   "name": "Rahul",
   "is_self": false,
-  "created_at": "2026-09-29T00:02:00.870168+05:30",
+  "created_at": "2026-09-29T00:16:46.786592+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -565,10 +609,10 @@ A second person, for the itemised bill in folder 3.
 
 ```json
 {
-  "id": 3,
+  "id": 4,
   "name": "Aisha",
   "is_self": false,
-  "created_at": "2026-09-29T00:02:00.875715+05:30",
+  "created_at": "2026-09-29T00:16:46.793361+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -588,18 +632,18 @@ Alphabetical, **including the user themself** with `is_self: true`: the People s
   "previous": null,
   "results": [
     {
-      "id": 3,
+      "id": 4,
       "name": "Aisha",
       "is_self": false,
-      "created_at": "2026-09-29T00:02:00.875715+05:30",
+      "created_at": "2026-09-29T00:16:46.793361+05:30",
       "shared_count": 0,
       "item_count": 0
     },
     {
-      "id": 2,
+      "id": 3,
       "name": "Rahul",
       "is_self": false,
-      "created_at": "2026-09-29T00:02:00.870168+05:30",
+      "created_at": "2026-09-29T00:16:46.786592+05:30",
       "shared_count": 0,
       "item_count": 0
     },
@@ -607,7 +651,7 @@ Alphabetical, **including the user themself** with `is_self: true`: the People s
       "id": 1,
       "name": "priya (self)",
       "is_self": true,
-      "created_at": "2026-09-29T00:02:00.811631+05:30",
+      "created_at": "2026-09-29T00:16:46.727993+05:30",
       "shared_count": 0,
       "item_count": 0
     }
@@ -625,10 +669,10 @@ One person.
 
 ```json
 {
-  "id": 2,
+  "id": 3,
   "name": "Rahul",
   "is_self": false,
-  "created_at": "2026-09-29T00:02:00.870168+05:30",
+  "created_at": "2026-09-29T00:16:46.786592+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -642,7 +686,7 @@ PATCH changes only the fields sent.
 
 **Request**
 
-`PATCH /api/v1/participants/3/`
+`PATCH /api/v1/participants/4/`
 
 ```json
 {
@@ -654,10 +698,10 @@ PATCH changes only the fields sent.
 
 ```json
 {
-  "id": 3,
+  "id": 4,
   "name": "Aisha Khan",
   "is_self": false,
-  "created_at": "2026-09-29T00:02:00.875715+05:30",
+  "created_at": "2026-09-29T00:16:46.793361+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -688,7 +732,7 @@ PUT sends every writable field; for a person that is only `name`.
 
 **Request**
 
-`PUT /api/v1/participants/3/`
+`PUT /api/v1/participants/4/`
 
 ```json
 {
@@ -700,10 +744,10 @@ PUT sends every writable field; for a person that is only `name`.
 
 ```json
 {
-  "id": 3,
+  "id": 4,
   "name": "Aisha K.",
   "is_self": false,
-  "created_at": "2026-09-29T00:02:00.875715+05:30",
+  "created_at": "2026-09-29T00:16:46.793361+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -729,10 +773,10 @@ A throwaway person for the delete that follows.
 
 ```json
 {
-  "id": 4,
+  "id": 5,
   "name": "Old colleague",
   "is_self": false,
-  "created_at": "2026-09-29T00:02:00.894570+05:30",
+  "created_at": "2026-09-29T00:16:46.811992+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -761,7 +805,7 @@ Refused with 409 when the person is on a line item or paid for an expense, and w
 
 **On a line item** → `409 Conflict`
 
-`DELETE /api/v1/participants/2/`
+`DELETE /api/v1/participants/3/`
 
 ```json
 {
@@ -817,7 +861,7 @@ The simplest expense: yours alone. `paid_by` may be left out and defaults to you
   "items_total": null,
   "unaccounted_amount": null,
   "is_balanced": true,
-  "created_at": "2026-09-29T00:02:00.913961+05:30"
+  "created_at": "2026-09-29T00:16:46.832575+05:30"
 }
 ```
 
@@ -864,7 +908,7 @@ No line items, several participants: the amount is split equally between them, r
   "include_self": false,
   "participants": [
     1,
-    2
+    3
   ]
 }
 ```
@@ -882,7 +926,7 @@ No line items, several participants: the amount is split equally between them, r
   "paid_by": 1,
   "paid_by_name": "priya (self)",
   "participants": [
-    2,
+    3,
     1
   ],
   "misc_amount": null,
@@ -891,7 +935,7 @@ No line items, several participants: the amount is split equally between them, r
   "items_total": null,
   "unaccounted_amount": null,
   "is_balanced": true,
-  "created_at": "2026-09-29T00:02:00.923507+05:30"
+  "created_at": "2026-09-29T00:16:46.841395+05:30"
 }
 ```
 
@@ -915,8 +959,8 @@ Line items, each shared by the people who had it, and a tax/tip amount (`misc_am
   "include_self": false,
   "participants": [
     1,
-    2,
-    3
+    3,
+    4
   ],
   "misc_amount": "120.00",
   "misc_note": "GST and tip",
@@ -930,11 +974,11 @@ Line items, each shared by the people who had it, and a tax/tip amount (`misc_am
           "weight": 1
         },
         {
-          "participant": 2,
+          "participant": 3,
           "weight": 1
         },
         {
-          "participant": 3,
+          "participant": 4,
           "weight": 1
         }
       ]
@@ -944,11 +988,11 @@ Line items, each shared by the people who had it, and a tax/tip amount (`misc_am
       "amount": "300.00",
       "shares": [
         {
-          "participant": 2,
+          "participant": 3,
           "weight": 1
         },
         {
-          "participant": 3,
+          "participant": 4,
           "weight": 1
         }
       ]
@@ -980,8 +1024,8 @@ Line items, each shared by the people who had it, and a tax/tip amount (`misc_am
   "paid_by": 1,
   "paid_by_name": "priya (self)",
   "participants": [
+    4,
     3,
-    2,
     1
   ],
   "misc_amount": "120.00",
@@ -997,11 +1041,11 @@ Line items, each shared by the people who had it, and a tax/tip amount (`misc_am
           "weight": 1
         },
         {
-          "participant": 2,
+          "participant": 3,
           "weight": 1
         },
         {
-          "participant": 3,
+          "participant": 4,
           "weight": 1
         }
       ]
@@ -1012,11 +1056,11 @@ Line items, each shared by the people who had it, and a tax/tip amount (`misc_am
       "amount": "300.00",
       "shares": [
         {
-          "participant": 2,
+          "participant": 3,
           "weight": 1
         },
         {
-          "participant": 3,
+          "participant": 4,
           "weight": 1
         }
       ]
@@ -1036,7 +1080,7 @@ Line items, each shared by the people who had it, and a tax/tip amount (`misc_am
   "items_total": "1080.00",
   "unaccounted_amount": "0.00",
   "is_balanced": true,
-  "created_at": "2026-09-29T00:02:00.932986+05:30"
+  "created_at": "2026-09-29T00:16:46.850221+05:30"
 }
 ```
 
@@ -1054,8 +1098,8 @@ Line items, each shared by the people who had it, and a tax/tip amount (`misc_am
   "include_self": false,
   "participants": [
     1,
-    2,
-    3
+    3,
+    4
   ],
   "misc_amount": "120.00",
   "misc_note": "",
@@ -1069,11 +1113,11 @@ Line items, each shared by the people who had it, and a tax/tip amount (`misc_am
           "weight": 1
         },
         {
-          "participant": 2,
+          "participant": 3,
           "weight": 1
         },
         {
-          "participant": 3,
+          "participant": 4,
           "weight": 1
         }
       ]
@@ -1083,11 +1127,11 @@ Line items, each shared by the people who had it, and a tax/tip amount (`misc_am
       "amount": "300.00",
       "shares": [
         {
-          "participant": 2,
+          "participant": 3,
           "weight": 1
         },
         {
-          "participant": 3,
+          "participant": 4,
           "weight": 1
         }
       ]
@@ -1128,7 +1172,7 @@ Without you on the bill, an unshared line would silently be charged to you.
   "note": "Rahul's party",
   "include_self": false,
   "participants": [
-    2
+    3
   ],
   "items": [
     {
@@ -1136,7 +1180,7 @@ Without you on the bill, an unshared line would silently be charged to you.
       "amount": "600.00",
       "shares": [
         {
-          "participant": 2,
+          "participant": 3,
           "weight": 1
         }
       ]
@@ -1185,8 +1229,8 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
       "paid_by": 1,
       "paid_by_name": "priya (self)",
       "participants": [
+        4,
         3,
-        2,
         1
       ],
       "misc_amount": "120.00",
@@ -1202,11 +1246,11 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
               "weight": 1
             },
             {
-              "participant": 2,
+              "participant": 3,
               "weight": 1
             },
             {
-              "participant": 3,
+              "participant": 4,
               "weight": 1
             }
           ]
@@ -1217,11 +1261,11 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
           "amount": "300.00",
           "shares": [
             {
-              "participant": 2,
+              "participant": 3,
               "weight": 1
             },
             {
-              "participant": 3,
+              "participant": 4,
               "weight": 1
             }
           ]
@@ -1241,7 +1285,7 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
       "items_total": "1080.00",
       "unaccounted_amount": "0.00",
       "is_balanced": true,
-      "created_at": "2026-09-29T00:02:00.932986+05:30"
+      "created_at": "2026-09-29T00:16:46.850221+05:30"
     },
     {
       "id": 4,
@@ -1253,7 +1297,7 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
       "paid_by": 1,
       "paid_by_name": "priya (self)",
       "participants": [
-        2,
+        3,
         1
       ],
       "misc_amount": null,
@@ -1262,7 +1306,7 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
       "items_total": null,
       "unaccounted_amount": null,
       "is_balanced": true,
-      "created_at": "2026-09-29T00:02:00.923507+05:30"
+      "created_at": "2026-09-29T00:16:46.841395+05:30"
     },
     {
       "id": 3,
@@ -1280,7 +1324,7 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
       "items_total": null,
       "unaccounted_amount": null,
       "is_balanced": true,
-      "created_at": "2026-09-29T00:02:00.913961+05:30"
+      "created_at": "2026-09-29T00:16:46.832575+05:30"
     }
   ],
   "count": 3,
@@ -1315,8 +1359,8 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
       "paid_by": 1,
       "paid_by_name": "priya (self)",
       "participants": [
+        4,
         3,
-        2,
         1
       ],
       "misc_amount": "120.00",
@@ -1332,11 +1376,11 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
               "weight": 1
             },
             {
-              "participant": 2,
+              "participant": 3,
               "weight": 1
             },
             {
-              "participant": 3,
+              "participant": 4,
               "weight": 1
             }
           ]
@@ -1347,11 +1391,11 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
           "amount": "300.00",
           "shares": [
             {
-              "participant": 2,
+              "participant": 3,
               "weight": 1
             },
             {
-              "participant": 3,
+              "participant": 4,
               "weight": 1
             }
           ]
@@ -1371,7 +1415,7 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
       "items_total": "1080.00",
       "unaccounted_amount": "0.00",
       "is_balanced": true,
-      "created_at": "2026-09-29T00:02:00.932986+05:30"
+      "created_at": "2026-09-29T00:16:46.850221+05:30"
     }
   ],
   "count": 1,
@@ -1410,8 +1454,8 @@ One expense.
   "paid_by": 1,
   "paid_by_name": "priya (self)",
   "participants": [
+    4,
     3,
-    2,
     1
   ],
   "misc_amount": "120.00",
@@ -1427,11 +1471,11 @@ One expense.
           "weight": 1
         },
         {
-          "participant": 2,
+          "participant": 3,
           "weight": 1
         },
         {
-          "participant": 3,
+          "participant": 4,
           "weight": 1
         }
       ]
@@ -1442,11 +1486,11 @@ One expense.
       "amount": "300.00",
       "shares": [
         {
-          "participant": 2,
+          "participant": 3,
           "weight": 1
         },
         {
-          "participant": 3,
+          "participant": 4,
           "weight": 1
         }
       ]
@@ -1466,7 +1510,7 @@ One expense.
   "items_total": "1080.00",
   "unaccounted_amount": "0.00",
   "is_balanced": true,
-  "created_at": "2026-09-29T00:02:00.932986+05:30"
+  "created_at": "2026-09-29T00:16:46.850221+05:30"
 }
 ```
 
@@ -1499,7 +1543,7 @@ Only the fields sent change. `items` left out keeps the line items; `items: []` 
   "paid_by": 1,
   "paid_by_name": "priya (self)",
   "participants": [
-    2,
+    3,
     1
   ],
   "misc_amount": null,
@@ -1508,7 +1552,7 @@ Only the fields sent change. `items` left out keeps the line items; `items: []` 
   "items_total": null,
   "unaccounted_amount": null,
   "is_balanced": true,
-  "created_at": "2026-09-29T00:02:00.923507+05:30"
+  "created_at": "2026-09-29T00:16:46.841395+05:30"
 }
 ```
 
@@ -1554,7 +1598,7 @@ PUT sends the whole expense again; anything left out of the lists is removed.
   "items_total": null,
   "unaccounted_amount": null,
   "is_balanced": true,
-  "created_at": "2026-09-29T00:02:00.913961+05:30"
+  "created_at": "2026-09-29T00:16:46.832575+05:30"
 }
 ```
 
@@ -1584,7 +1628,7 @@ The Split tab: each person's share of the lines (or of the even split) and of th
     },
     {
       "participant": {
-        "id": 3,
+        "id": 4,
         "name": "Aisha K.",
         "is_self": false
       },
@@ -1594,7 +1638,7 @@ The Split tab: each person's share of the lines (or of the even split) and of th
     },
     {
       "participant": {
-        "id": 2,
+        "id": 3,
         "name": "Rahul",
         "is_self": false
       },
@@ -1691,14 +1735,14 @@ Who owes whom across all expenses, settling up, and the repayment history.
   "owes_you": [
     {
       "participant": {
-        "id": 2,
+        "id": 3,
         "name": "Rahul"
       },
       "amount": "838.89"
     },
     {
       "participant": {
-        "id": 3,
+        "id": 4,
         "name": "Aisha K."
       },
       "amount": "388.89"
@@ -1710,14 +1754,14 @@ Who owes whom across all expenses, settling up, and the repayment history.
   "gross": [
     {
       "participant": {
-        "id": 2,
+        "id": 3,
         "name": "Rahul"
       },
       "amount": "838.89"
     },
     {
       "participant": {
-        "id": 3,
+        "id": 4,
         "name": "Aisha K."
       },
       "amount": "388.89"
@@ -1734,7 +1778,7 @@ Records a repayment of the whole outstanding amount, in whichever direction it r
 
 **Request**
 
-`POST /api/v1/balances/2/settle/`
+`POST /api/v1/balances/3/settle/`
 
 ```json
 {
@@ -1750,18 +1794,18 @@ Records a repayment of the whole outstanding amount, in whichever direction it r
   "code": "settled",
   "settlement": {
     "id": 1,
-    "participant": 2,
+    "participant": 3,
     "participant_name": "Rahul",
     "amount": "838.89",
     "note": "Paid by UPI",
-    "settled_at": "2026-09-29T00:02:01.020215+05:30"
+    "settled_at": "2026-09-29T00:16:46.944528+05:30"
   }
 }
 ```
 
 **Nothing outstanding** → `200 OK`
 
-`POST /api/v1/balances/2/settle/`
+`POST /api/v1/balances/3/settle/`
 
 ```json
 {
@@ -1792,11 +1836,11 @@ Every repayment recorded, newest first. `?participant=<id>` narrows it to one pe
   "results": [
     {
       "id": 1,
-      "participant": 2,
+      "participant": 3,
       "participant_name": "Rahul",
       "amount": "838.89",
       "note": "Paid by UPI",
-      "settled_at": "2026-09-29T00:02:01.020215+05:30"
+      "settled_at": "2026-09-29T00:16:46.944528+05:30"
     }
   ]
 }
@@ -1813,11 +1857,11 @@ One repayment.
 ```json
 {
   "id": 1,
-  "participant": 2,
+  "participant": 3,
   "participant_name": "Rahul",
   "amount": "838.89",
   "note": "Paid by UPI",
-  "settled_at": "2026-09-29T00:02:01.020215+05:30"
+  "settled_at": "2026-09-29T00:16:46.944528+05:30"
 }
 ```
 
@@ -1854,7 +1898,7 @@ Answers at once with the job, `pending`. A worker builds the CSV and emails a li
   "end": "2026-09-30",
   "row_count": 0,
   "error": "",
-  "requested_at": "2026-09-29T00:02:01.033182+05:30",
+  "requested_at": "2026-09-29T00:16:46.960090+05:30",
   "completed_at": null,
   "download_url": null
 }
@@ -1876,8 +1920,8 @@ Poll every second or two until `status` is `complete` (then `download_url` is se
   "end": "2026-09-30",
   "row_count": 2,
   "error": "",
-  "requested_at": "2026-09-29T00:02:01.033182+05:30",
-  "completed_at": "2026-09-29T00:02:01.080654+05:30",
+  "requested_at": "2026-09-29T00:16:46.960090+05:30",
+  "completed_at": "2026-09-29T00:16:47.014977+05:30",
   "download_url": "http://127.0.0.1:8765/api/v1/exports/1/download/"
 }
 ```
@@ -1902,8 +1946,8 @@ The user's exports, newest first.
       "end": "2026-09-30",
       "row_count": 2,
       "error": "",
-      "requested_at": "2026-09-29T00:02:01.033182+05:30",
-      "completed_at": "2026-09-29T00:02:01.080654+05:30",
+      "requested_at": "2026-09-29T00:16:46.960090+05:30",
+      "completed_at": "2026-09-29T00:16:47.014977+05:30",
       "download_url": "http://127.0.0.1:8765/api/v1/exports/1/download/"
     }
   ]
@@ -1965,7 +2009,7 @@ On a server using a real vision model, upload a real photo of a bill; the sample
   "error": "",
   "result": {},
   "expense": null,
-  "created_at": "2026-09-29T00:02:01.102449+05:30",
+  "created_at": "2026-09-29T00:16:47.042335+05:30",
   "completed_at": null,
   "image_url": "http://127.0.0.1:8765/api/v1/bill-scans/1/image/"
 }
@@ -2017,8 +2061,8 @@ Poll until `status` is `done` or `failed` (then `error` says why). Scans usually
     "provider": "fake"
   },
   "expense": null,
-  "created_at": "2026-09-29T00:02:01.102449+05:30",
-  "completed_at": "2026-09-29T00:02:01.106125+05:30",
+  "created_at": "2026-09-29T00:16:47.042335+05:30",
+  "completed_at": "2026-09-29T00:16:47.047218+05:30",
   "image_url": "http://127.0.0.1:8765/api/v1/bill-scans/1/image/"
 }
 ```
@@ -2061,8 +2105,8 @@ The user's scans, newest first.
         "provider": "fake"
       },
       "expense": null,
-      "created_at": "2026-09-29T00:02:01.102449+05:30",
-      "completed_at": "2026-09-29T00:02:01.106125+05:30",
+      "created_at": "2026-09-29T00:16:47.042335+05:30",
+      "completed_at": "2026-09-29T00:16:47.047218+05:30",
       "image_url": "http://127.0.0.1:8765/api/v1/bill-scans/1/image/"
     }
   ]
@@ -2186,7 +2230,7 @@ The corrected draft, sent as a normal expense. Each scan can be saved once; the 
   "items_total": "400.00",
   "unaccounted_amount": "0.00",
   "is_balanced": true,
-  "created_at": "2026-09-29T00:02:01.127213+05:30"
+  "created_at": "2026-09-29T00:16:47.072556+05:30"
 }
 ```
 
@@ -2348,8 +2392,8 @@ The frontend's `/verify-email/<uid>/<token>` page calls this with the two parts 
 
 ```json
 {
-  "uid": "Mw",
-  "token": "dfn43d-d3056392bbc62a35b63dffa3053b894f"
+  "uid": "NA",
+  "token": "dfn4rz-62ec9505ff1dc648e3c4f90485a4a859"
 }
 ```
 
@@ -2360,18 +2404,19 @@ The frontend's `/verify-email/<uid>/<token>` page calls this with the two parts 
   "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>",
   "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>",
   "user": {
-    "id": 3,
+    "id": 4,
     "username": "new.user",
     "email": "new.user@example.com",
     "first_name": "",
     "last_name": "",
     "is_staff": false,
-    "date_joined": "2026-09-29T00:02:01.166160+05:30",
-    "last_login": "2026-09-29T00:02:01.181585+05:30",
+    "date_joined": "2026-09-29T00:16:47.117485+05:30",
+    "last_login": "2026-09-29T00:16:47.137440+05:30",
     "self_participant": {
-      "id": 5,
+      "id": 6,
       "name": "new.user (self)"
-    }
+    },
+    "has_password": true
   }
 }
 ```
@@ -2410,18 +2455,19 @@ Needs the current password. Every other device is signed out; this one gets a ne
   "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>",
   "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>",
   "user": {
-    "id": 3,
+    "id": 4,
     "username": "new.user",
     "email": "new.user@example.com",
     "first_name": "",
     "last_name": "",
     "is_staff": false,
-    "date_joined": "2026-09-29T00:02:01.166160+05:30",
-    "last_login": "2026-09-29T00:02:01.189330+05:30",
+    "date_joined": "2026-09-29T00:16:47.117485+05:30",
+    "last_login": "2026-09-29T00:16:47.146139+05:30",
     "self_participant": {
-      "id": 5,
+      "id": 6,
       "name": "new.user (self)"
-    }
+    },
+    "has_password": true
   }
 }
 ```
@@ -2483,8 +2529,8 @@ The frontend's `/reset-password/<uid>/<token>` page sends the two parts of its U
 
 ```json
 {
-  "uid": "Mw",
-  "token": "dfn43d-2117123644333282c373dd72faf5afbd",
+  "uid": "NA",
+  "token": "dfn4rz-be13028120d365876fdccc19da56afe9",
   "new_password": "Third-Pass-2026",
   "new_password_confirm": "Third-Pass-2026"
 }
@@ -2532,18 +2578,19 @@ Signing in again after the reset.
   "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>",
   "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>",
   "user": {
-    "id": 3,
+    "id": 4,
     "username": "new.user",
     "email": "new.user@example.com",
     "first_name": "",
     "last_name": "",
     "is_staff": false,
-    "date_joined": "2026-09-29T00:02:01.166160+05:30",
-    "last_login": "2026-09-29T00:02:01.203547+05:30",
+    "date_joined": "2026-09-29T00:16:47.117485+05:30",
+    "last_login": "2026-09-29T00:16:47.165919+05:30",
     "self_participant": {
-      "id": 5,
+      "id": 6,
       "name": "new.user (self)"
-    }
+    },
+    "has_password": true
   }
 }
 ```
@@ -2573,8 +2620,8 @@ A fresh secret and an `otpauth://` URI to build a QR code from. The account is n
 
 ```json
 {
-  "secret": "TSZ5BQSR5MK6B5QCKOCISSLSVFBJSS7Z",
-  "otpauth_uri": "otpauth://totp/Expense%20Tracker%3Anew.user?secret=TSZ5BQSR5MK6B5QCKOCISSLSVFBJSS7Z&issuer=Expense%20Tracker"
+  "secret": "UYFO2ULLBJB76EUHDW2O7I5NFWE5U3DE",
+  "otpauth_uri": "otpauth://totp/Expense%20Tracker%3Anew.user?secret=UYFO2ULLBJB76EUHDW2O7I5NFWE5U3DE&issuer=Expense%20Tracker"
 }
 ```
 
@@ -2590,7 +2637,7 @@ Confirms the pending device with a code from it. Returns ten recovery codes -- s
 
 ```json
 {
-  "code": "137304"
+  "code": "553472"
 }
 ```
 
@@ -2601,30 +2648,31 @@ Confirms the pending device with a code from it. Returns ten recovery codes -- s
   "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>",
   "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>",
   "user": {
-    "id": 3,
+    "id": 4,
     "username": "new.user",
     "email": "new.user@example.com",
     "first_name": "",
     "last_name": "",
     "is_staff": false,
-    "date_joined": "2026-09-29T00:02:01.166160+05:30",
-    "last_login": "2026-09-29T00:02:01.218572+05:30",
+    "date_joined": "2026-09-29T00:16:47.117485+05:30",
+    "last_login": "2026-09-29T00:16:47.184522+05:30",
     "self_participant": {
-      "id": 5,
+      "id": 6,
       "name": "new.user (self)"
-    }
+    },
+    "has_password": true
   },
   "recovery_codes": [
-    "7EJTMZYMZ2",
-    "A8E3QY2JND",
-    "CR3TKW7HC2",
-    "PTH6U898JP",
-    "JT84R8C9HB",
-    "NKE7HEAN4Q",
-    "2UBHVUC4QN",
-    "84QMGT4X9P",
-    "MXNDSPGJGS",
-    "5E75JDAFF9"
+    "5X3XK7RC5M",
+    "TH5QUJA8ZQ",
+    "WUTWMJ7PRU",
+    "CP3ZZW625H",
+    "WBB7RGF2QS",
+    "9TTN2BGGCD",
+    "9KBTBR6A2N",
+    "JEX9NA7E8H",
+    "3QJUTYWDUN",
+    "Z36K9RHWUD"
   ]
 }
 ```
@@ -2669,7 +2717,7 @@ With two-step sign-in on, a right password is not enough by itself: the response
 ```json
 {
   "mfa_required": true,
-  "mfa_ticket": "eyJ1c2VyX2lkIjozLCJwd2ZwIjoiYmVhZDA1MjlmNDI0OTcyMDNmMDhlZjU5MGU4OTdiYmU1ZjhkN2YxZDc0ZDYzOTlmNDEzZjBmYzFjMWUwNDFkNCJ9:1xBG8v:yMMn4wJQ7NOA_EZ6xRm3--MUSmSpS1oK0_NbsPVnO18"
+  "mfa_ticket": "eyJ1c2VyX2lkIjo0LCJwd2ZwIjoiMTM1ZjVmMDQwNjUwNTQ4ZjQ0MWZhZDZkZGU2N2Y1NGZlMGQzNDI2ZTgxYTNiMTNiMjI3MzZhYTg2N2MzYjcwOCJ9:1xBGND:AMVHeBJtfN7Waw-6CfTCMXX3RE5RGuRLwBlZcQqS05E"
 }
 ```
 
@@ -2687,8 +2735,8 @@ Five wrong codes for one account in 15 minutes lock it: 429 `rate_limited`. Whoe
 
 ```json
 {
-  "mfa_ticket": "eyJ1c2VyX2lkIjozLCJwd2ZwIjoiYmVhZDA1MjlmNDI0OTcyMDNmMDhlZjU5MGU4OTdiYmU1ZjhkN2YxZDc0ZDYzOTlmNDEzZjBmYzFjMWUwNDFkNCJ9:1xBG8v:yMMn4wJQ7NOA_EZ6xRm3--MUSmSpS1oK0_NbsPVnO18",
-  "code": "137304"
+  "mfa_ticket": "eyJ1c2VyX2lkIjo0LCJwd2ZwIjoiMTM1ZjVmMDQwNjUwNTQ4ZjQ0MWZhZDZkZGU2N2Y1NGZlMGQzNDI2ZTgxYTNiMTNiMjI3MzZhYTg2N2MzYjcwOCJ9:1xBGND:AMVHeBJtfN7Waw-6CfTCMXX3RE5RGuRLwBlZcQqS05E",
+  "code": "553472"
 }
 ```
 
@@ -2699,18 +2747,19 @@ Five wrong codes for one account in 15 minutes lock it: 429 `rate_limited`. Whoe
   "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>",
   "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>",
   "user": {
-    "id": 3,
+    "id": 4,
     "username": "new.user",
     "email": "new.user@example.com",
     "first_name": "",
     "last_name": "",
     "is_staff": false,
-    "date_joined": "2026-09-29T00:02:01.166160+05:30",
-    "last_login": "2026-09-29T00:02:01.227565+05:30",
+    "date_joined": "2026-09-29T00:16:47.117485+05:30",
+    "last_login": "2026-09-29T00:16:47.259806+05:30",
     "self_participant": {
-      "id": 5,
+      "id": 6,
       "name": "new.user (self)"
-    }
+    },
+    "has_password": true
   }
 }
 ```
@@ -2721,7 +2770,7 @@ Five wrong codes for one account in 15 minutes lock it: 429 `rate_limited`. Whoe
 
 ```json
 {
-  "mfa_ticket": "eyJ1c2VyX2lkIjozLCJwd2ZwIjoiYmVhZDA1MjlmNDI0OTcyMDNmMDhlZjU5MGU4OTdiYmU1ZjhkN2YxZDc0ZDYzOTlmNDEzZjBmYzFjMWUwNDFkNCJ9:1xBG8v:yMMn4wJQ7NOA_EZ6xRm3--MUSmSpS1oK0_NbsPVnO18",
+  "mfa_ticket": "eyJ1c2VyX2lkIjo0LCJwd2ZwIjoiMTM1ZjVmMDQwNjUwNTQ4ZjQ0MWZhZDZkZGU2N2Y1NGZlMGQzNDI2ZTgxYTNiMTNiMjI3MzZhYTg2N2MzYjcwOCJ9:1xBGND:AMVHeBJtfN7Waw-6CfTCMXX3RE5RGuRLwBlZcQqS05E",
   "code": "000000"
 }
 ```
@@ -2764,7 +2813,7 @@ Replaces the current set of ten with a fresh one. Needs a current authenticator 
 
 ```json
 {
-  "code": "137304"
+  "code": "553472"
 }
 ```
 
@@ -2773,16 +2822,16 @@ Replaces the current set of ten with a fresh one. Needs a current authenticator 
 ```json
 {
   "recovery_codes": [
-    "3E2U2P5S8N",
-    "U5UGE8D9EN",
-    "NPTKK5ZPHS",
-    "WPQEE8VKAF",
-    "85NJPNM2Q8",
-    "ZS2AANV36D",
-    "PKEK4ZK4Y7",
-    "N3CZKGBTBR",
-    "FA4R9AKK4W",
-    "JBPW4MD272"
+    "2CGYPRAR63",
+    "ZGPNTJBKVC",
+    "SYKFY5MUA3",
+    "TKFZWMMTVN",
+    "SAB5ZNQJR4",
+    "3FRTGUF99T",
+    "Y4FTZKXER7",
+    "PQYTEJGR3Z",
+    "Z7BTS7T73H",
+    "DTUV684V4U"
   ]
 }
 ```
@@ -2800,7 +2849,7 @@ Needs the current password **and** a current code -- neither is enough on its ow
 ```json
 {
   "password": "Third-Pass-2026",
-  "code": "137304"
+  "code": "553472"
 }
 ```
 
@@ -2811,18 +2860,19 @@ Needs the current password **and** a current code -- neither is enough on its ow
   "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>",
   "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>",
   "user": {
-    "id": 3,
+    "id": 4,
     "username": "new.user",
     "email": "new.user@example.com",
     "first_name": "",
     "last_name": "",
     "is_staff": false,
-    "date_joined": "2026-09-29T00:02:01.166160+05:30",
-    "last_login": "2026-09-29T00:02:01.248157+05:30",
+    "date_joined": "2026-09-29T00:16:47.117485+05:30",
+    "last_login": "2026-09-29T00:16:47.277499+05:30",
     "self_participant": {
-      "id": 5,
+      "id": 6,
       "name": "new.user (self)"
-    }
+    },
+    "has_password": true
   }
 }
 ```

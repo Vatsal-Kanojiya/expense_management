@@ -33,6 +33,10 @@ JOURNEY_SETTINGS = {
     # Mailed links point at the frontend, where the documented routes are.
     "FRONTEND_URL": journey.FRONTEND,
     "BILL_SCAN_PROVIDER": "fake",
+    # So `auth/google/` exists to record (docs/design/GOOGLE_SIGNIN.md); the
+    # journey mocks Google's own verification the same way the tests do
+    # (accounts.google.google_id_token.verify_oauth2_token), never calling it.
+    "GOOGLE_OAUTH_CLIENT_ID": "journey-client-id.apps.googleusercontent.com",
     # No throttling or rate limiting while the journey runs.
     "CACHES": {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}},
 }

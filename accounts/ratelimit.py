@@ -181,6 +181,24 @@ def clear_login(request, username):
     clear("login", request, username)
 
 
+# --- Sign in with Google (docs/design/GOOGLE_SIGNIN.md) ------------------
+#
+# There is no username to key on before the token is verified -- Google's
+# credential names the account, not a form field -- so this shares the
+# per-address cap above (the same "login-ip" counter, not merely the same
+# numbers) rather than inventing a separate one. An attacker alternating
+# between a stolen password and a forged/guessed Google flow from one
+# address buys nothing by switching.
+
+
+def google_login_blocked(request):
+    return is_limited("login-ip", request, "", LOGIN_IP_LIMIT, LOGIN_IP_WINDOW)
+
+
+def record_google_login_failure(request):
+    record_attempt("login-ip", request, "", LOGIN_IP_WINDOW)
+
+
 # --- Per-user job limits, shared by the web pages and the API ------------
 #
 # Keyed on the account, not the address: the login guards above are about
