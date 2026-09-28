@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth import views as auth_views
@@ -7,15 +8,18 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.generic import CreateView, TemplateView
 
 from expenses.models import Category, Expense, Participant
 
-from . import audit, ratelimit
+from . import audit, mfa, qrcode, ratelimit, totp
 from .api import revoke_refresh_tokens
 from .deletion import delete_account
 from .forms import SignUpForm
+from .models import RecoveryCode, TOTPDevice
+from .models import mfa_enabled as user_has_mfa
 from .verification import send_verification_email, verify
 
 logger = logging.getLogger(__name__)
@@ -44,6 +48,20 @@ class ThrottledLoginView(auth_views.LoginView):
         # Clear on success, or ten legitimate logins in a window would lock
         # out exactly the wrong person.
         ratelimit.clear_login(self.request, self.request.POST.get("username", ""))
+
+        user = form.get_user()
+        if user_has_mfa(user):
+            # No django.contrib.auth.login() here -- the password is right,
+            # but the second step is not done yet, so no session for this
+            # user may exist (docs/design/MFA.md). cycle_key() rotates the
+            # session id the same way login() would, without attaching a
+            # user to it, which is what stops a fixation attack on this
+            # still-anonymous session.
+            self.request.session.cycle_key()
+            self.request.session["mfa_ticket"] = mfa.make_ticket(user)
+            self.request.session["mfa_next"] = self.get_redirect_url()
+            return redirect("accounts:login_mfa")
+
         return super().form_valid(form)
 
     def post(self, request, *args, **kwargs):
@@ -63,6 +81,64 @@ class ThrottledLoginView(auth_views.LoginView):
             return self.render_to_response(self.get_context_data(form=form), status=429)
 
         return super().post(request, *args, **kwargs)
+
+
+class MFALoginView(View):
+    """The code step after a right password, for an account with MFA on.
+
+    Reached only by ``ThrottledLoginView.form_valid`` stashing a ticket in
+    the session -- there is no session user yet, so
+    ``LoginRequiredMixin`` would be the wrong guard here; the ticket itself
+    is what proves the password was already checked.
+    """
+
+    template_name = "registration/login_mfa.html"
+
+    def get(self, request, *args, **kwargs):
+        if "mfa_ticket" not in request.session:
+            return redirect("accounts:login")
+        return render(request, self.template_name, {})
+
+    def post(self, request, *args, **kwargs):
+        ticket = request.session.get("mfa_ticket")
+        if ticket is None:
+            return redirect("accounts:login")
+
+        user = mfa.user_for_ticket(ticket, get_user_model())
+        if user is None:
+            request.session.pop("mfa_ticket", None)
+            request.session.pop("mfa_next", None)
+            messages.error(request, "That sign-in has expired. Log in again.")
+            return redirect("accounts:login")
+
+        code = request.POST.get("code", "")
+        result = mfa.verify_code(user, code, request=request)
+        if result is None:
+            return render(
+                request,
+                self.template_name,
+                {"error": "Too many attempts. Wait a few minutes and try again."},
+                status=429,
+            )
+        if not result:
+            return render(request, self.template_name, {"error": "That code is wrong."}, status=400)
+
+        next_url = request.session.pop("mfa_next", "") or ""
+        request.session.pop("mfa_ticket", None)
+
+        audit.record("login_succeeded", request=request, user=user)
+        # login() rotates the session key again, which is fine -- there is
+        # no fixation risk in rotating an already-anonymous session key
+        # once more on the way to attaching a user to it.
+        login(request, user)
+
+        if next_url and url_has_allowed_host_and_scheme(
+            next_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            return redirect(next_url)
+        return redirect(settings.LOGIN_REDIRECT_URL)
 
 
 class ThrottledPasswordChangeView(auth_views.PasswordChangeView):
@@ -286,3 +362,155 @@ class DeleteAccountView(LoginRequiredMixin, View):
         messages.success(request, "Your account and all its data have been deleted.")
 
         return redirect("accounts:login")
+
+
+class MFAView(LoginRequiredMixin, View):
+    """The account page's "Two-step sign-in" section: status, disable, and
+    fresh recovery codes for an account that already has it on.
+    """
+
+    template_name = "registration/mfa.html"
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, self._context(request))
+
+    def _context(self, request, **extra):
+        return {
+            "mfa_enabled": user_has_mfa(request.user),
+            "recovery_codes_left": RecoveryCode.objects.filter(
+                user=request.user, used_at__isnull=True
+            ).count(),
+            **extra,
+        }
+
+
+class MFASetupView(LoginRequiredMixin, View):
+    """Start enrolment and confirm the first code.
+
+    GET starts (or resumes) enrolment: an unconfirmed device always exists
+    by the time the page renders, its secret shown as a QR code and as
+    text. POSTing a correct code confirms it, generates recovery codes, and
+    hands them to :class:`MFARecoveryCodesView` through the session -- the
+    one moment they exist outside whatever the user writes down.
+    """
+
+    template_name = "registration/mfa_setup.html"
+
+    def get(self, request, *args, **kwargs):
+        if user_has_mfa(request.user):
+            return redirect("accounts:mfa")
+
+        device, _ = TOTPDevice.objects.get_or_create(
+            user=request.user,
+            defaults={"secret": totp.generate_secret()},
+        )
+        return render(request, self.template_name, self._context(device))
+
+    def _context(self, device, **extra):
+        uri = totp.otpauth_uri(device.secret, self.request.user.get_username())
+        return {
+            "secret": device.secret,
+            "otpauth_uri": uri,
+            "qr_data_uri": qrcode.otpauth_data_uri(uri),
+            **extra,
+        }
+
+    def post(self, request, *args, **kwargs):
+        if user_has_mfa(request.user):
+            return redirect("accounts:mfa")
+
+        device = TOTPDevice.objects.filter(user=request.user, confirmed=False).first()
+        if device is None:
+            messages.error(request, "Start setup again.")
+            return redirect("accounts:mfa_setup")
+
+        code = request.POST.get("code", "")
+        if not device.verify(code):
+            return render(
+                request,
+                self.template_name,
+                self._context(device, error="That code is wrong."),
+                status=400,
+            )
+
+        device.confirmed = True
+        device.confirmed_at = timezone.now()
+        device.save(update_fields=["confirmed", "confirmed_at"])
+        codes = RecoveryCode.generate_set(request.user)
+
+        # A confirmed device is now this account's second factor, so a
+        # refresh token issued before it existed should not outlive it --
+        # the session itself is left alone, as for a web password change.
+        revoke_refresh_tokens(request.user, request=request)
+        audit.record("mfa_enabled", request=request, user=request.user)
+
+        request.session["mfa_recovery_codes"] = codes
+        return redirect("accounts:mfa_recovery_codes")
+
+
+class MFARecoveryCodesView(LoginRequiredMixin, View):
+    """The ten fresh recovery codes, shown exactly once, straight from the
+    session ``MFASetupView`` or ``MFARegenerateView`` just put them in.
+    """
+
+    template_name = "registration/mfa_recovery_codes.html"
+
+    def get(self, request, *args, **kwargs):
+        codes = request.session.pop("mfa_recovery_codes", None)
+        if not codes:
+            return redirect("accounts:mfa")
+        return render(request, self.template_name, {"recovery_codes": codes})
+
+
+class MFADisableView(LoginRequiredMixin, View):
+    """Turn two-step sign-in off. Needs the password and a current code."""
+
+    def post(self, request, *args, **kwargs):
+        if not user_has_mfa(request.user):
+            return redirect("accounts:mfa")
+
+        password = request.POST.get("password", "")
+        code = request.POST.get("code", "")
+
+        if not request.user.check_password(password):
+            messages.error(request, "Wrong password.")
+            return redirect("accounts:mfa")
+
+        device = TOTPDevice.objects.filter(user=request.user, confirmed=True).first()
+        code_ok = (device is not None and device.verify(code)) or RecoveryCode.try_use(
+            request.user, code
+        )
+        if not code_ok:
+            messages.error(request, "That code is wrong.")
+            return redirect("accounts:mfa")
+
+        TOTPDevice.objects.filter(user=request.user).delete()
+        RecoveryCode.objects.filter(user=request.user).delete()
+        revoke_refresh_tokens(request.user, request=request)
+        audit.record("mfa_disabled", request=request, user=request.user)
+
+        messages.success(request, "Two-step sign-in is off.")
+        return redirect("accounts:mfa")
+
+
+class MFARegenerateView(LoginRequiredMixin, View):
+    """A fresh set of ten recovery codes. Needs a current authenticator
+    code -- not a recovery code, so spending the last one cannot itself be
+    used to mint ten more.
+    """
+
+    def post(self, request, *args, **kwargs):
+        device = TOTPDevice.objects.filter(user=request.user, confirmed=True).first()
+        if device is None:
+            return redirect("accounts:mfa")
+
+        code = request.POST.get("code", "")
+        if not device.verify(code):
+            messages.error(request, "That code is wrong.")
+            return redirect("accounts:mfa")
+
+        codes = RecoveryCode.generate_set(request.user)
+        audit.record("recovery_codes_regenerated", request=request, user=request.user)
+
+        request.session["mfa_recovery_codes"] = codes
+        return redirect("accounts:mfa_recovery_codes")

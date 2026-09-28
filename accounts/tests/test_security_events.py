@@ -88,31 +88,29 @@ class WebLoginEventTests(TestCase):
 
 @with_cache
 class AdminLoginEventTests(TestCase):
+    """docs/design/MFA.md: the admin's own login form no longer checks
+    credentials at all, so it records nothing -- whatever happens at
+    /accounts/login/, which it redirects to, is what gets recorded there.
+    """
+
     def setUp(self):
         cache.clear()
 
-    def test_a_failed_admin_login_is_recorded(self):
-        User.objects.create_user("staff", "staff@example.com", PASSWORD, is_staff=True)
-
-        self.client.post("/admin/login/", {"username": "staff", "password": "wrong"})
-
-        self.assertEqual(events("login_failed").count(), 1)
-
-    def test_a_successful_admin_login_is_recorded(self):
+    def test_the_admin_login_itself_records_nothing(self):
         User.objects.create_user("staff", "staff@example.com", PASSWORD, is_staff=True)
 
         self.client.post("/admin/login/", {"username": "staff", "password": PASSWORD})
 
-        self.assertEqual(events("login_succeeded").count(), 1)
+        self.assertEqual(SecurityEvent.objects.count(), 0)
 
-    @mock.patch.object(ratelimit, "LOGIN_LIMIT", 1)
-    def test_a_blocked_admin_login_is_recorded(self):
+    def test_signing_in_at_the_site_login_the_admin_redirects_to_is_recorded(self):
         User.objects.create_user("staff", "staff@example.com", PASSWORD, is_staff=True)
 
-        self.client.post("/admin/login/", {"username": "staff", "password": "wrong"})
-        self.client.post("/admin/login/", {"username": "staff", "password": "wrong"})
+        self.client.post(
+            "/accounts/login/?next=/admin/", {"username": "staff", "password": PASSWORD}
+        )
 
-        self.assertEqual(events("login_blocked").count(), 1)
+        self.assertEqual(events("login_succeeded").count(), 1)
 
 
 @with_cache

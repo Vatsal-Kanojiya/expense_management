@@ -20,11 +20,26 @@ urlpatterns = [
         views.ThrottledLoginView.as_view(),
         name="login",
     ),
+    path("login/mfa/", views.MFALoginView.as_view(), name="login_mfa"),
     # LogoutView is POST-only since Django 5.0. A GET logout could be fired
     # by a prefetch, a link scanner or an <img> tag, so the nav uses a form.
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("signup/", views.SignUpView.as_view(), name="signup"),
     path("delete/", views.DeleteAccountView.as_view(), name="delete_account"),
+    # Two-step sign-in (docs/design/MFA.md): the account page's own section.
+    path("mfa/", views.MFAView.as_view(), name="mfa"),
+    path("mfa/setup/", views.MFASetupView.as_view(), name="mfa_setup"),
+    path(
+        "mfa/recovery-codes/",
+        views.MFARecoveryCodesView.as_view(),
+        name="mfa_recovery_codes",
+    ),
+    path("mfa/disable/", views.MFADisableView.as_view(), name="mfa_disable"),
+    path(
+        "mfa/recovery-codes/regenerate/",
+        views.MFARegenerateView.as_view(),
+        name="mfa_regenerate",
+    ),
     path(
         "signup/check-email/",
         views.VerifyEmailSentView.as_view(),

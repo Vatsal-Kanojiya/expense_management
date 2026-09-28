@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Your recovery codes · Expense Tracker{% endblock %}
+
+{% block content %}
+  <h1>Your recovery codes</h1>
+
+  <div class="card" style="max-width:30rem">
+    <p>Two-step sign-in is on. Save these ten codes somewhere safe -- each works once, in place
+      of a code from your authenticator app, and <strong>this is the only time they are
+      shown</strong>.</p>
+
+    <ul class="recovery-codes" style="font-family:monospace; font-size:1.1rem; line-height:1.8">
+      {% for code in recovery_codes %}
+        <li>{{ code }}</li>
+      {% endfor %}
+    </ul>
+
+    <a class="btn btn-primary" href="{% url 'accounts:mfa' %}">Done</a>
+  </div>
+{% endblock %}

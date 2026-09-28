@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Two-step sign-in · Expense Tracker{% endblock %}
+
+{% block content %}
+  <h1>Two-step sign-in</h1>
+
+  <div class="card" style="max-width:34rem">
+    {% if mfa_enabled %}
+      <p>Two-step sign-in is <strong>on</strong>. Signing in asks for a code from your
+        authenticator app (or a recovery code) after your password.</p>
+      <p class="muted">{{ recovery_codes_left }} recovery code{{ recovery_codes_left|pluralize }}
+        left.</p>
+
+      <h2>New recovery codes</h2>
+      <p class="muted">Replaces your current set. Needs a current authenticator code.</p>
+      <form method="post" action="{% url 'accounts:mfa_regenerate' %}">
+        {% csrf_token %}
+        <label for="id_regen_code">Code</label>
+        <input type="text" name="code" id="id_regen_code" inputmode="numeric" required>
+        <p></p>
+        <button class="btn" type="submit">Generate new codes</button>
+      </form>
+
+      <h2>Turn it off</h2>
+      <p class="muted">Needs your password and a current code.</p>
+      <form method="post" action="{% url 'accounts:mfa_disable' %}">
+        {% csrf_token %}
+        <label for="id_disable_password">Password</label>
+        <input type="password" name="password" id="id_disable_password" autocomplete="current-password" required>
+        <label for="id_disable_code">Code</label>
+        <input type="text" name="code" id="id_disable_code" inputmode="numeric" required>
+        <p></p>
+        <button class="btn btn-danger" type="submit">Turn off two-step sign-in</button>
+      </form>
+    {% else %}
+      <p>Two-step sign-in is <strong>off</strong>. Turn it on to ask for a code from an
+        authenticator app (Google Authenticator, 1Password, and the like) every time you sign in.</p>
+      <a class="btn btn-primary" href="{% url 'accounts:mfa_setup' %}">Set up two-step sign-in</a>
+    {% endif %}
+
+    <p style="margin-top:1.5rem"><a href="{% url 'accounts:password_change' %}">Change password</a></p>
+  </div>
+{% endblock %}

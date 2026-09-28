@@ -46,3 +46,7 @@ drf-spectacular==0.30.0
 # issue 27's exact shape, so it is pinned outright now that something in
 # this codebase, not just a dependency, imports it directly.
 requests==2.34.2
+
+# Roadmap L2 §3 (docs/design/MFA.md): the setup page's QR code, as an
+# inline SVG built server-side. Pure Python, no dependencies of its own.
+segno==1.6.6
