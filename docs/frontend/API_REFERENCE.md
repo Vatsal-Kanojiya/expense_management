@@ -61,7 +61,14 @@ Base URL in these examples: `http://127.0.0.1:8765/api/v1`. Tokens are shortened
 | 51 | `POST` | `/auth/password/reset/` | [Request a password reset](#request-a-password-reset) | — |
 | 52 | `POST` | `/auth/password/reset/confirm/` | [Set a new password](#set-a-new-password) | — |
 | 53 | `POST` | `/auth/login/` | [Log in with the new password](#log-in-with-the-new-password) | — |
-| 54 | `DELETE` | `/me/` | [Delete the account](#delete-the-account) | Bearer |
+| 54 | `GET` | `/auth/mfa/` | [Check two-step sign-in status](#check-two-step-sign-in-status) | Bearer |
+| 55 | `POST` | `/auth/mfa/setup/` | [Start two-step sign-in setup](#start-two-step-sign-in-setup) | Bearer |
+| 56 | `POST` | `/auth/mfa/confirm/` | [Confirm and turn it on](#confirm-and-turn-it-on) | Bearer |
+| 57 | `POST` | `/auth/login/` | [Log in again](#log-in-again) | — |
+| 58 | `POST` | `/auth/mfa/verify/` | [Enter the two-step code](#enter-the-two-step-code) | — |
+| 59 | `POST` | `/auth/mfa/recovery-codes/` | [Get new recovery codes](#get-new-recovery-codes) | Bearer |
+| 60 | `POST` | `/auth/mfa/disable/` | [Turn off two-step sign-in](#turn-off-two-step-sign-in) | Bearer |
+| 61 | `DELETE` | `/me/` | [Delete the account](#delete-the-account) | Bearer |
 
 ---
 
@@ -115,8 +122,8 @@ Ten failed attempts for one username from one address lock it for 15 minutes: 42
     "first_name": "",
     "last_name": "",
     "is_staff": false,
-    "date_joined": "2026-09-28T23:28:06.688721+05:30",
-    "last_login": "2026-09-28T23:28:06.735684+05:30",
+    "date_joined": "2026-09-28T23:47:35.730717+05:30",
+    "last_login": "2026-09-28T23:47:35.784615+05:30",
     "self_participant": {
       "id": 1,
       "name": "priya (self)"
@@ -179,8 +186,8 @@ The signed-in user. Call it when the app starts, to check that a stored token st
   "first_name": "",
   "last_name": "",
   "is_staff": false,
-  "date_joined": "2026-09-28T23:28:06.688721+05:30",
-  "last_login": "2026-09-28T23:28:06.735684+05:30",
+  "date_joined": "2026-09-28T23:47:35.730717+05:30",
+  "last_login": "2026-09-28T23:47:35.784615+05:30",
   "self_participant": {
     "id": 1,
     "name": "priya (self)"
@@ -223,8 +230,8 @@ Only `first_name` and `last_name` can change; `username` and `email` are read-on
   "first_name": "Priya",
   "last_name": "Sharma",
   "is_staff": false,
-  "date_joined": "2026-09-28T23:28:06.688721+05:30",
-  "last_login": "2026-09-28T23:28:06.735684+05:30",
+  "date_joined": "2026-09-28T23:47:35.730717+05:30",
+  "last_login": "2026-09-28T23:47:35.784615+05:30",
   "self_participant": {
     "id": 1,
     "name": "priya (self)"
@@ -260,7 +267,7 @@ Names are unique per user, ignoring case: `Food` and `food` are one category.
 {
   "id": 1,
   "name": "Food",
-  "created_at": "2026-09-28T23:28:06.758950+05:30",
+  "created_at": "2026-09-28T23:47:35.806699+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -308,7 +315,7 @@ A second category, used by the plain expense in folder 3.
 {
   "id": 2,
   "name": "Home",
-  "created_at": "2026-09-28T23:28:06.766904+05:30",
+  "created_at": "2026-09-28T23:47:35.819337+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -332,7 +339,7 @@ Alphabetical, with the Categories screen's usage columns: `expense_count`, `tota
     {
       "id": 2,
       "name": "Home",
-      "created_at": "2026-09-28T23:28:06.766904+05:30",
+      "created_at": "2026-09-28T23:47:35.819337+05:30",
       "expense_count": 0,
       "total": null,
       "last_spent_on": null,
@@ -341,7 +348,7 @@ Alphabetical, with the Categories screen's usage columns: `expense_count`, `tota
     {
       "id": 1,
       "name": "Food",
-      "created_at": "2026-09-28T23:28:06.758950+05:30",
+      "created_at": "2026-09-28T23:47:35.806699+05:30",
       "expense_count": 0,
       "total": null,
       "last_spent_on": null,
@@ -363,7 +370,7 @@ One category with its usage columns. Another user's id is a 404, never a 403.
 {
   "id": 1,
   "name": "Food",
-  "created_at": "2026-09-28T23:28:06.758950+05:30",
+  "created_at": "2026-09-28T23:47:35.806699+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -393,7 +400,7 @@ PATCH changes only the fields sent.
 {
   "id": 2,
   "name": "Household",
-  "created_at": "2026-09-28T23:28:06.766904+05:30",
+  "created_at": "2026-09-28T23:47:35.819337+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -423,7 +430,7 @@ PUT sends every writable field; for a category that is only `name`.
 {
   "id": 2,
   "name": "Home & utilities",
-  "created_at": "2026-09-28T23:28:06.766904+05:30",
+  "created_at": "2026-09-28T23:47:35.819337+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -453,7 +460,7 @@ A throwaway category for the delete that follows.
 {
   "id": 3,
   "name": "Travel",
-  "created_at": "2026-09-28T23:28:06.791000+05:30",
+  "created_at": "2026-09-28T23:47:35.846727+05:30",
   "expense_count": 0,
   "total": null,
   "last_spent_on": null,
@@ -514,7 +521,7 @@ Someone bills are split with. People are private to each user, and names are uni
   "id": 2,
   "name": "Rahul",
   "is_self": false,
-  "created_at": "2026-09-28T23:28:06.809316+05:30",
+  "created_at": "2026-09-28T23:47:35.863344+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -561,7 +568,7 @@ A second person, for the itemised bill in folder 3.
   "id": 3,
   "name": "Aisha",
   "is_self": false,
-  "created_at": "2026-09-28T23:28:06.816147+05:30",
+  "created_at": "2026-09-28T23:47:35.870789+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -584,7 +591,7 @@ Alphabetical, **including the user themself** with `is_self: true`: the People s
       "id": 3,
       "name": "Aisha",
       "is_self": false,
-      "created_at": "2026-09-28T23:28:06.816147+05:30",
+      "created_at": "2026-09-28T23:47:35.870789+05:30",
       "shared_count": 0,
       "item_count": 0
     },
@@ -592,7 +599,7 @@ Alphabetical, **including the user themself** with `is_self: true`: the People s
       "id": 2,
       "name": "Rahul",
       "is_self": false,
-      "created_at": "2026-09-28T23:28:06.809316+05:30",
+      "created_at": "2026-09-28T23:47:35.863344+05:30",
       "shared_count": 0,
       "item_count": 0
     },
@@ -600,7 +607,7 @@ Alphabetical, **including the user themself** with `is_self: true`: the People s
       "id": 1,
       "name": "priya (self)",
       "is_self": true,
-      "created_at": "2026-09-28T23:28:06.738979+05:30",
+      "created_at": "2026-09-28T23:47:35.788196+05:30",
       "shared_count": 0,
       "item_count": 0
     }
@@ -621,7 +628,7 @@ One person.
   "id": 2,
   "name": "Rahul",
   "is_self": false,
-  "created_at": "2026-09-28T23:28:06.809316+05:30",
+  "created_at": "2026-09-28T23:47:35.863344+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -650,7 +657,7 @@ PATCH changes only the fields sent.
   "id": 3,
   "name": "Aisha Khan",
   "is_self": false,
-  "created_at": "2026-09-28T23:28:06.816147+05:30",
+  "created_at": "2026-09-28T23:47:35.870789+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -696,7 +703,7 @@ PUT sends every writable field; for a person that is only `name`.
   "id": 3,
   "name": "Aisha K.",
   "is_self": false,
-  "created_at": "2026-09-28T23:28:06.816147+05:30",
+  "created_at": "2026-09-28T23:47:35.870789+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -725,7 +732,7 @@ A throwaway person for the delete that follows.
   "id": 4,
   "name": "Old colleague",
   "is_self": false,
-  "created_at": "2026-09-28T23:28:06.839420+05:30",
+  "created_at": "2026-09-28T23:47:35.897902+05:30",
   "shared_count": 0,
   "item_count": 0
 }
@@ -810,7 +817,7 @@ The simplest expense: yours alone. `paid_by` may be left out and defaults to you
   "items_total": null,
   "unaccounted_amount": null,
   "is_balanced": true,
-  "created_at": "2026-09-28T23:28:06.863357+05:30"
+  "created_at": "2026-09-28T23:47:35.920565+05:30"
 }
 ```
 
@@ -884,7 +891,7 @@ No line items, several participants: the amount is split equally between them, r
   "items_total": null,
   "unaccounted_amount": null,
   "is_balanced": true,
-  "created_at": "2026-09-28T23:28:06.875833+05:30"
+  "created_at": "2026-09-28T23:47:35.931714+05:30"
 }
 ```
 
@@ -1029,7 +1036,7 @@ Line items, each shared by the people who had it, and a tax/tip amount (`misc_am
   "items_total": "1080.00",
   "unaccounted_amount": "0.00",
   "is_balanced": true,
-  "created_at": "2026-09-28T23:28:06.887573+05:30"
+  "created_at": "2026-09-28T23:47:35.942424+05:30"
 }
 ```
 
@@ -1234,7 +1241,7 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
       "items_total": "1080.00",
       "unaccounted_amount": "0.00",
       "is_balanced": true,
-      "created_at": "2026-09-28T23:28:06.887573+05:30"
+      "created_at": "2026-09-28T23:47:35.942424+05:30"
     },
     {
       "id": 4,
@@ -1255,7 +1262,7 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
       "items_total": null,
       "unaccounted_amount": null,
       "is_balanced": true,
-      "created_at": "2026-09-28T23:28:06.875833+05:30"
+      "created_at": "2026-09-28T23:47:35.931714+05:30"
     },
     {
       "id": 3,
@@ -1273,7 +1280,7 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
       "items_total": null,
       "unaccounted_amount": null,
       "is_balanced": true,
-      "created_at": "2026-09-28T23:28:06.863357+05:30"
+      "created_at": "2026-09-28T23:47:35.920565+05:30"
     }
   ],
   "count": 3,
@@ -1364,7 +1371,7 @@ Newest date first, 25 per page; follow `next` for more. `count` and `total_amoun
       "items_total": "1080.00",
       "unaccounted_amount": "0.00",
       "is_balanced": true,
-      "created_at": "2026-09-28T23:28:06.887573+05:30"
+      "created_at": "2026-09-28T23:47:35.942424+05:30"
     }
   ],
   "count": 1,
@@ -1459,7 +1466,7 @@ One expense.
   "items_total": "1080.00",
   "unaccounted_amount": "0.00",
   "is_balanced": true,
-  "created_at": "2026-09-28T23:28:06.887573+05:30"
+  "created_at": "2026-09-28T23:47:35.942424+05:30"
 }
 ```
 
@@ -1501,7 +1508,7 @@ Only the fields sent change. `items` left out keeps the line items; `items: []` 
   "items_total": null,
   "unaccounted_amount": null,
   "is_balanced": true,
-  "created_at": "2026-09-28T23:28:06.875833+05:30"
+  "created_at": "2026-09-28T23:47:35.931714+05:30"
 }
 ```
 
@@ -1547,7 +1554,7 @@ PUT sends the whole expense again; anything left out of the lists is removed.
   "items_total": null,
   "unaccounted_amount": null,
   "is_balanced": true,
-  "created_at": "2026-09-28T23:28:06.863357+05:30"
+  "created_at": "2026-09-28T23:47:35.920565+05:30"
 }
 ```
 
@@ -1747,7 +1754,7 @@ Records a repayment of the whole outstanding amount, in whichever direction it r
     "participant_name": "Rahul",
     "amount": "838.89",
     "note": "Paid by UPI",
-    "settled_at": "2026-09-28T23:28:06.969447+05:30"
+    "settled_at": "2026-09-28T23:47:36.040659+05:30"
   }
 }
 ```
@@ -1789,7 +1796,7 @@ Every repayment recorded, newest first. `?participant=<id>` narrows it to one pe
       "participant_name": "Rahul",
       "amount": "838.89",
       "note": "Paid by UPI",
-      "settled_at": "2026-09-28T23:28:06.969447+05:30"
+      "settled_at": "2026-09-28T23:47:36.040659+05:30"
     }
   ]
 }
@@ -1810,7 +1817,7 @@ One repayment.
   "participant_name": "Rahul",
   "amount": "838.89",
   "note": "Paid by UPI",
-  "settled_at": "2026-09-28T23:28:06.969447+05:30"
+  "settled_at": "2026-09-28T23:47:36.040659+05:30"
 }
 ```
 
@@ -1847,7 +1854,7 @@ Answers at once with the job, `pending`. A worker builds the CSV and emails a li
   "end": "2026-09-30",
   "row_count": 0,
   "error": "",
-  "requested_at": "2026-09-28T23:28:06.981337+05:30",
+  "requested_at": "2026-09-28T23:47:36.056260+05:30",
   "completed_at": null,
   "download_url": null
 }
@@ -1869,8 +1876,8 @@ Poll every second or two until `status` is `complete` (then `download_url` is se
   "end": "2026-09-30",
   "row_count": 2,
   "error": "",
-  "requested_at": "2026-09-28T23:28:06.981337+05:30",
-  "completed_at": "2026-09-28T23:28:07.025892+05:30",
+  "requested_at": "2026-09-28T23:47:36.056260+05:30",
+  "completed_at": "2026-09-28T23:47:36.109784+05:30",
   "download_url": "http://127.0.0.1:8765/api/v1/exports/1/download/"
 }
 ```
@@ -1895,8 +1902,8 @@ The user's exports, newest first.
       "end": "2026-09-30",
       "row_count": 2,
       "error": "",
-      "requested_at": "2026-09-28T23:28:06.981337+05:30",
-      "completed_at": "2026-09-28T23:28:07.025892+05:30",
+      "requested_at": "2026-09-28T23:47:36.056260+05:30",
+      "completed_at": "2026-09-28T23:47:36.109784+05:30",
       "download_url": "http://127.0.0.1:8765/api/v1/exports/1/download/"
     }
   ]
@@ -1958,7 +1965,7 @@ On a server using a real vision model, upload a real photo of a bill; the sample
   "error": "",
   "result": {},
   "expense": null,
-  "created_at": "2026-09-28T23:28:07.045884+05:30",
+  "created_at": "2026-09-28T23:47:36.134912+05:30",
   "completed_at": null,
   "image_url": "http://127.0.0.1:8765/api/v1/bill-scans/1/image/"
 }
@@ -2010,8 +2017,8 @@ Poll until `status` is `done` or `failed` (then `error` says why). Scans usually
     "provider": "fake"
   },
   "expense": null,
-  "created_at": "2026-09-28T23:28:07.045884+05:30",
-  "completed_at": "2026-09-28T23:28:07.049484+05:30",
+  "created_at": "2026-09-28T23:47:36.134912+05:30",
+  "completed_at": "2026-09-28T23:47:36.138777+05:30",
   "image_url": "http://127.0.0.1:8765/api/v1/bill-scans/1/image/"
 }
 ```
@@ -2054,8 +2061,8 @@ The user's scans, newest first.
         "provider": "fake"
       },
       "expense": null,
-      "created_at": "2026-09-28T23:28:07.045884+05:30",
-      "completed_at": "2026-09-28T23:28:07.049484+05:30",
+      "created_at": "2026-09-28T23:47:36.134912+05:30",
+      "completed_at": "2026-09-28T23:47:36.138777+05:30",
       "image_url": "http://127.0.0.1:8765/api/v1/bill-scans/1/image/"
     }
   ]
@@ -2179,7 +2186,7 @@ The corrected draft, sent as a normal expense. Each scan can be saved once; the 
   "items_total": "400.00",
   "unaccounted_amount": "0.00",
   "is_balanced": true,
-  "created_at": "2026-09-28T23:28:07.068164+05:30"
+  "created_at": "2026-09-28T23:47:36.165097+05:30"
 }
 ```
 
@@ -2274,7 +2281,7 @@ Revokes this device's refresh token. Other devices stay signed in. Discard both 
 
 ## 9 · Account lifecycle (run by hand)
 
-Sign-up, email verification, password change and reset, and deleting the account. **Not part of an automated run.** Verification and reset need the `uid` and `token` from a mailed link, which you copy into the collection variables `verify_uid`/`verify_token` or `reset_uid`/`reset_token` by hand, and the last request deletes the account.
+Sign-up, email verification, password change and reset, two-step sign-in, and deleting the account. **Not part of an automated run.** Verification and reset need the `uid` and `token` from a mailed link, which you copy into the collection variables `verify_uid`/`verify_token` or `reset_uid`/`reset_token` by hand; the two-step sign-in requests need a code from an authenticator app, which you compute from the `secret` the setup request returns; and the last request deletes the account.
 
 ### Sign up
 
@@ -2342,7 +2349,7 @@ The frontend's `/verify-email/<uid>/<token>` page calls this with the two parts 
 ```json
 {
   "uid": "Mw",
-  "token": "dfn2iv-5cb0fa0fe07e35987fb9142644005fce"
+  "token": "dfn3fc-2b174b28ff94a7cc378b5b6d85ec1ee5"
 }
 ```
 
@@ -2359,8 +2366,8 @@ The frontend's `/verify-email/<uid>/<token>` page calls this with the two parts 
     "first_name": "",
     "last_name": "",
     "is_staff": false,
-    "date_joined": "2026-09-28T23:28:07.104849+05:30",
-    "last_login": "2026-09-28T23:28:07.119352+05:30",
+    "date_joined": "2026-09-28T23:47:36.207066+05:30",
+    "last_login": "2026-09-28T23:47:36.224688+05:30",
     "self_participant": {
       "id": 5,
       "name": "new.user (self)"
@@ -2409,8 +2416,8 @@ Needs the current password. Every other device is signed out; this one gets a ne
     "first_name": "",
     "last_name": "",
     "is_staff": false,
-    "date_joined": "2026-09-28T23:28:07.104849+05:30",
-    "last_login": "2026-09-28T23:28:07.126757+05:30",
+    "date_joined": "2026-09-28T23:47:36.207066+05:30",
+    "last_login": "2026-09-28T23:47:36.233423+05:30",
     "self_participant": {
       "id": 5,
       "name": "new.user (self)"
@@ -2477,7 +2484,7 @@ The frontend's `/reset-password/<uid>/<token>` page sends the two parts of its U
 ```json
 {
   "uid": "Mw",
-  "token": "dfn2iv-64bc72cb657053549817d767006783d5",
+  "token": "dfn3fc-f764ffd79c59d1c267c6179185c96d7e",
   "new_password": "Third-Pass-2026",
   "new_password_confirm": "Third-Pass-2026"
 }
@@ -2531,13 +2538,311 @@ Signing in again after the reset.
     "first_name": "",
     "last_name": "",
     "is_staff": false,
-    "date_joined": "2026-09-28T23:28:07.104849+05:30",
-    "last_login": "2026-09-28T23:28:07.139708+05:30",
+    "date_joined": "2026-09-28T23:47:36.207066+05:30",
+    "last_login": "2026-09-28T23:47:36.248582+05:30",
     "self_participant": {
       "id": 5,
       "name": "new.user (self)"
     }
   }
+}
+```
+
+### Check two-step sign-in status
+
+`GET /auth/mfa/` · Bearer token · success `200 OK`
+
+Whether two-step sign-in -- an authenticator-app code asked for after the password -- is on, and how many recovery codes are left.
+
+**Response** `200 OK` · `application/json`
+
+```json
+{
+  "enabled": false,
+  "recovery_codes_left": 0
+}
+```
+
+### Start two-step sign-in setup
+
+`POST /auth/mfa/setup/` · Bearer token · success `200 OK`
+
+A fresh secret and an `otpauth://` URI to build a QR code from. The account is not protected yet -- that needs the first code confirmed below. Calling this again before confirming replaces the pending secret.
+
+**Response** `200 OK` · `application/json`
+
+```json
+{
+  "secret": "U5BHUDVASR5AVZFYXVFAZF3FT6QAAEYN",
+  "otpauth_uri": "otpauth://totp/Expense%20Tracker%3Anew.user?secret=U5BHUDVASR5AVZFYXVFAZF3FT6QAAEYN&issuer=Expense%20Tracker"
+}
+```
+
+### Confirm and turn it on
+
+`POST /auth/mfa/confirm/` · Bearer token · success `200 OK`
+
+Confirms the pending device with a code from it. Returns ten recovery codes -- shown only this once, so store them somewhere safe -- and a fresh token pair: every other refresh token is revoked, the same as a password change.
+
+**Request**
+
+`POST /api/v1/auth/mfa/confirm/`
+
+```json
+{
+  "code": "613527"
+}
+```
+
+**Response** `200 OK` · `application/json`
+
+```json
+{
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>",
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>",
+  "user": {
+    "id": 3,
+    "username": "new.user",
+    "email": "new.user@example.com",
+    "first_name": "",
+    "last_name": "",
+    "is_staff": false,
+    "date_joined": "2026-09-28T23:47:36.207066+05:30",
+    "last_login": "2026-09-28T23:47:36.265600+05:30",
+    "self_participant": {
+      "id": 5,
+      "name": "new.user (self)"
+    }
+  },
+  "recovery_codes": [
+    "WJ39XNXF9U",
+    "NZEYX5CZBC",
+    "2VFET89ZTN",
+    "TUUTJW7N8B",
+    "YW7N43GYGZ",
+    "8X492AYMV6",
+    "475QS44KKS",
+    "BDTGFZMMVU",
+    "SGY7ESSB79",
+    "CBV2WHSKG8"
+  ]
+}
+```
+
+**Wrong code** → `400 Bad Request`
+
+`POST /api/v1/auth/mfa/confirm/`
+
+```json
+{
+  "code": "000000"
+}
+```
+
+```json
+{
+  "code": [
+    "That code is wrong."
+  ]
+}
+```
+
+### Log in again
+
+`POST /auth/login/` · no sign-in · success `200 OK`
+
+With two-step sign-in on, a right password is not enough by itself: the response carries a ticket instead of tokens. Send it, and a code, to `auth/mfa/verify/`.
+
+**Request**
+
+`POST /api/v1/auth/login/`
+
+```json
+{
+  "username": "new.user",
+  "password": "Third-Pass-2026"
+}
+```
+
+**Response** `200 OK` · `application/json`
+
+```json
+{
+  "mfa_required": true,
+  "mfa_ticket": "eyJ1c2VyX2lkIjozLCJwd2ZwIjoiYjJmYTk4OTk4ZDZmNTIyZGJjMDBiODE1MDgzYWU0MzQyNjEyODBkMzU1NGFiYmE2YTRkYmQ5YzMwN2JjMmVkZiJ9:1xBFuy:SUsaWgihuYSnoyVzBHfuXeIsTGHZ6xp9epHLe_jSyw8"
+}
+```
+
+### Enter the two-step code
+
+`POST /auth/mfa/verify/` · no sign-in · success `200 OK`
+
+The ticket from the login above, plus a code -- from the authenticator app, or one of the recovery codes shown at setup. Either way the response is the token pair a plain login would have returned.
+
+Five wrong codes for one account in 15 minutes lock it: 429 `rate_limited`. Whoever holds a ticket already knows the password, so this cannot be used to lock out someone else's account.
+
+**Request**
+
+`POST /api/v1/auth/mfa/verify/`
+
+```json
+{
+  "mfa_ticket": "eyJ1c2VyX2lkIjozLCJwd2ZwIjoiYjJmYTk4OTk4ZDZmNTIyZGJjMDBiODE1MDgzYWU0MzQyNjEyODBkMzU1NGFiYmE2YTRkYmQ5YzMwN2JjMmVkZiJ9:1xBFuy:SUsaWgihuYSnoyVzBHfuXeIsTGHZ6xp9epHLe_jSyw8",
+  "code": "613527"
+}
+```
+
+**Response** `200 OK` · `application/json`
+
+```json
+{
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>",
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>",
+  "user": {
+    "id": 3,
+    "username": "new.user",
+    "email": "new.user@example.com",
+    "first_name": "",
+    "last_name": "",
+    "is_staff": false,
+    "date_joined": "2026-09-28T23:47:36.207066+05:30",
+    "last_login": "2026-09-28T23:47:36.275188+05:30",
+    "self_participant": {
+      "id": 5,
+      "name": "new.user (self)"
+    }
+  }
+}
+```
+
+**Wrong code** → `400 Bad Request`
+
+`POST /api/v1/auth/mfa/verify/`
+
+```json
+{
+  "mfa_ticket": "eyJ1c2VyX2lkIjozLCJwd2ZwIjoiYjJmYTk4OTk4ZDZmNTIyZGJjMDBiODE1MDgzYWU0MzQyNjEyODBkMzU1NGFiYmE2YTRkYmQ5YzMwN2JjMmVkZiJ9:1xBFuy:SUsaWgihuYSnoyVzBHfuXeIsTGHZ6xp9epHLe_jSyw8",
+  "code": "000000"
+}
+```
+
+```json
+{
+  "code": [
+    "That code is wrong."
+  ]
+}
+```
+
+**Invalid or expired ticket** → `400 Bad Request`
+
+`POST /api/v1/auth/mfa/verify/`
+
+```json
+{
+  "mfa_ticket": "not-a-real-ticket",
+  "code": "000000"
+}
+```
+
+```json
+{
+  "detail": "That sign-in has expired. Log in again.",
+  "code": "invalid_ticket"
+}
+```
+
+### Get new recovery codes
+
+`POST /auth/mfa/recovery-codes/` · Bearer token · success `200 OK`
+
+Replaces the current set of ten with a fresh one. Needs a current authenticator code, not a recovery code -- otherwise spending the last one could mint ten more.
+
+**Request**
+
+`POST /api/v1/auth/mfa/recovery-codes/`
+
+```json
+{
+  "code": "613527"
+}
+```
+
+**Response** `200 OK` · `application/json`
+
+```json
+{
+  "recovery_codes": [
+    "2FC6WRY3MZ",
+    "6J5PAXEY2Y",
+    "MFT6F6AC5D",
+    "YWZ78VEVDA",
+    "5A8QV7XE8P",
+    "NEEBDD3RDV",
+    "ZV6B6JPZYS",
+    "SYUFE2CX9E",
+    "BKC5N5F3NC",
+    "6CCCQ5HTHT"
+  ]
+}
+```
+
+### Turn off two-step sign-in
+
+`POST /auth/mfa/disable/` · Bearer token · success `200 OK`
+
+Needs the current password **and** a current code -- neither is enough on its own. Deletes the device and every recovery code, and revokes other refresh tokens.
+
+**Request**
+
+`POST /api/v1/auth/mfa/disable/`
+
+```json
+{
+  "password": "Third-Pass-2026",
+  "code": "613527"
+}
+```
+
+**Response** `200 OK` · `application/json`
+
+```json
+{
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>",
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>",
+  "user": {
+    "id": 3,
+    "username": "new.user",
+    "email": "new.user@example.com",
+    "first_name": "",
+    "last_name": "",
+    "is_staff": false,
+    "date_joined": "2026-09-28T23:47:36.207066+05:30",
+    "last_login": "2026-09-28T23:47:36.295244+05:30",
+    "self_participant": {
+      "id": 5,
+      "name": "new.user (self)"
+    }
+  }
+}
+```
+
+**Wrong password** → `400 Bad Request`
+
+`POST /api/v1/auth/mfa/disable/`
+
+```json
+{
+  "password": "wrong",
+  "code": "000000"
+}
+```
+
+```json
+{
+  "password": [
+    "Wrong password."
+  ]
 }
 ```
 

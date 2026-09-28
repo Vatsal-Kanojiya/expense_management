@@ -37,9 +37,11 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from expenses.api.common import MessageSerializer, ValidationErrorSerializer, raise_form_errors
 from expenses.models import Participant
 
-from . import audit, ratelimit
+from . import audit, mfa, ratelimit, totp
 from .deletion import delete_account
 from .forms import SignUpForm
+from .models import RecoveryCode, TOTPDevice
+from .models import mfa_enabled as user_has_mfa
 from .verification import send_verification_email, verify
 
 User = get_user_model()
@@ -134,6 +136,49 @@ class DeleteAccountSerializer(serializers.Serializer):
     confirm = serializers.CharField(help_text="The account's username, typed out.")
 
 
+class MFARequiredSerializer(serializers.Serializer):
+    mfa_required = serializers.BooleanField(default=True)
+    mfa_ticket = serializers.CharField(help_text="Send back to `auth/mfa/verify/` with a code.")
+
+
+class MFAVerifySerializer(serializers.Serializer):
+    mfa_ticket = serializers.CharField()
+    code = serializers.CharField(help_text="A 6-digit authenticator code, or a recovery code.")
+
+
+class MFAStatusSerializer(serializers.Serializer):
+    enabled = serializers.BooleanField()
+    recovery_codes_left = serializers.IntegerField()
+
+
+class MFASetupSerializer(serializers.Serializer):
+    secret = serializers.CharField(help_text="For manual entry, if the QR code can't be scanned.")
+    otpauth_uri = serializers.CharField()
+
+
+class MFAConfirmSerializer(serializers.Serializer):
+    code = serializers.CharField()
+
+
+class MFARecoveryCodesSerializer(serializers.Serializer):
+    recovery_codes = serializers.ListField(
+        child=serializers.CharField(), help_text="Shown once. Store them somewhere safe."
+    )
+
+
+class MFAConfirmResponseSerializer(TokenPairSerializer, MFARecoveryCodesSerializer):
+    pass
+
+
+class MFADisableSerializer(serializers.Serializer):
+    password = serializers.CharField(style={"input_type": "password"}, trim_whitespace=False)
+    code = serializers.CharField(help_text="A current authenticator code, or a recovery code.")
+
+
+class MFARegenerateSerializer(serializers.Serializer):
+    code = serializers.CharField(help_text="A current authenticator code.")
+
+
 PASSWORD_FIELDS = {
     "password1": "password",
     "password2": "password_confirm",
@@ -207,6 +252,13 @@ INVALID_LINK = Response(
     {"detail": "This link is invalid or has expired.", "code": "invalid_link"},
     status=status.HTTP_400_BAD_REQUEST,
 )
+
+INVALID_TICKET = Response(
+    {"detail": "That sign-in has expired. Log in again.", "code": "invalid_ticket"},
+    status=status.HTTP_400_BAD_REQUEST,
+)
+
+WRONG_CODE = Response({"code": ["That code is wrong."]}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class PublicView(APIView):
@@ -326,7 +378,12 @@ class LoginView(PublicView):
         summary="Log in",
         request=LoginSerializer,
         responses={
-            200: TokenPairSerializer,
+            200: OpenApiResponse(
+                TokenPairSerializer,
+                description="Signed in -- or, for an account with two-step sign-in on, "
+                "`{mfa_required: true, mfa_ticket}` instead, with no tokens yet: send the "
+                "ticket and a code to `auth/mfa/verify/`.",
+            ),
             401: OpenApiResponse(MessageSerializer, description="Wrong username or password."),
             403: OpenApiResponse(
                 MessageSerializer, description="Right password, email not yet verified."
@@ -381,10 +438,225 @@ class LoginView(PublicView):
             )
 
         ratelimit.clear_login(request, username)
+
+        if user_has_mfa(user):
+            # No tokens, no session -- docs/design/MFA.md. The password was
+            # right, so the failed-attempts count clears above as usual,
+            # but "signed in" is not recorded until the code is too.
+            return Response({"mfa_required": True, "mfa_ticket": mfa.make_ticket(user)})
+
         # No django.contrib.auth.login() call here -- a JWT pair is handed
         # back instead of a session -- so nothing else records this login.
         audit.record("login_succeeded", request=request, user=user)
         return Response(issue_tokens(user))
+
+
+class MFAVerifyView(PublicView):
+    """The second step: a ticket from `auth/login/` plus a code, tokens out."""
+
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Verify a two-step sign-in code",
+        request=MFAVerifySerializer,
+        responses={
+            200: TokenPairSerializer,
+            400: OpenApiResponse(
+                ValidationErrorSerializer, description="Wrong code, or an invalid/expired ticket."
+            ),
+            429: OpenApiResponse(MessageSerializer, description="Too many attempts."),
+        },
+    )
+    @sensitive_variables()
+    def post(self, request, *args, **kwargs):
+        body = MFAVerifySerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = body.validated_data
+
+        user = mfa.user_for_ticket(data["mfa_ticket"], User)
+        if user is None:
+            return INVALID_TICKET
+
+        result = mfa.verify_code(user, data["code"], request=request)
+        if result is None:
+            return rate_limited("Too many attempts. Wait a few minutes and try again.")
+        if not result:
+            return WRONG_CODE
+
+        audit.record("login_succeeded", request=request, user=user)
+        return Response(issue_tokens(user))
+
+
+class MFAStatusView(APIView):
+    """Whether two-step sign-in is on, and how many recovery codes are left."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(tags=AUTH_TAG, summary="Two-step sign-in status", responses=MFAStatusSerializer)
+    def get(self, request, *args, **kwargs):
+        enabled = user_has_mfa(request.user)
+        left = (
+            RecoveryCode.objects.filter(user=request.user, used_at__isnull=True).count()
+            if enabled
+            else 0
+        )
+        return Response({"enabled": enabled, "recovery_codes_left": left})
+
+
+class MFASetupView(APIView):
+    """Start (or restart) enrolment: a secret and a QR-code URI, unconfirmed."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Start two-step sign-in setup",
+        request=None,
+        responses={
+            200: MFASetupSerializer,
+            400: OpenApiResponse(MessageSerializer, description="Already on."),
+        },
+    )
+    @sensitive_variables()
+    def post(self, request, *args, **kwargs):
+        if user_has_mfa(request.user):
+            return Response(
+                {"detail": "Two-step sign-in is already on.", "code": "mfa_already_enabled"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        secret = totp.generate_secret()
+        # Replaces any earlier, still-unconfirmed attempt -- the
+        # OneToOneField means there is never more than one row.
+        TOTPDevice.objects.update_or_create(
+            user=request.user,
+            defaults={"secret": secret, "confirmed": False, "last_used_step": 0},
+        )
+        return Response(
+            {
+                "secret": secret,
+                "otpauth_uri": totp.otpauth_uri(secret, request.user.get_username()),
+            }
+        )
+
+
+class MFAConfirmView(APIView):
+    """Confirm the first code, turning two-step sign-in on."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Confirm two-step sign-in setup",
+        request=MFAConfirmSerializer,
+        responses={
+            200: MFAConfirmResponseSerializer,
+            400: OpenApiResponse(
+                ValidationErrorSerializer, description="Wrong code, or none pending."
+            ),
+        },
+    )
+    @sensitive_variables()
+    def post(self, request, *args, **kwargs):
+        body = MFAConfirmSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+
+        device = TOTPDevice.objects.filter(user=request.user, confirmed=False).first()
+        if device is None:
+            return Response(
+                {"detail": "Start setup first.", "code": "mfa_setup_not_started"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not device.verify(body.validated_data["code"]):
+            return WRONG_CODE
+
+        device.confirmed = True
+        device.confirmed_at = timezone.now()
+        device.save(update_fields=["confirmed", "confirmed_at"])
+        codes = RecoveryCode.generate_set(request.user)
+
+        # A device just took over as the second factor for every future
+        # sign-in, so any refresh token issued before it existed should not
+        # outlive it -- the same reasoning as a password change.
+        revoke_refresh_tokens(request.user, request=request)
+        audit.record("mfa_enabled", request=request, user=request.user)
+
+        return Response({**issue_tokens(request.user), "recovery_codes": codes})
+
+
+class MFADisableView(APIView):
+    """Turn two-step sign-in off. Needs the password and a current code."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Turn off two-step sign-in",
+        request=MFADisableSerializer,
+        responses={
+            200: TokenPairSerializer,
+            400: OpenApiResponse(ValidationErrorSerializer, description="Wrong password or code."),
+        },
+    )
+    @sensitive_variables()
+    def post(self, request, *args, **kwargs):
+        body = MFADisableSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = body.validated_data
+
+        if not user_has_mfa(request.user):
+            return Response(
+                {"detail": "Two-step sign-in is not on.", "code": "mfa_not_enabled"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not request.user.check_password(data["password"]):
+            return Response({"password": ["Wrong password."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        device = TOTPDevice.objects.filter(user=request.user, confirmed=True).first()
+        code_ok = (device is not None and device.verify(data["code"])) or RecoveryCode.try_use(
+            request.user, data["code"]
+        )
+        if not code_ok:
+            return WRONG_CODE
+
+        TOTPDevice.objects.filter(user=request.user).delete()
+        RecoveryCode.objects.filter(user=request.user).delete()
+        revoke_refresh_tokens(request.user, request=request)
+        audit.record("mfa_disabled", request=request, user=request.user)
+
+        return Response(issue_tokens(request.user))
+
+
+class MFARegenerateView(APIView):
+    """A fresh set of ten recovery codes, replacing the old set."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Regenerate recovery codes",
+        request=MFARegenerateSerializer,
+        responses={
+            200: MFARecoveryCodesSerializer,
+            400: OpenApiResponse(ValidationErrorSerializer, description="Wrong code, or MFA off."),
+        },
+    )
+    @sensitive_variables()
+    def post(self, request, *args, **kwargs):
+        body = MFARegenerateSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+
+        device = TOTPDevice.objects.filter(user=request.user, confirmed=True).first()
+        if device is None:
+            return Response(
+                {"detail": "Two-step sign-in is not on.", "code": "mfa_not_enabled"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not device.verify(body.validated_data["code"]):
+            return WRONG_CODE
+
+        codes = RecoveryCode.generate_set(request.user)
+        audit.record("recovery_codes_regenerated", request=request, user=request.user)
+        return Response({"recovery_codes": codes})
 
 
 class RefreshView(TokenRefreshView):
@@ -621,6 +893,16 @@ urlpatterns = [
     path("auth/signup/", SignupView.as_view(), name="auth-signup"),
     path("auth/verify-email/", VerifyEmailView.as_view(), name="auth-verify-email"),
     path("auth/login/", LoginView.as_view(), name="auth-login"),
+    path("auth/mfa/verify/", MFAVerifyView.as_view(), name="auth-mfa-verify"),
+    path("auth/mfa/", MFAStatusView.as_view(), name="auth-mfa-status"),
+    path("auth/mfa/setup/", MFASetupView.as_view(), name="auth-mfa-setup"),
+    path("auth/mfa/confirm/", MFAConfirmView.as_view(), name="auth-mfa-confirm"),
+    path("auth/mfa/disable/", MFADisableView.as_view(), name="auth-mfa-disable"),
+    path(
+        "auth/mfa/recovery-codes/",
+        MFARegenerateView.as_view(),
+        name="auth-mfa-recovery-codes",
+    ),
     path("auth/refresh/", RefreshView.as_view(), name="auth-refresh"),
     path("auth/logout/", LogoutView.as_view(), name="auth-logout"),
     path("auth/password/change/", PasswordChangeView.as_view(), name="auth-password-change"),

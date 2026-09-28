@@ -41,6 +41,10 @@
       "value": "Third-Pass-2026"
     },
     {
+      "key": "mfa_code",
+      "value": ""
+    },
+    {
       "key": "access_token",
       "value": ""
     },
@@ -70,6 +74,10 @@
     },
     {
       "key": "home_category_id",
+      "value": ""
+    },
+    {
+      "key": "mfa_ticket",
       "value": ""
     },
     {
@@ -290,7 +298,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 1,\n    \"username\": \"priya\",\n    \"email\": \"priya@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-28T23:28:06.688721+05:30\",\n    \"last_login\": \"2026-09-28T23:28:06.735684+05:30\",\n    \"self_participant\": {\n      \"id\": 1,\n      \"name\": \"priya (self)\"\n    }\n  }\n}"
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 1,\n    \"username\": \"priya\",\n    \"email\": \"priya@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-28T23:47:35.730717+05:30\",\n    \"last_login\": \"2026-09-28T23:47:35.784615+05:30\",\n    \"self_participant\": {\n      \"id\": 1,\n      \"name\": \"priya (self)\"\n    }\n  }\n}"
             },
             {
               "name": "Wrong password (401 Unauthorized)",
@@ -434,7 +442,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"username\": \"priya\",\n  \"email\": \"priya@example.com\",\n  \"first_name\": \"\",\n  \"last_name\": \"\",\n  \"is_staff\": false,\n  \"date_joined\": \"2026-09-28T23:28:06.688721+05:30\",\n  \"last_login\": \"2026-09-28T23:28:06.735684+05:30\",\n  \"self_participant\": {\n    \"id\": 1,\n    \"name\": \"priya (self)\"\n  }\n}"
+              "body": "{\n  \"id\": 1,\n  \"username\": \"priya\",\n  \"email\": \"priya@example.com\",\n  \"first_name\": \"\",\n  \"last_name\": \"\",\n  \"is_staff\": false,\n  \"date_joined\": \"2026-09-28T23:47:35.730717+05:30\",\n  \"last_login\": \"2026-09-28T23:47:35.784615+05:30\",\n  \"self_participant\": {\n    \"id\": 1,\n    \"name\": \"priya (self)\"\n  }\n}"
             },
             {
               "name": "Not signed in (401 Unauthorized)",
@@ -549,7 +557,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"username\": \"priya\",\n  \"email\": \"priya@example.com\",\n  \"first_name\": \"Priya\",\n  \"last_name\": \"Sharma\",\n  \"is_staff\": false,\n  \"date_joined\": \"2026-09-28T23:28:06.688721+05:30\",\n  \"last_login\": \"2026-09-28T23:28:06.735684+05:30\",\n  \"self_participant\": {\n    \"id\": 1,\n    \"name\": \"priya (self)\"\n  }\n}"
+              "body": "{\n  \"id\": 1,\n  \"username\": \"priya\",\n  \"email\": \"priya@example.com\",\n  \"first_name\": \"Priya\",\n  \"last_name\": \"Sharma\",\n  \"is_staff\": false,\n  \"date_joined\": \"2026-09-28T23:47:35.730717+05:30\",\n  \"last_login\": \"2026-09-28T23:47:35.784615+05:30\",\n  \"self_participant\": {\n    \"id\": 1,\n    \"name\": \"priya (self)\"\n  }\n}"
             }
           ]
         }
@@ -645,7 +653,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"name\": \"Food\",\n  \"created_at\": \"2026-09-28T23:28:06.758950+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 1,\n  \"name\": \"Food\",\n  \"created_at\": \"2026-09-28T23:47:35.806699+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             },
             {
               "name": "Name already used (400 Bad Request)",
@@ -776,7 +784,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 2,\n  \"name\": \"Home\",\n  \"created_at\": \"2026-09-28T23:28:06.766904+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 2,\n  \"name\": \"Home\",\n  \"created_at\": \"2026-09-28T23:47:35.819337+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             }
           ]
         },
@@ -836,7 +844,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 2,\n      \"name\": \"Home\",\n      \"created_at\": \"2026-09-28T23:28:06.766904+05:30\",\n      \"expense_count\": 0,\n      \"total\": null,\n      \"last_spent_on\": null,\n      \"last_amount\": null\n    },\n    {\n      \"id\": 1,\n      \"name\": \"Food\",\n      \"created_at\": \"2026-09-28T23:28:06.758950+05:30\",\n      \"expense_count\": 0,\n      \"total\": null,\n      \"last_spent_on\": null,\n      \"last_amount\": null\n    }\n  ]\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 2,\n      \"name\": \"Home\",\n      \"created_at\": \"2026-09-28T23:47:35.819337+05:30\",\n      \"expense_count\": 0,\n      \"total\": null,\n      \"last_spent_on\": null,\n      \"last_amount\": null\n    },\n    {\n      \"id\": 1,\n      \"name\": \"Food\",\n      \"created_at\": \"2026-09-28T23:47:35.806699+05:30\",\n      \"expense_count\": 0,\n      \"total\": null,\n      \"last_spent_on\": null,\n      \"last_amount\": null\n    }\n  ]\n}"
             }
           ]
         },
@@ -898,7 +906,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"name\": \"Food\",\n  \"created_at\": \"2026-09-28T23:28:06.758950+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 1,\n  \"name\": \"Food\",\n  \"created_at\": \"2026-09-28T23:47:35.806699+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             }
           ]
         },
@@ -988,7 +996,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 2,\n  \"name\": \"Household\",\n  \"created_at\": \"2026-09-28T23:28:06.766904+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 2,\n  \"name\": \"Household\",\n  \"created_at\": \"2026-09-28T23:47:35.819337+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             }
           ]
         },
@@ -1078,7 +1086,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 2,\n  \"name\": \"Home & utilities\",\n  \"created_at\": \"2026-09-28T23:28:06.766904+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 2,\n  \"name\": \"Home & utilities\",\n  \"created_at\": \"2026-09-28T23:47:35.819337+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             }
           ]
         },
@@ -1168,7 +1176,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"name\": \"Travel\",\n  \"created_at\": \"2026-09-28T23:28:06.791000+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 3,\n  \"name\": \"Travel\",\n  \"created_at\": \"2026-09-28T23:47:35.846727+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             }
           ]
         },
@@ -1349,7 +1357,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 2,\n  \"name\": \"Rahul\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-28T23:28:06.809316+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 2,\n  \"name\": \"Rahul\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-28T23:47:35.863344+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             },
             {
               "name": "Name already used (400 Bad Request)",
@@ -1480,7 +1488,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"name\": \"Aisha\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-28T23:28:06.816147+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 3,\n  \"name\": \"Aisha\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-28T23:47:35.870789+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             }
           ]
         },
@@ -1540,7 +1548,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 3,\n      \"name\": \"Aisha\",\n      \"is_self\": false,\n      \"created_at\": \"2026-09-28T23:28:06.816147+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    },\n    {\n      \"id\": 2,\n      \"name\": \"Rahul\",\n      \"is_self\": false,\n      \"created_at\": \"2026-09-28T23:28:06.809316+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    },\n    {\n      \"id\": 1,\n      \"name\": \"priya (self)\",\n      \"is_self\": true,\n      \"created_at\": \"2026-09-28T23:28:06.738979+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    }\n  ]\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 3,\n      \"name\": \"Aisha\",\n      \"is_self\": false,\n      \"created_at\": \"2026-09-28T23:47:35.870789+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    },\n    {\n      \"id\": 2,\n      \"name\": \"Rahul\",\n      \"is_self\": false,\n      \"created_at\": \"2026-09-28T23:47:35.863344+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    },\n    {\n      \"id\": 1,\n      \"name\": \"priya (self)\",\n      \"is_self\": true,\n      \"created_at\": \"2026-09-28T23:47:35.788196+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    }\n  ]\n}"
             }
           ]
         },
@@ -1602,7 +1610,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 2,\n  \"name\": \"Rahul\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-28T23:28:06.809316+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 2,\n  \"name\": \"Rahul\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-28T23:47:35.863344+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             }
           ]
         },
@@ -1692,7 +1700,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"name\": \"Aisha Khan\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-28T23:28:06.816147+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 3,\n  \"name\": \"Aisha Khan\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-28T23:47:35.870789+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             },
             {
               "name": "Renaming yourself (403 Forbidden)",
@@ -1824,7 +1832,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"name\": \"Aisha K.\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-28T23:28:06.816147+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 3,\n  \"name\": \"Aisha K.\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-28T23:47:35.870789+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             }
           ]
         },
@@ -1914,7 +1922,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 4,\n  \"name\": \"Old colleague\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-28T23:28:06.839420+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 4,\n  \"name\": \"Old colleague\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-28T23:47:35.897902+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             }
           ]
         },
@@ -2123,7 +2131,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"category\": 2,\n  \"category_name\": \"Home & utilities\",\n  \"amount\": \"1450.00\",\n  \"spent_on\": \"2026-09-05\",\n  \"note\": \"Electricity bill\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-28T23:28:06.863357+05:30\"\n}"
+              "body": "{\n  \"id\": 3,\n  \"category\": 2,\n  \"category_name\": \"Home & utilities\",\n  \"amount\": \"1450.00\",\n  \"spent_on\": \"2026-09-05\",\n  \"note\": \"Electricity bill\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-28T23:47:35.920565+05:30\"\n}"
             },
             {
               "name": "Invalid values (400 Bad Request)",
@@ -2254,7 +2262,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 4,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"900.00\",\n  \"spent_on\": \"2026-09-12\",\n  \"note\": \"Dinner with Rahul\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    2,\n    1\n  ],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-28T23:28:06.875833+05:30\"\n}"
+              "body": "{\n  \"id\": 4,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"900.00\",\n  \"spent_on\": \"2026-09-12\",\n  \"note\": \"Dinner with Rahul\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    2,\n    1\n  ],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-28T23:47:35.931714+05:30\"\n}"
             }
           ]
         },
@@ -2344,7 +2352,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 5,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"1200.00\",\n  \"spent_on\": \"2026-09-18\",\n  \"note\": \"Team lunch\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    3,\n    2,\n    1\n  ],\n  \"misc_amount\": \"120.00\",\n  \"misc_note\": \"GST and tip\",\n  \"items\": [\n    {\n      \"id\": 2,\n      \"name\": \"Pizza\",\n      \"amount\": \"600.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 2,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Drinks\",\n      \"amount\": \"300.00\",\n      \"shares\": [\n        {\n          \"participant\": 2,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 4,\n      \"name\": \"Dessert\",\n      \"amount\": \"180.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        }\n      ]\n    }\n  ],\n  \"items_total\": \"1080.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-28T23:28:06.887573+05:30\"\n}"
+              "body": "{\n  \"id\": 5,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"1200.00\",\n  \"spent_on\": \"2026-09-18\",\n  \"note\": \"Team lunch\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    3,\n    2,\n    1\n  ],\n  \"misc_amount\": \"120.00\",\n  \"misc_note\": \"GST and tip\",\n  \"items\": [\n    {\n      \"id\": 2,\n      \"name\": \"Pizza\",\n      \"amount\": \"600.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 2,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Drinks\",\n      \"amount\": \"300.00\",\n      \"shares\": [\n        {\n          \"participant\": 2,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 4,\n      \"name\": \"Dessert\",\n      \"amount\": \"180.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        }\n      ]\n    }\n  ],\n  \"items_total\": \"1080.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-28T23:47:35.942424+05:30\"\n}"
             },
             {
               "name": "Tax/tip without a description (400 Bad Request)",
@@ -2486,7 +2494,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 5,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"1200.00\",\n      \"spent_on\": \"2026-09-18\",\n      \"note\": \"Team lunch\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        3,\n        2,\n        1\n      ],\n      \"misc_amount\": \"120.00\",\n      \"misc_note\": \"GST and tip\",\n      \"items\": [\n        {\n          \"id\": 2,\n          \"name\": \"Pizza\",\n          \"amount\": \"600.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 2,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 3,\n          \"name\": \"Drinks\",\n          \"amount\": \"300.00\",\n          \"shares\": [\n            {\n              \"participant\": 2,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 4,\n          \"name\": \"Dessert\",\n          \"amount\": \"180.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            }\n          ]\n        }\n      ],\n      \"items_total\": \"1080.00\",\n      \"unaccounted_amount\": \"0.00\",\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-28T23:28:06.887573+05:30\"\n    },\n    {\n      \"id\": 4,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"900.00\",\n      \"spent_on\": \"2026-09-12\",\n      \"note\": \"Dinner with Rahul\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        2,\n        1\n      ],\n      \"misc_amount\": null,\n      \"misc_note\": \"\",\n      \"items\": [],\n      \"items_total\": null,\n      \"unaccounted_amount\": null,\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-28T23:28:06.875833+05:30\"\n    },\n    {\n      \"id\": 3,\n      \"category\": 2,\n      \"category_name\": \"Home & utilities\",\n      \"amount\": \"1450.00\",\n      \"spent_on\": \"2026-09-05\",\n      \"note\": \"Electricity bill\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [],\n      \"misc_amount\": null,\n      \"misc_note\": \"\",\n      \"items\": [],\n      \"items_total\": null,\n      \"unaccounted_amount\": null,\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-28T23:28:06.863357+05:30\"\n    }\n  ],\n  \"count\": 3,\n  \"total_amount\": \"3550.00\"\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 5,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"1200.00\",\n      \"spent_on\": \"2026-09-18\",\n      \"note\": \"Team lunch\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        3,\n        2,\n        1\n      ],\n      \"misc_amount\": \"120.00\",\n      \"misc_note\": \"GST and tip\",\n      \"items\": [\n        {\n          \"id\": 2,\n          \"name\": \"Pizza\",\n          \"amount\": \"600.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 2,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 3,\n          \"name\": \"Drinks\",\n          \"amount\": \"300.00\",\n          \"shares\": [\n            {\n              \"participant\": 2,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 4,\n          \"name\": \"Dessert\",\n          \"amount\": \"180.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            }\n          ]\n        }\n      ],\n      \"items_total\": \"1080.00\",\n      \"unaccounted_amount\": \"0.00\",\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-28T23:47:35.942424+05:30\"\n    },\n    {\n      \"id\": 4,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"900.00\",\n      \"spent_on\": \"2026-09-12\",\n      \"note\": \"Dinner with Rahul\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        2,\n        1\n      ],\n      \"misc_amount\": null,\n      \"misc_note\": \"\",\n      \"items\": [],\n      \"items_total\": null,\n      \"unaccounted_amount\": null,\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-28T23:47:35.931714+05:30\"\n    },\n    {\n      \"id\": 3,\n      \"category\": 2,\n      \"category_name\": \"Home & utilities\",\n      \"amount\": \"1450.00\",\n      \"spent_on\": \"2026-09-05\",\n      \"note\": \"Electricity bill\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [],\n      \"misc_amount\": null,\n      \"misc_note\": \"\",\n      \"items\": [],\n      \"items_total\": null,\n      \"unaccounted_amount\": null,\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-28T23:47:35.920565+05:30\"\n    }\n  ],\n  \"count\": 3,\n  \"total_amount\": \"3550.00\"\n}"
             }
           ]
         },
@@ -2582,7 +2590,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 5,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"1200.00\",\n      \"spent_on\": \"2026-09-18\",\n      \"note\": \"Team lunch\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        3,\n        2,\n        1\n      ],\n      \"misc_amount\": \"120.00\",\n      \"misc_note\": \"GST and tip\",\n      \"items\": [\n        {\n          \"id\": 2,\n          \"name\": \"Pizza\",\n          \"amount\": \"600.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 2,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 3,\n          \"name\": \"Drinks\",\n          \"amount\": \"300.00\",\n          \"shares\": [\n            {\n              \"participant\": 2,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 4,\n          \"name\": \"Dessert\",\n          \"amount\": \"180.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            }\n          ]\n        }\n      ],\n      \"items_total\": \"1080.00\",\n      \"unaccounted_amount\": \"0.00\",\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-28T23:28:06.887573+05:30\"\n    }\n  ],\n  \"count\": 1,\n  \"total_amount\": \"1200.00\"\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 5,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"1200.00\",\n      \"spent_on\": \"2026-09-18\",\n      \"note\": \"Team lunch\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        3,\n        2,\n        1\n      ],\n      \"misc_amount\": \"120.00\",\n      \"misc_note\": \"GST and tip\",\n      \"items\": [\n        {\n          \"id\": 2,\n          \"name\": \"Pizza\",\n          \"amount\": \"600.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 2,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 3,\n          \"name\": \"Drinks\",\n          \"amount\": \"300.00\",\n          \"shares\": [\n            {\n              \"participant\": 2,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 4,\n          \"name\": \"Dessert\",\n          \"amount\": \"180.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            }\n          ]\n        }\n      ],\n      \"items_total\": \"1080.00\",\n      \"unaccounted_amount\": \"0.00\",\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-28T23:47:35.942424+05:30\"\n    }\n  ],\n  \"count\": 1,\n  \"total_amount\": \"1200.00\"\n}"
             },
             {
               "name": "Invalid filter (400 Bad Request)",
@@ -2677,7 +2685,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 5,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"1200.00\",\n  \"spent_on\": \"2026-09-18\",\n  \"note\": \"Team lunch\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    3,\n    2,\n    1\n  ],\n  \"misc_amount\": \"120.00\",\n  \"misc_note\": \"GST and tip\",\n  \"items\": [\n    {\n      \"id\": 2,\n      \"name\": \"Pizza\",\n      \"amount\": \"600.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 2,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Drinks\",\n      \"amount\": \"300.00\",\n      \"shares\": [\n        {\n          \"participant\": 2,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 4,\n      \"name\": \"Dessert\",\n      \"amount\": \"180.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        }\n      ]\n    }\n  ],\n  \"items_total\": \"1080.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-28T23:28:06.887573+05:30\"\n}"
+              "body": "{\n  \"id\": 5,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"1200.00\",\n  \"spent_on\": \"2026-09-18\",\n  \"note\": \"Team lunch\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    3,\n    2,\n    1\n  ],\n  \"misc_amount\": \"120.00\",\n  \"misc_note\": \"GST and tip\",\n  \"items\": [\n    {\n      \"id\": 2,\n      \"name\": \"Pizza\",\n      \"amount\": \"600.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 2,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Drinks\",\n      \"amount\": \"300.00\",\n      \"shares\": [\n        {\n          \"participant\": 2,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 4,\n      \"name\": \"Dessert\",\n      \"amount\": \"180.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        }\n      ]\n    }\n  ],\n  \"items_total\": \"1080.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-28T23:47:35.942424+05:30\"\n}"
             }
           ]
         },
@@ -2767,7 +2775,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 4,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"900.00\",\n  \"spent_on\": \"2026-09-12\",\n  \"note\": \"Dinner with Rahul at Toit\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    2,\n    1\n  ],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-28T23:28:06.875833+05:30\"\n}"
+              "body": "{\n  \"id\": 4,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"900.00\",\n  \"spent_on\": \"2026-09-12\",\n  \"note\": \"Dinner with Rahul at Toit\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    2,\n    1\n  ],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-28T23:47:35.931714+05:30\"\n}"
             }
           ]
         },
@@ -2857,7 +2865,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"category\": 2,\n  \"category_name\": \"Home & utilities\",\n  \"amount\": \"1520.00\",\n  \"spent_on\": \"2026-09-05\",\n  \"note\": \"Electricity bill (August)\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-28T23:28:06.863357+05:30\"\n}"
+              "body": "{\n  \"id\": 3,\n  \"category\": 2,\n  \"category_name\": \"Home & utilities\",\n  \"amount\": \"1520.00\",\n  \"spent_on\": \"2026-09-05\",\n  \"note\": \"Electricity bill (August)\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-28T23:47:35.920565+05:30\"\n}"
             }
           ]
         },
@@ -3224,7 +3232,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"detail\": \"Recorded 838.89 back from Rahul.\",\n  \"code\": \"settled\",\n  \"settlement\": {\n    \"id\": 1,\n    \"participant\": 2,\n    \"participant_name\": \"Rahul\",\n    \"amount\": \"838.89\",\n    \"note\": \"Paid by UPI\",\n    \"settled_at\": \"2026-09-28T23:28:06.969447+05:30\"\n  }\n}"
+              "body": "{\n  \"detail\": \"Recorded 838.89 back from Rahul.\",\n  \"code\": \"settled\",\n  \"settlement\": {\n    \"id\": 1,\n    \"participant\": 2,\n    \"participant_name\": \"Rahul\",\n    \"amount\": \"838.89\",\n    \"note\": \"Paid by UPI\",\n    \"settled_at\": \"2026-09-28T23:47:36.040659+05:30\"\n  }\n}"
             },
             {
               "name": "Nothing outstanding (200 OK)",
@@ -3327,7 +3335,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"participant\": 2,\n      \"participant_name\": \"Rahul\",\n      \"amount\": \"838.89\",\n      \"note\": \"Paid by UPI\",\n      \"settled_at\": \"2026-09-28T23:28:06.969447+05:30\"\n    }\n  ]\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"participant\": 2,\n      \"participant_name\": \"Rahul\",\n      \"amount\": \"838.89\",\n      \"note\": \"Paid by UPI\",\n      \"settled_at\": \"2026-09-28T23:47:36.040659+05:30\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -3389,7 +3397,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"participant\": 2,\n  \"participant_name\": \"Rahul\",\n  \"amount\": \"838.89\",\n  \"note\": \"Paid by UPI\",\n  \"settled_at\": \"2026-09-28T23:28:06.969447+05:30\"\n}"
+              "body": "{\n  \"id\": 1,\n  \"participant\": 2,\n  \"participant_name\": \"Rahul\",\n  \"amount\": \"838.89\",\n  \"note\": \"Paid by UPI\",\n  \"settled_at\": \"2026-09-28T23:47:36.040659+05:30\"\n}"
             }
           ]
         }
@@ -3485,7 +3493,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"status\": \"pending\",\n  \"start\": \"2026-09-01\",\n  \"end\": \"2026-09-30\",\n  \"row_count\": 0,\n  \"error\": \"\",\n  \"requested_at\": \"2026-09-28T23:28:06.981337+05:30\",\n  \"completed_at\": null,\n  \"download_url\": null\n}"
+              "body": "{\n  \"id\": 1,\n  \"status\": \"pending\",\n  \"start\": \"2026-09-01\",\n  \"end\": \"2026-09-30\",\n  \"row_count\": 0,\n  \"error\": \"\",\n  \"requested_at\": \"2026-09-28T23:47:36.056260+05:30\",\n  \"completed_at\": null,\n  \"download_url\": null\n}"
             }
           ]
         },
@@ -3560,7 +3568,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"status\": \"complete\",\n  \"start\": \"2026-09-01\",\n  \"end\": \"2026-09-30\",\n  \"row_count\": 2,\n  \"error\": \"\",\n  \"requested_at\": \"2026-09-28T23:28:06.981337+05:30\",\n  \"completed_at\": \"2026-09-28T23:28:07.025892+05:30\",\n  \"download_url\": \"http://127.0.0.1:8765/api/v1/exports/1/download/\"\n}"
+              "body": "{\n  \"id\": 1,\n  \"status\": \"complete\",\n  \"start\": \"2026-09-01\",\n  \"end\": \"2026-09-30\",\n  \"row_count\": 2,\n  \"error\": \"\",\n  \"requested_at\": \"2026-09-28T23:47:36.056260+05:30\",\n  \"completed_at\": \"2026-09-28T23:47:36.109784+05:30\",\n  \"download_url\": \"http://127.0.0.1:8765/api/v1/exports/1/download/\"\n}"
             }
           ]
         },
@@ -3620,7 +3628,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"status\": \"complete\",\n      \"start\": \"2026-09-01\",\n      \"end\": \"2026-09-30\",\n      \"row_count\": 2,\n      \"error\": \"\",\n      \"requested_at\": \"2026-09-28T23:28:06.981337+05:30\",\n      \"completed_at\": \"2026-09-28T23:28:07.025892+05:30\",\n      \"download_url\": \"http://127.0.0.1:8765/api/v1/exports/1/download/\"\n    }\n  ]\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"status\": \"complete\",\n      \"start\": \"2026-09-01\",\n      \"end\": \"2026-09-30\",\n      \"row_count\": 2,\n      \"error\": \"\",\n      \"requested_at\": \"2026-09-28T23:47:36.056260+05:30\",\n      \"completed_at\": \"2026-09-28T23:47:36.109784+05:30\",\n      \"download_url\": \"http://127.0.0.1:8765/api/v1/exports/1/download/\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -3801,7 +3809,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"status\": \"pending\",\n  \"provider\": \"\",\n  \"error\": \"\",\n  \"result\": {},\n  \"expense\": null,\n  \"created_at\": \"2026-09-28T23:28:07.045884+05:30\",\n  \"completed_at\": null,\n  \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n}"
+              "body": "{\n  \"id\": 1,\n  \"status\": \"pending\",\n  \"provider\": \"\",\n  \"error\": \"\",\n  \"result\": {},\n  \"expense\": null,\n  \"created_at\": \"2026-09-28T23:47:36.134912+05:30\",\n  \"completed_at\": null,\n  \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n}"
             },
             {
               "name": "Not a photo (400 Bad Request)",
@@ -3913,7 +3921,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"status\": \"done\",\n  \"provider\": \"fake\",\n  \"error\": \"\",\n  \"result\": {\n    \"merchant\": \"Test Cafe\",\n    \"bill_date\": null,\n    \"total\": \"450.00\",\n    \"lines\": [\n      {\n        \"name\": \"Coffee\",\n        \"amount\": \"150.00\"\n      },\n      {\n        \"name\": \"Sandwich\",\n        \"amount\": \"250.00\"\n      }\n    ],\n    \"tax\": \"50.00\",\n    \"category_hint\": \"food\",\n    \"confidence\": 0.9,\n    \"provider\": \"fake\"\n  },\n  \"expense\": null,\n  \"created_at\": \"2026-09-28T23:28:07.045884+05:30\",\n  \"completed_at\": \"2026-09-28T23:28:07.049484+05:30\",\n  \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n}"
+              "body": "{\n  \"id\": 1,\n  \"status\": \"done\",\n  \"provider\": \"fake\",\n  \"error\": \"\",\n  \"result\": {\n    \"merchant\": \"Test Cafe\",\n    \"bill_date\": null,\n    \"total\": \"450.00\",\n    \"lines\": [\n      {\n        \"name\": \"Coffee\",\n        \"amount\": \"150.00\"\n      },\n      {\n        \"name\": \"Sandwich\",\n        \"amount\": \"250.00\"\n      }\n    ],\n    \"tax\": \"50.00\",\n    \"category_hint\": \"food\",\n    \"confidence\": 0.9,\n    \"provider\": \"fake\"\n  },\n  \"expense\": null,\n  \"created_at\": \"2026-09-28T23:47:36.134912+05:30\",\n  \"completed_at\": \"2026-09-28T23:47:36.138777+05:30\",\n  \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n}"
             }
           ]
         },
@@ -3973,7 +3981,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"status\": \"done\",\n      \"provider\": \"fake\",\n      \"error\": \"\",\n      \"result\": {\n        \"merchant\": \"Test Cafe\",\n        \"bill_date\": null,\n        \"total\": \"450.00\",\n        \"lines\": [\n          {\n            \"name\": \"Coffee\",\n            \"amount\": \"150.00\"\n          },\n          {\n            \"name\": \"Sandwich\",\n            \"amount\": \"250.00\"\n          }\n        ],\n        \"tax\": \"50.00\",\n        \"category_hint\": \"food\",\n        \"confidence\": 0.9,\n        \"provider\": \"fake\"\n      },\n      \"expense\": null,\n      \"created_at\": \"2026-09-28T23:28:07.045884+05:30\",\n      \"completed_at\": \"2026-09-28T23:28:07.049484+05:30\",\n      \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n    }\n  ]\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"status\": \"done\",\n      \"provider\": \"fake\",\n      \"error\": \"\",\n      \"result\": {\n        \"merchant\": \"Test Cafe\",\n        \"bill_date\": null,\n        \"total\": \"450.00\",\n        \"lines\": [\n          {\n            \"name\": \"Coffee\",\n            \"amount\": \"150.00\"\n          },\n          {\n            \"name\": \"Sandwich\",\n            \"amount\": \"250.00\"\n          }\n        ],\n        \"tax\": \"50.00\",\n        \"category_hint\": \"food\",\n        \"confidence\": 0.9,\n        \"provider\": \"fake\"\n      },\n      \"expense\": null,\n      \"created_at\": \"2026-09-28T23:47:36.134912+05:30\",\n      \"completed_at\": \"2026-09-28T23:47:36.138777+05:30\",\n      \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -4220,7 +4228,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 6,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"450.00\",\n  \"spent_on\": \"2026-09-28\",\n  \"note\": \"Test Cafe\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": \"50.00\",\n  \"misc_note\": \"Tax / tip (scanned)\",\n  \"items\": [\n    {\n      \"id\": 5,\n      \"name\": \"Coffee\",\n      \"amount\": \"150.00\",\n      \"shares\": []\n    },\n    {\n      \"id\": 6,\n      \"name\": \"Sandwich\",\n      \"amount\": \"250.00\",\n      \"shares\": []\n    }\n  ],\n  \"items_total\": \"400.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-28T23:28:07.068164+05:30\"\n}"
+              "body": "{\n  \"id\": 6,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"450.00\",\n  \"spent_on\": \"2026-09-28\",\n  \"note\": \"Test Cafe\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": \"50.00\",\n  \"misc_note\": \"Tax / tip (scanned)\",\n  \"items\": [\n    {\n      \"id\": 5,\n      \"name\": \"Coffee\",\n      \"amount\": \"150.00\",\n      \"shares\": []\n    },\n    {\n      \"id\": 6,\n      \"name\": \"Sandwich\",\n      \"amount\": \"250.00\",\n      \"shares\": []\n    }\n  ],\n  \"items_total\": \"400.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-28T23:47:36.165097+05:30\"\n}"
             },
             {
               "name": "Already saved (400 Bad Request)",
@@ -4543,7 +4551,7 @@
     },
     {
       "name": "9 · Account lifecycle (run by hand)",
-      "description": "Sign-up, email verification, password change and reset, and deleting the account. **Not part of an automated run.** Verification and reset need the `uid` and `token` from a mailed link, which you copy into the collection variables `verify_uid`/`verify_token` or `reset_uid`/`reset_token` by hand, and the last request deletes the account.",
+      "description": "Sign-up, email verification, password change and reset, two-step sign-in, and deleting the account. **Not part of an automated run.** Verification and reset need the `uid` and `token` from a mailed link, which you copy into the collection variables `verify_uid`/`verify_token` or `reset_uid`/`reset_token` by hand; the two-step sign-in requests need a code from an authenticator app, which you compute from the `secret` the setup request returns; and the last request deletes the account.",
       "item": [
         {
           "name": "Sign up",
@@ -4755,7 +4763,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"uid\": \"Mw\",\n  \"token\": \"dfn2iv-5cb0fa0fe07e35987fb9142644005fce\"\n}",
+                  "raw": "{\n  \"uid\": \"Mw\",\n  \"token\": \"dfn3fc-2b174b28ff94a7cc378b5b6d85ec1ee5\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -4772,7 +4780,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-28T23:28:07.104849+05:30\",\n    \"last_login\": \"2026-09-28T23:28:07.119352+05:30\",\n    \"self_participant\": {\n      \"id\": 5,\n      \"name\": \"new.user (self)\"\n    }\n  }\n}"
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-28T23:47:36.207066+05:30\",\n    \"last_login\": \"2026-09-28T23:47:36.224688+05:30\",\n    \"self_participant\": {\n      \"id\": 5,\n      \"name\": \"new.user (self)\"\n    }\n  }\n}"
             },
             {
               "name": "Link already used or expired (400 Bad Request)",
@@ -4797,7 +4805,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"uid\": \"Mw\",\n  \"token\": \"dfn2iv-5cb0fa0fe07e35987fb9142644005fce\"\n}",
+                  "raw": "{\n  \"uid\": \"Mw\",\n  \"token\": \"dfn3fc-2b174b28ff94a7cc378b5b6d85ec1ee5\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -4909,7 +4917,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-28T23:28:07.104849+05:30\",\n    \"last_login\": \"2026-09-28T23:28:07.126757+05:30\",\n    \"self_participant\": {\n      \"id\": 5,\n      \"name\": \"new.user (self)\"\n    }\n  }\n}"
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-28T23:47:36.207066+05:30\",\n    \"last_login\": \"2026-09-28T23:47:36.233423+05:30\",\n    \"self_participant\": {\n      \"id\": 5,\n      \"name\": \"new.user (self)\"\n    }\n  }\n}"
             },
             {
               "name": "Wrong current password (400 Bad Request)",
@@ -5127,7 +5135,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"uid\": \"Mw\",\n  \"token\": \"dfn2iv-64bc72cb657053549817d767006783d5\",\n  \"new_password\": \"Third-Pass-2026\",\n  \"new_password_confirm\": \"Third-Pass-2026\"\n}",
+                  "raw": "{\n  \"uid\": \"Mw\",\n  \"token\": \"dfn3fc-f764ffd79c59d1c267c6179185c96d7e\",\n  \"new_password\": \"Third-Pass-2026\",\n  \"new_password_confirm\": \"Third-Pass-2026\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -5171,7 +5179,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"uid\": \"Mw\",\n  \"token\": \"dfn2iv-64bc72cb657053549817d767006783d5\",\n  \"new_password\": \"Third-Pass-2026\",\n  \"new_password_confirm\": \"Third-Pass-2026\"\n}",
+                  "raw": "{\n  \"uid\": \"Mw\",\n  \"token\": \"dfn3fc-f764ffd79c59d1c267c6179185c96d7e\",\n  \"new_password\": \"Third-Pass-2026\",\n  \"new_password_confirm\": \"Third-Pass-2026\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -5284,7 +5292,780 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-28T23:28:07.104849+05:30\",\n    \"last_login\": \"2026-09-28T23:28:07.139708+05:30\",\n    \"self_participant\": {\n      \"id\": 5,\n      \"name\": \"new.user (self)\"\n    }\n  }\n}"
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-28T23:47:36.207066+05:30\",\n    \"last_login\": \"2026-09-28T23:47:36.248582+05:30\",\n    \"self_participant\": {\n      \"id\": 5,\n      \"name\": \"new.user (self)\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Check two-step sign-in status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/mfa/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "mfa",
+                ""
+              ]
+            },
+            "description": "Whether two-step sign-in -- an authenticator-app code asked for after the password -- is on, and how many recovery codes are left."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/mfa/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "mfa",
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"enabled\": false,\n  \"recovery_codes_left\": 0\n}"
+            }
+          ]
+        },
+        {
+          "name": "Start two-step sign-in setup",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/mfa/setup/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "mfa",
+                "setup",
+                ""
+              ]
+            },
+            "description": "A fresh secret and an `otpauth://` URI to build a QR code from. The account is not protected yet -- that needs the first code confirmed below. Calling this again before confirming replaces the pending secret."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/mfa/setup/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "mfa",
+                    "setup",
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"secret\": \"U5BHUDVASR5AVZFYXVFAZF3FT6QAAEYN\",\n  \"otpauth_uri\": \"otpauth://totp/Expense%20Tracker%3Anew.user?secret=U5BHUDVASR5AVZFYXVFAZF3FT6QAAEYN&issuer=Expense%20Tracker\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Confirm and turn it on",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"access_token\", body.access);",
+                  "pm.collectionVariables.set(\"refresh_token\", body.refresh);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/mfa/confirm/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "mfa",
+                "confirm",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": {{mfa_code}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Confirms the pending device with a code from it. Returns ten recovery codes -- shown only this once, so store them somewhere safe -- and a fresh token pair: every other refresh token is revoked, the same as a password change."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/mfa/confirm/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "mfa",
+                    "confirm",
+                    ""
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"613527\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-28T23:47:36.207066+05:30\",\n    \"last_login\": \"2026-09-28T23:47:36.265600+05:30\",\n    \"self_participant\": {\n      \"id\": 5,\n      \"name\": \"new.user (self)\"\n    }\n  },\n  \"recovery_codes\": [\n    \"WJ39XNXF9U\",\n    \"NZEYX5CZBC\",\n    \"2VFET89ZTN\",\n    \"TUUTJW7N8B\",\n    \"YW7N43GYGZ\",\n    \"8X492AYMV6\",\n    \"475QS44KKS\",\n    \"BDTGFZMMVU\",\n    \"SGY7ESSB79\",\n    \"CBV2WHSKG8\"\n  ]\n}"
+            },
+            {
+              "name": "Wrong code (400 Bad Request)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/mfa/confirm/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "mfa",
+                    "confirm",
+                    ""
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"000000\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"code\": [\n    \"That code is wrong.\"\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Log in again",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"mfa_ticket\", body.mfa_ticket);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{signup_username}}\",\n  \"password\": \"{{reset_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "With two-step sign-in on, a right password is not enough by itself: the response carries a ticket instead of tokens. Send it, and a code, to `auth/mfa/verify/`."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/login/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "login",
+                    ""
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"new.user\",\n  \"password\": \"Third-Pass-2026\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"mfa_required\": true,\n  \"mfa_ticket\": \"eyJ1c2VyX2lkIjozLCJwd2ZwIjoiYjJmYTk4OTk4ZDZmNTIyZGJjMDBiODE1MDgzYWU0MzQyNjEyODBkMzU1NGFiYmE2YTRkYmQ5YzMwN2JjMmVkZiJ9:1xBFuy:SUsaWgihuYSnoyVzBHfuXeIsTGHZ6xp9epHLe_jSyw8\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Enter the two-step code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"access_token\", body.access);",
+                  "pm.collectionVariables.set(\"refresh_token\", body.refresh);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/mfa/verify/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "mfa",
+                "verify",
+                ""
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mfa_ticket\": {{mfa_ticket}},\n  \"code\": {{mfa_code}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "The ticket from the login above, plus a code -- from the authenticator app, or one of the recovery codes shown at setup. Either way the response is the token pair a plain login would have returned.\n\nFive wrong codes for one account in 15 minutes lock it: 429 `rate_limited`. Whoever holds a ticket already knows the password, so this cannot be used to lock out someone else's account."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/mfa/verify/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "mfa",
+                    "verify",
+                    ""
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"mfa_ticket\": \"eyJ1c2VyX2lkIjozLCJwd2ZwIjoiYjJmYTk4OTk4ZDZmNTIyZGJjMDBiODE1MDgzYWU0MzQyNjEyODBkMzU1NGFiYmE2YTRkYmQ5YzMwN2JjMmVkZiJ9:1xBFuy:SUsaWgihuYSnoyVzBHfuXeIsTGHZ6xp9epHLe_jSyw8\",\n  \"code\": \"613527\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-28T23:47:36.207066+05:30\",\n    \"last_login\": \"2026-09-28T23:47:36.275188+05:30\",\n    \"self_participant\": {\n      \"id\": 5,\n      \"name\": \"new.user (self)\"\n    }\n  }\n}"
+            },
+            {
+              "name": "Wrong code (400 Bad Request)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/mfa/verify/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "mfa",
+                    "verify",
+                    ""
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"mfa_ticket\": \"eyJ1c2VyX2lkIjozLCJwd2ZwIjoiYjJmYTk4OTk4ZDZmNTIyZGJjMDBiODE1MDgzYWU0MzQyNjEyODBkMzU1NGFiYmE2YTRkYmQ5YzMwN2JjMmVkZiJ9:1xBFuy:SUsaWgihuYSnoyVzBHfuXeIsTGHZ6xp9epHLe_jSyw8\",\n  \"code\": \"000000\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"code\": [\n    \"That code is wrong.\"\n  ]\n}"
+            },
+            {
+              "name": "Invalid or expired ticket (400 Bad Request)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/mfa/verify/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "mfa",
+                    "verify",
+                    ""
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"mfa_ticket\": \"not-a-real-ticket\",\n  \"code\": \"000000\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"detail\": \"That sign-in has expired. Log in again.\",\n  \"code\": \"invalid_ticket\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get new recovery codes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/mfa/recovery-codes/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "mfa",
+                "recovery-codes",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": {{mfa_code}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Replaces the current set of ten with a fresh one. Needs a current authenticator code, not a recovery code -- otherwise spending the last one could mint ten more."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/mfa/recovery-codes/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "mfa",
+                    "recovery-codes",
+                    ""
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"613527\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"recovery_codes\": [\n    \"2FC6WRY3MZ\",\n    \"6J5PAXEY2Y\",\n    \"MFT6F6AC5D\",\n    \"YWZ78VEVDA\",\n    \"5A8QV7XE8P\",\n    \"NEEBDD3RDV\",\n    \"ZV6B6JPZYS\",\n    \"SYUFE2CX9E\",\n    \"BKC5N5F3NC\",\n    \"6CCCQ5HTHT\"\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Turn off two-step sign-in",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"access_token\", body.access);",
+                  "pm.collectionVariables.set(\"refresh_token\", body.refresh);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/mfa/disable/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "mfa",
+                "disable",
+                ""
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"{{reset_password}}\",\n  \"code\": {{mfa_code}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Needs the current password **and** a current code -- neither is enough on its own. Deletes the device and every recovery code, and revokes other refresh tokens."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/mfa/disable/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "mfa",
+                    "disable",
+                    ""
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"password\": \"Third-Pass-2026\",\n  \"code\": \"613527\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-28T23:47:36.207066+05:30\",\n    \"last_login\": \"2026-09-28T23:47:36.295244+05:30\",\n    \"self_participant\": {\n      \"id\": 5,\n      \"name\": \"new.user (self)\"\n    }\n  }\n}"
+            },
+            {
+              "name": "Wrong password (400 Bad Request)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/mfa/disable/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "mfa",
+                    "disable",
+                    ""
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"password\": \"wrong\",\n  \"code\": \"000000\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"password\": [\n    \"Wrong password.\"\n  ]\n}"
             }
           ]
         },
