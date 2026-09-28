@@ -36,11 +36,14 @@ from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
 
 from expenses.models import Category, Expense, ExpenseItem, Participant, Settlement
 
+from .audit import record
+from .models import SecurityEvent
+
 logger = logging.getLogger("expenses")
 
 
 @transaction.atomic
-def delete_account(user):
+def delete_account(user, request=None):
     """Remove a user and everything they own. Returns what was deleted.
 
     Atomic, because a partial account deletion is worse than none: the user
@@ -48,7 +51,25 @@ def delete_account(user):
     unreachable by any scoped queryset.
 
     Order is bottom-up. Each step removes the rows that protect the next.
+
+    Roadmap A3: records ``account_deleted``, then blanks ``username`` on
+    every SecurityEvent this account ever produced (including the one just
+    recorded). They stay -- deleting them would erase exactly the trail an
+    audit log is for -- but once someone has asked to be forgotten, no row
+    should carry their name any more. Collected *before* ``user.delete()``,
+    while the FK is still valid: the delete's own collector already sets
+    ``user`` to NULL on each of them (SET_NULL), which loses the only way
+    to find them again by user, so their ids are grabbed first.
     """
+    record(
+        "account_deleted",
+        request=request,
+        user=user,
+        username=user.get_username(),
+        user_id=user.pk,
+    )
+    event_ids = list(SecurityEvent.objects.filter(user=user).values_list("pk", flat=True))
+
     counts = {"items": ExpenseItem.objects.filter(expense__user=user).count()}
 
     # The files go too. ExportJob and BillScan rows cascade from the user,
@@ -96,6 +117,8 @@ def delete_account(user):
     logger.info("Deleting account %s: %s", user.pk, counts)
 
     user.delete()
+
+    SecurityEvent.objects.filter(pk__in=event_ids).update(username="")
 
     return counts
 

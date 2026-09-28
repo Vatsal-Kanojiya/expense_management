@@ -25,11 +25,15 @@ upload and input chapters. What stands between us and an honest L2 claim is belo
       `docs/ASVS_L1.md`.
 
 ### 2. Close what we already know about
-- [ ] **Unverified accounts squat addresses.** A sign-up creates an inactive account, and sign-up
+- [x] **Unverified accounts squat addresses.** A sign-up creates an inactive account, and sign-up
       then refuses that email and username. Nothing removes an account that never verifies, and
       password reset ignores inactive accounts, so an address's real owner can be locked out of
       registering. Fix: purge accounts left unverified after N days (a beat task, like
       `purge_exports`), and let a fresh sign-up for an address replace an unverified account for it.
+      Done: `User.email_verified_at`, `SignUpForm`/`SignupSerializer` treat an email or username
+      held only by an unverified account as available and delete it on a successful sign-up
+      (`accounts/forms.py`), and `purge_unverified` (setting `UNVERIFIED_ACCOUNT_DAYS`) runs daily
+      via beat.
 - [ ] **Per-account login cap — decide.** Logins are limited per address and username, and per
       address. Guesses at one account spread across many addresses meet only the per-address cap.
       A per-account cap closes that but lets a stranger lock the owner out. Decide, and record the

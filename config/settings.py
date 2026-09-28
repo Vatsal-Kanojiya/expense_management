@@ -614,4 +614,17 @@ CELERY_BEAT_SCHEDULE = {
         # Daily. Hourly would be wasted work on a table that changes slowly.
         "schedule": 24 * 60 * 60,
     },
+    # Roadmap A1: an account that never verifies must not squat its email
+    # or username forever. Same daily cadence, same reasoning.
+    "purge-unverified-accounts": {
+        "task": "expenses.tasks.purge_unverified",
+        "schedule": 24 * 60 * 60,
+    },
 }
+
+
+# How long an account may sit unverified before purge_unverified removes it
+# (roadmap A1 -- SECURITY_ROADMAP.md). Read here, not hardcoded in the
+# command, so an operator can tune it without a deploy -- the command's own
+# --days flag still overrides this for a one-off run.
+UNVERIFIED_ACCOUNT_DAYS = env.int("UNVERIFIED_ACCOUNT_DAYS", default=7)

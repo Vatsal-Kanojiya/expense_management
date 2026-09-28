@@ -347,8 +347,9 @@ expense, and a second save is refused (400 on `bill_scan`).
 rules: at least 8 characters, not entirely numeric, not a commonly used password, and not too
 similar to the username or email. The server reports which rule failed. A new account is
 **inactive** until its email address is confirmed through the emailed link, which is valid for **24
-hours** and works once. At most 10 sign-up attempts per network address per hour (429
-`rate_limited`).
+hours** and works once. An email address or username held only by an account that never verified
+counts as available: a fresh sign-up replaces it. At most 10 sign-up attempts per network address
+per hour (429 `rate_limited`).
 
 **BR-25 · Signing in** is limited to 10 failed attempts per username from one network address in
 15 minutes, and 50 failed attempts from one address across all usernames (429 `rate_limited`).

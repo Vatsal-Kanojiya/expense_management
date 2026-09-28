@@ -189,6 +189,20 @@ def purge_exports(days=7):
     call_command("purge_exports", days=days)
 
 
+@shared_task
+def purge_unverified():
+    """Beat's entry point into `manage.py purge_unverified` (roadmap A1).
+
+    No `days` argument, unlike `purge_exports` above: the command's own
+    default already reads UNVERIFIED_ACCOUNT_DAYS from settings, and beat
+    should use exactly that setting rather than freezing today's value
+    into the schedule.
+    """
+    from django.core.management import call_command
+
+    call_command("purge_unverified")
+
+
 @shared_task(
     bind=True,
     # Same backoff shape as build_expense_export. A vision API rate-limiting
