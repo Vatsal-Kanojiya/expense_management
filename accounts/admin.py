@@ -41,40 +41,24 @@ class SecurityEventAdmin(admin.ModelAdmin):
         return False
 
 
-# --- The admin login, behind the same guard as every other login ---------
+# --- The admin login redirects to the site login -------------------------
 #
-# admin.site.login is its own view, so the throttling on the web and API
-# logins never reached it: the one door that leads to everyone's data had
-# no limit at all (security pass 1). Wrapped rather than replaced, so the
-# admin keeps its own form, which also refuses non-staff accounts.
-
-_admin_login = admin.site.login
-
-
-def throttled_admin_login(request, extra_context=None):
-    from django.http import HttpResponse
-
-    from . import audit, ratelimit
-
-    if request.method != "POST":
-        return _admin_login(request, extra_context)
-
-    username = request.POST.get("username", "")
-    if ratelimit.login_blocked(request, username):
-        audit.record("login_blocked", request=request, username=username)
-        return HttpResponse(
-            "Too many sign-in attempts. Wait a few minutes and try again.",
-            status=429,
-            content_type="text/plain",
-        )
-
-    response = _admin_login(request, extra_context)
-    # Success redirects; a failed attempt re-renders the form.
-    if response.status_code == 302 and request.user.is_authenticated:
-        ratelimit.clear_login(request, username)
-    else:
-        ratelimit.record_login_failure(request, username)
-    return response
+# The admin's own login form has no second step, so a staff account with
+# two-step sign-in on could use it to skip the code entirely (security pass
+# 1 threw a throttle around the admin's own form instead; docs/design/MFA.md
+# replaces that with this redirect). Signing in at /accounts/login/ instead
+# gives the same session the site would have created -- MFA included, and
+# throttled exactly as any other sign-in is -- and the admin, which only
+# checks that session for is_staff, accepts it the same way it always did.
+# There is no throttling logic here any more: the site login's is the only
+# one in play.
 
 
-admin.site.login = throttled_admin_login
+def admin_login_redirects_to_site_login(request, extra_context=None):
+    from django.shortcuts import redirect
+    from django.urls import reverse
+
+    return redirect(f"{reverse('accounts:login')}?next={reverse('admin:index')}")
+
+
+admin.site.login = admin_login_redirects_to_site_login

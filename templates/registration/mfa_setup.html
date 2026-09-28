@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Set up two-step sign-in · Expense Tracker{% endblock %}
+
+{% block content %}
+  <h1>Set up two-step sign-in</h1>
+
+  <div class="card" style="max-width:30rem">
+    <p>Scan this with an authenticator app (Google Authenticator, 1Password, and the like), or
+      enter the key by hand:</p>
+
+    <div class="qr-code" style="margin:1rem 0">
+      <img src="{{ qr_data_uri }}" alt="QR code for {{ otpauth_uri }}" width="132" height="132">
+    </div>
+
+    <p><code>{{ secret }}</code></p>
+
+    {% if error %}
+      <ul class="errorlist"><li>{{ error }}</li></ul>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <label for="id_code">Enter the 6-digit code it shows</label>
+      <input type="text" name="code" id="id_code" inputmode="numeric" autocomplete="one-time-code"
+             autofocus required>
+      <p></p>
+      <button class="btn btn-primary" type="submit">Confirm and turn on</button>
+      <a class="btn" href="{% url 'accounts:mfa' %}">Cancel</a>
+    </form>
+  </div>
+{% endblock %}

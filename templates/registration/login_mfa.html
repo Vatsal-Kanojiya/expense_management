@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Enter your code · Expense Tracker{% endblock %}
+
+{% block content %}
+  <h1>Enter your code</h1>
+
+  <div class="card" style="max-width:26rem">
+    <p>Your password checked out. Enter the 6-digit code from your authenticator app, or one of
+      your recovery codes.</p>
+
+    {% if error %}
+      <ul class="errorlist"><li>{{ error }}</li></ul>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <label for="id_code">Code</label>
+      <input type="text" name="code" id="id_code" inputmode="numeric" autocomplete="one-time-code"
+             autofocus required>
+      <p></p>
+      <button class="btn btn-primary" type="submit">Continue</button>
+    </form>
+  </div>
+{% endblock %}

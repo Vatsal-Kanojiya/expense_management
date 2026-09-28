@@ -171,22 +171,28 @@ class LoginGuardTests(LimitTestCase):
             {"username": username, "password": password, "next": "/admin/"},
         )
 
-    @patch.object(ratelimit, "LOGIN_LIMIT", 2)
-    def test_the_admin_login_is_guarded(self):
+    def test_the_admin_login_redirects_to_the_site_login(self):
+        # docs/design/MFA.md: the admin's own form has no second step, so it
+        # no longer accepts credentials at all -- it hands off to the site
+        # login, which does. This is true whether or not the account or
+        # password given is even real: nothing here is checked any more.
         User.objects.create_user("staff", "staff@example.com", PASSWORD, is_staff=True)
 
-        self.assertEqual(self.admin_login("staff", "wrong-1").status_code, 200)
-        self.assertEqual(self.admin_login("staff", "wrong-2").status_code, 200)
+        response = self.admin_login("staff", PASSWORD)
 
-        self.assertEqual(self.admin_login("staff", PASSWORD).status_code, 429)
+        self.assertRedirects(
+            response, "/accounts/login/?next=/admin/", fetch_redirect_response=False
+        )
 
     @patch.object(ratelimit, "LOGIN_LIMIT", 2)
-    def test_a_good_admin_login_clears_the_count(self):
+    def test_the_limit_the_admin_login_now_relies_on_is_the_site_logins(self):
         User.objects.create_user("staff", "staff@example.com", PASSWORD, is_staff=True)
-        self.admin_login("staff", "wrong-1")
 
-        self.assertEqual(self.admin_login("staff", PASSWORD).status_code, 302)
-        self.assertFalse(ratelimit.login_blocked(self._request(), "staff"))
+        self.client.post("/accounts/login/", {"username": "staff", "password": "wrong-1"})
+        self.client.post("/accounts/login/", {"username": "staff", "password": "wrong-2"})
+
+        response = self.client.post("/accounts/login/", {"username": "staff", "password": PASSWORD})
+        self.assertEqual(response.status_code, 429)
 
     @patch.object(ratelimit, "LOGIN_IP_LIMIT", 3)
     def test_one_address_is_capped_across_usernames(self):
