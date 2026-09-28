@@ -65,6 +65,10 @@ jobs:
       SECRET_KEY: ci-only-not-a-real-secret-9f3b7c21ae64d8905e1fa7c3b0d2e846b5470c19d3f8a2e
       DEBUG: "False"
       ALLOWED_HOSTS: example.com
+      # A shared cache, as compose.yaml sets for production. The rate limits
+      # need one, and check --deploy warns without it (accounts.W001). The
+      # check only reads the backend's name; nothing needs to listen here.
+      CACHE_URL: rediscache://127.0.0.1:6379/2
 
     steps:
       - uses: actions/checkout@v5
