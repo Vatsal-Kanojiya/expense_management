@@ -1,0 +1,2741 @@
+openapi: 3.0.3
+info:
+  title: Expense Tracker API
+  version: 1.0.0
+  description: 'Personal expenses, bills split between people, balances and settling
+    up, CSV exports and bill scanning. Authenticate with `POST /api/v1/auth/login/`
+    and send `Authorization: Bearer <access>`.'
+paths:
+  /api/v1/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: |-
+        Username and password in, a token pair out.
+
+        Throttled with the web login's own limiter and key, so attempts made
+        through the page and through the API count against one budget --
+        alternating between them buys an attacker nothing.
+      summary: Log in
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Wrong username or password.
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Right password, email not yet verified.
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Too many attempts.
+  /api/v1/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      description: 'Revoke one refresh token: this device is signed out, others are
+        not.'
+      summary: Log out
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '204':
+          description: No response body
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+  /api/v1/auth/password/change/:
+    post:
+      operationId: auth_password_change_create
+      description: Change the password, sign out every other device, keep this one.
+      summary: Change password
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+          description: ''
+  /api/v1/auth/password/reset/:
+    post:
+      operationId: auth_password_reset_create
+      description: Mail a reset link. The answer is the same whether or not the email
+        exists.
+      summary: Request a password reset
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+  /api/v1/auth/password/reset/confirm/:
+    post:
+      operationId: auth_password_reset_confirm_create
+      description: Set a new password from a mailed reset link.
+      summary: Set a new password from a reset link
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+          description: ''
+  /api/v1/auth/refresh/:
+    post:
+      operationId: auth_refresh_create
+      description: Exchange a refresh token for a new pair. The old refresh token
+        dies.
+      summary: Refresh tokens
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/auth/signup/:
+    post:
+      operationId: auth_signup_create
+      description: Register. The account stays inactive until the mailed link is used.
+      summary: Sign up
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+          description: ''
+  /api/v1/auth/verify-email/:
+    post:
+      operationId: auth_verify_email_create
+      description: Activate an account from the mailed link, and sign it in.
+      summary: Verify email
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LinkRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LinkRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+  /api/v1/balances/:
+    get:
+      operationId: balances_retrieve
+      description: All time unless `start`/`end` narrow it, because settling always
+        settles the all-time amount (DECISIONS D46). Expenses whose lines do not add
+        up are left out.
+      summary: Who owes whom
+      parameters:
+      - in: query
+        name: end
+        schema:
+          type: string
+          format: date
+        description: To (YYYY-MM-DD). Defaults to all time.
+      - in: query
+        name: start
+        schema:
+          type: string
+          format: date
+        description: From (YYYY-MM-DD). Defaults to all time.
+      tags:
+      - Balances
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Balances'
+          description: ''
+        '400':
+          description: Invalid dates.
+  /api/v1/balances/{participant_id}/settle/:
+    post:
+      operationId: balances_settle_create
+      description: 'Records a settlement for the whole outstanding amount, in whichever
+        direction it runs: positive when they paid you back, negative when you paid
+        them. Safe to retry: a second call finds nothing outstanding.'
+      summary: Settle up with a person
+      parameters:
+      - in: path
+        name: participant_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Balances
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettleRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SettleRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SettleRequestRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettleResponse'
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettleResponse'
+          description: Nothing was outstanding.
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: No such person.
+  /api/v1/bill-scans/:
+    get:
+      operationId: bill_scans_list
+      description: |-
+        Photograph a bill; a vision model reads it; a person confirms it.
+
+        Nothing here creates an expense. The model's reading only ever becomes
+        a draft (``prefill``) that the client shows for correction, and an
+        expense exists only when the person saves it with ``POST expenses/``.
+      summary: List your scanned bills, newest first
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - Bill scans
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBillScanList'
+          description: ''
+    post:
+      operationId: bill_scans_create
+      description: Multipart upload. Answers at once with the scan, status `pending`;
+        poll it until `done` (then fetch `prefill/`) or `failed` (see `error`).
+      summary: Upload a bill photo to scan
+      tags:
+      - Bill scans
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BillScanUploadRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillScan'
+          description: ''
+        '400':
+          description: Not a usable photo.
+  /api/v1/bill-scans/{id}/:
+    get:
+      operationId: bill_scans_retrieve
+      description: |-
+        Photograph a bill; a vision model reads it; a person confirms it.
+
+        Nothing here creates an expense. The model's reading only ever becomes
+        a draft (``prefill``) that the client shows for correction, and an
+        expense exists only when the person saves it with ``POST expenses/``.
+      summary: Get a scan's status and result
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this bill scan.
+        required: true
+      tags:
+      - Bill scans
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillScan'
+          description: ''
+  /api/v1/bill-scans/{id}/image/:
+    get:
+      operationId: bill_scans_image_retrieve
+      description: |-
+        Photograph a bill; a vision model reads it; a person confirms it.
+
+        Nothing here creates an expense. The model's reading only ever becomes
+        a draft (``prefill``) that the client shows for correction, and an
+        expense exists only when the person saves it with ``POST expenses/``.
+      summary: The uploaded photo
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this bill scan.
+        required: true
+      tags:
+      - Bill scans
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/v1/bill-scans/{id}/prefill/:
+    get:
+      operationId: bill_scans_prefill_retrieve
+      description: Only for a finished scan that has not been saved yet. Show it for
+        correction, then `POST expenses/` with the corrected fields and this `bill_scan`
+        id.
+      summary: The scan as a draft expense
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this bill scan.
+        required: true
+      tags:
+      - Bill scans
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpensePrefill'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Still scanning (`not_ready`), `failed`, or `already_saved`.
+  /api/v1/categories/:
+    get:
+      operationId: categories_list
+      description: |-
+        Answer a create or update with the same annotated row a GET returns.
+
+        The counts and totals come from annotations on get_queryset(), which a
+        freshly saved instance does not carry. Re-reading it through the queryset
+        means a client never sees a field that is there on GET and missing on
+        POST.
+      summary: List categories, with usage
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - categories
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCategoryList'
+          description: ''
+    post:
+      operationId: categories_create
+      description: |-
+        Answer a create or update with the same annotated row a GET returns.
+
+        The counts and totals come from annotations on get_queryset(), which a
+        freshly saved instance does not carry. Re-reading it through the queryset
+        means a client never sees a field that is there on GET and missing on
+        POST.
+      summary: Create a category
+      tags:
+      - categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+  /api/v1/categories/{id}/:
+    get:
+      operationId: categories_retrieve
+      description: |-
+        Answer a create or update with the same annotated row a GET returns.
+
+        The counts and totals come from annotations on get_queryset(), which a
+        freshly saved instance does not carry. Re-reading it through the queryset
+        means a client never sees a field that is there on GET and missing on
+        POST.
+      summary: Get a category
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this category.
+        required: true
+      tags:
+      - categories
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+    put:
+      operationId: categories_update
+      description: |-
+        Answer a create or update with the same annotated row a GET returns.
+
+        The counts and totals come from annotations on get_queryset(), which a
+        freshly saved instance does not carry. Re-reading it through the queryset
+        means a client never sees a field that is there on GET and missing on
+        POST.
+      summary: Rename a category
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this category.
+        required: true
+      tags:
+      - categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+    patch:
+      operationId: categories_partial_update
+      description: |-
+        Answer a create or update with the same annotated row a GET returns.
+
+        The counts and totals come from annotations on get_queryset(), which a
+        freshly saved instance does not carry. Re-reading it through the queryset
+        means a client never sees a field that is there on GET and missing on
+        POST.
+      summary: Rename a category
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this category.
+        required: true
+      tags:
+      - categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCategoryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCategoryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCategoryRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+    delete:
+      operationId: categories_destroy
+      description: |-
+        Answer a create or update with the same annotated row a GET returns.
+
+        The counts and totals come from annotations on get_queryset(), which a
+        freshly saved instance does not carry. Re-reading it through the queryset
+        means a client never sees a field that is there on GET and missing on
+        POST.
+      summary: Delete a category
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this category.
+        required: true
+      tags:
+      - categories
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: It still has expenses.
+  /api/v1/expenses/:
+    get:
+      operationId: expenses_list
+      description: All time unless `start`/`end` narrow it. `count` and `total_amount`
+        cover the whole filtered set, not just this page. Follow `next` for more.
+      summary: List expenses, newest date first
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: integer
+        description: A category id.
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - in: query
+        name: end
+        schema:
+          type: string
+          format: date
+        description: On or before (YYYY-MM-DD).
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: 1-100, default 25.
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Matches the note, line items and people.
+      - in: query
+        name: start
+        schema:
+          type: string
+          format: date
+        description: On or after (YYYY-MM-DD).
+      tags:
+      - expenses
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedExpensePageList'
+          description: ''
+    post:
+      operationId: expenses_create
+      description: |-
+        Scope every queryset to the requester, and stamp ownership on create.
+
+        The direct analogue of OwnerScopedMixin and OwnerFormMixin. `user` is
+        never a writable field, so ownership cannot be reassigned by a payload.
+      summary: Create an expense
+      tags:
+      - expenses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExpenseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExpenseRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: ''
+  /api/v1/expenses/{id}/:
+    get:
+      operationId: expenses_retrieve
+      description: |-
+        Scope every queryset to the requester, and stamp ownership on create.
+
+        The direct analogue of OwnerScopedMixin and OwnerFormMixin. `user` is
+        never a writable field, so ownership cannot be reassigned by a payload.
+      summary: Get an expense
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this expense.
+        required: true
+      tags:
+      - expenses
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: ''
+    put:
+      operationId: expenses_update
+      description: |-
+        Scope every queryset to the requester, and stamp ownership on create.
+
+        The direct analogue of OwnerScopedMixin and OwnerFormMixin. `user` is
+        never a writable field, so ownership cannot be reassigned by a payload.
+      summary: Replace an expense
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this expense.
+        required: true
+      tags:
+      - expenses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExpenseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExpenseRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: ''
+    patch:
+      operationId: expenses_partial_update
+      description: |-
+        Scope every queryset to the requester, and stamp ownership on create.
+
+        The direct analogue of OwnerScopedMixin and OwnerFormMixin. `user` is
+        never a writable field, so ownership cannot be reassigned by a payload.
+      summary: Change part of an expense
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this expense.
+        required: true
+      tags:
+      - expenses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedExpenseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedExpenseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedExpenseRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: ''
+    delete:
+      operationId: expenses_destroy
+      description: |-
+        Scope every queryset to the requester, and stamp ownership on create.
+
+        The direct analogue of OwnerScopedMixin and OwnerFormMixin. `user` is
+        never a writable field, so ownership cannot be reassigned by a payload.
+      summary: Delete an expense
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this expense.
+        required: true
+      tags:
+      - expenses
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/expenses/{id}/split/:
+    get:
+      operationId: expenses_split_retrieve
+      description: 'The Split tab. Each row is one person''s share of the line items
+        (or of the even split) and of the misc amount. When the lines do not add up,
+        `is_balanced` is false and `rows` is empty: the expense is left out of balances
+        until fixed.'
+      summary: Who owes what on this expense
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this expense.
+        required: true
+      tags:
+      - expenses
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseSplit'
+          description: ''
+  /api/v1/exports/:
+    get:
+      operationId: exports_list
+      description: Request a CSV of your expenses, watch it, download it.
+      summary: List your exports, newest first
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - Exports
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedExportJobList'
+          description: ''
+    post:
+      operationId: exports_create
+      description: Answers at once with the job, status `pending`. A worker builds
+        the file and emails a link; poll the job until `status` is `complete`, then
+        follow `download_url`.
+      summary: Request a CSV export
+      tags:
+      - Exports
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExportRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExportRequestRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+          description: ''
+        '400':
+          description: Invalid dates.
+  /api/v1/exports/{id}/:
+    get:
+      operationId: exports_retrieve
+      description: Request a CSV of your expenses, watch it, download it.
+      summary: Get an export's status
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this export job.
+        required: true
+      tags:
+      - Exports
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+          description: ''
+  /api/v1/exports/{id}/download/:
+    get:
+      operationId: exports_download_retrieve
+      description: Request a CSV of your expenses, watch it, download it.
+      summary: Download a finished export
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this export job.
+        required: true
+      tags:
+      - Exports
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Not finished yet, or it failed.
+  /api/v1/health/:
+    get:
+      operationId: health_retrieve
+      description: |-
+        Whether the app is up and can reach its database.
+
+        For a load balancer, an uptime monitor, or a frontend deciding whether
+        to show "we are down". Unauthenticated and unthrottled: a monitor
+        polling once a minute would otherwise use up the anonymous rate on its
+        own.
+      summary: Health check
+      tags:
+      - health
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthDown'
+          description: ''
+  /api/v1/me/:
+    get:
+      operationId: me_retrieve
+      description: 'The signed-in account: read it, rename it, or delete it and all
+        its data.'
+      summary: Your profile
+      tags:
+      - Account
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+          description: ''
+    patch:
+      operationId: me_partial_update
+      description: 'The signed-in account: read it, rename it, or delete it and all
+        its data.'
+      summary: Update your name
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMeRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+          description: ''
+    delete:
+      operationId: me_destroy
+      description: Irreversible. Confirm by sending the account's username as `confirm`.
+      summary: Delete your account and everything in it
+      tags:
+      - Account
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+  /api/v1/participants/:
+    get:
+      operationId: participants_list
+      description: |-
+        Answer a create or update with the same annotated row a GET returns.
+
+        The counts and totals come from annotations on get_queryset(), which a
+        freshly saved instance does not carry. Re-reading it through the queryset
+        means a client never sees a field that is there on GET and missing on
+        POST.
+      summary: List people, including yourself (is_self)
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - participants
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedParticipantList'
+          description: ''
+    post:
+      operationId: participants_create
+      description: |-
+        Answer a create or update with the same annotated row a GET returns.
+
+        The counts and totals come from annotations on get_queryset(), which a
+        freshly saved instance does not carry. Re-reading it through the queryset
+        means a client never sees a field that is there on GET and missing on
+        POST.
+      summary: Add a person
+      tags:
+      - participants
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParticipantRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ParticipantRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ParticipantRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Participant'
+          description: ''
+  /api/v1/participants/{id}/:
+    get:
+      operationId: participants_retrieve
+      description: |-
+        Answer a create or update with the same annotated row a GET returns.
+
+        The counts and totals come from annotations on get_queryset(), which a
+        freshly saved instance does not carry. Re-reading it through the queryset
+        means a client never sees a field that is there on GET and missing on
+        POST.
+      summary: Get a person
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this participant.
+        required: true
+      tags:
+      - participants
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Participant'
+          description: ''
+    put:
+      operationId: participants_update
+      description: |-
+        Answer a create or update with the same annotated row a GET returns.
+
+        The counts and totals come from annotations on get_queryset(), which a
+        freshly saved instance does not carry. Re-reading it through the queryset
+        means a client never sees a field that is there on GET and missing on
+        POST.
+      summary: Rename a person
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this participant.
+        required: true
+      tags:
+      - participants
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParticipantRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ParticipantRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ParticipantRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Participant'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+    patch:
+      operationId: participants_partial_update
+      description: |-
+        Answer a create or update with the same annotated row a GET returns.
+
+        The counts and totals come from annotations on get_queryset(), which a
+        freshly saved instance does not carry. Re-reading it through the queryset
+        means a client never sees a field that is there on GET and missing on
+        POST.
+      summary: Rename a person
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this participant.
+        required: true
+      tags:
+      - participants
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedParticipantRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedParticipantRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedParticipantRequest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Participant'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: ''
+    delete:
+      operationId: participants_destroy
+      description: |-
+        Answer a create or update with the same annotated row a GET returns.
+
+        The counts and totals come from annotations on get_queryset(), which a
+        freshly saved instance does not carry. Re-reading it through the queryset
+        means a client never sees a field that is there on GET and missing on
+        POST.
+      summary: Remove a person
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this participant.
+        required: true
+      tags:
+      - participants
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: That is you.
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: They are on a line item or paid a bill.
+  /api/v1/settlements/:
+    get:
+      operationId: settlements_list
+      description: 'Repayments recorded so far. Read-only: settle up to add one.'
+      summary: List repayments
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: participant
+        schema:
+          type: integer
+        description: A person id.
+      tags:
+      - Balances
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSettlementList'
+          description: ''
+  /api/v1/settlements/{id}/:
+    get:
+      operationId: settlements_retrieve
+      description: 'Repayments recorded so far. Read-only: settle up to add one.'
+      summary: Get a repayment
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this settlement.
+        required: true
+      tags:
+      - Balances
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settlement'
+          description: ''
+  /api/v1/summary/:
+    get:
+      operationId: summary_retrieve
+      description: The Overview page, as data.
+      summary: Spending summary for a period
+      parameters:
+      - in: query
+        name: end
+        schema:
+          type: string
+          format: date
+        description: To (YYYY-MM-DD). Defaults to the current month.
+      - in: query
+        name: start
+        schema:
+          type: string
+          format: date
+        description: From (YYYY-MM-DD). Defaults to the current month.
+      tags:
+      - Reports
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Summary'
+          description: ''
+        '400':
+          description: Invalid dates.
+components:
+  schemas:
+    Balance:
+      type: object
+      properties:
+        participant:
+          $ref: '#/components/schemas/Person'
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - amount
+      - participant
+    Balances:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date
+          nullable: true
+        end:
+          type: string
+          format: date
+          nullable: true
+        owes_you:
+          type: array
+          items:
+            $ref: '#/components/schemas/Balance'
+          description: Still owed to you, after repayments.
+        you_owe:
+          type: array
+          items:
+            $ref: '#/components/schemas/Balance'
+          description: Still owed by you, as positive amounts.
+        owes_you_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        you_owe_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        gross:
+          type: array
+          items:
+            $ref: '#/components/schemas/Balance'
+          description: 'Before repayments. Positive: they owe you. Negative: you owe
+            them.'
+      required:
+      - end
+      - gross
+      - owes_you
+      - owes_you_total
+      - start
+      - you_owe
+      - you_owe_total
+    Biggest:
+      type: object
+      properties:
+        id:
+          type: integer
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        spent_on:
+          type: string
+          format: date
+        note:
+          type: string
+        category_name:
+          type: string
+      required:
+      - amount
+      - category_name
+      - id
+      - note
+      - spent_on
+    BillScan:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/BillScanStatusEnum'
+          readOnly: true
+        provider:
+          type: string
+          readOnly: true
+        error:
+          type: string
+          readOnly: true
+        result:
+          readOnly: true
+        expense:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        image_url:
+          type: string
+          readOnly: true
+      required:
+      - completed_at
+      - created_at
+      - error
+      - expense
+      - id
+      - image_url
+      - provider
+      - result
+      - status
+    BillScanStatusEnum:
+      enum:
+      - pending
+      - running
+      - done
+      - failed
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `running` - Running
+        * `done` - Done
+        * `failed` - Failed
+    BillScanUploadRequest:
+      type: object
+      properties:
+        image:
+          type: string
+          format: binary
+          description: A JPEG, PNG or WebP photo, at most 5 MB.
+      required:
+      - image
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        expense_count:
+          type: integer
+          readOnly: true
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+          nullable: true
+        last_spent_on:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        last_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - expense_count
+      - id
+      - last_amount
+      - last_spent_on
+      - name
+      - total
+    CategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+      required:
+      - name
+    CategoryTotal:
+      type: object
+      properties:
+        category:
+          type: integer
+        category_name:
+          type: string
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        count:
+          type: integer
+        share:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          description: Percentage of the period total.
+      required:
+      - category
+      - category_name
+      - count
+      - share
+      - total
+    Expense:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        category:
+          type: integer
+        category_name:
+          type: string
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        spent_on:
+          type: string
+          format: date
+        note:
+          type: string
+          maxLength: 255
+        paid_by:
+          type: integer
+          nullable: true
+        paid_by_name:
+          type: string
+          readOnly: true
+          nullable: true
+        participants:
+          type: array
+          items:
+            type: integer
+        misc_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        misc_note:
+          type: string
+          maxLength: 100
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpenseItem'
+        items_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+          nullable: true
+        unaccounted_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+          readOnly: true
+        is_balanced:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount
+      - category
+      - category_name
+      - created_at
+      - id
+      - is_balanced
+      - items_total
+      - paid_by_name
+      - spent_on
+      - unaccounted_amount
+    ExpenseItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        shares:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemShare'
+      required:
+      - amount
+      - id
+      - name
+    ExpenseItemRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        shares:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemShareRequest'
+      required:
+      - amount
+      - name
+    ExpensePage:
+      type: object
+      properties:
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+        count:
+          type: integer
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Expense'
+      required:
+      - count
+      - next
+      - previous
+      - results
+      - total_amount
+    ExpensePrefill:
+      type: object
+      description: What the model read, shaped as an expense to show, correct and
+        POST.
+      properties:
+        bill_scan:
+          type: integer
+          description: Send back unchanged with the expense.
+        category:
+          type: integer
+          nullable: true
+          description: Only when the scan's guess matches one of your categories.
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        spent_on:
+          type: string
+          format: date
+        note:
+          type: string
+        misc_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        misc_note:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrefillItem'
+      required:
+      - amount
+      - bill_scan
+      - category
+      - items
+      - misc_amount
+      - misc_note
+      - note
+      - spent_on
+    ExpenseRequest:
+      type: object
+      properties:
+        category:
+          type: integer
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        spent_on:
+          type: string
+          format: date
+        note:
+          type: string
+          maxLength: 255
+        paid_by:
+          type: integer
+          nullable: true
+        participants:
+          type: array
+          items:
+            type: integer
+        misc_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        misc_note:
+          type: string
+          maxLength: 100
+        include_self:
+          type: boolean
+          writeOnly: true
+          default: true
+        bill_scan:
+          type: integer
+          writeOnly: true
+          nullable: true
+          description: 'On create only: the scan this expense was confirmed from.'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpenseItemRequest'
+      required:
+      - amount
+      - category
+      - spent_on
+    ExpenseSplit:
+      type: object
+      properties:
+        expense:
+          type: integer
+        is_balanced:
+          type: boolean
+        unaccounted_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/SplitRow'
+        items_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        misc_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        grand_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - expense
+      - grand_total
+      - is_balanced
+      - items_total
+      - misc_total
+      - rows
+      - unaccounted_amount
+    ExportJob:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ExportJobStatusEnum'
+          readOnly: true
+        start:
+          type: string
+          format: date
+          readOnly: true
+        end:
+          type: string
+          format: date
+          readOnly: true
+        row_count:
+          type: integer
+          readOnly: true
+        error:
+          type: string
+          readOnly: true
+        requested_at:
+          type: string
+          format: date-time
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        download_url:
+          type: string
+          nullable: true
+          readOnly: true
+      required:
+      - completed_at
+      - download_url
+      - end
+      - error
+      - id
+      - requested_at
+      - row_count
+      - start
+      - status
+    ExportJobStatusEnum:
+      enum:
+      - pending
+      - running
+      - complete
+      - failed
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `running` - Running
+        * `complete` - Complete
+        * `failed` - Failed
+    ExportRequestRequest:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date
+          description: Defaults to the 1st of this month.
+        end:
+          type: string
+          format: date
+          description: Defaults to the end of this month.
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    HealthDown:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    ItemShare:
+      type: object
+      properties:
+        participant:
+          type: integer
+        weight:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+      required:
+      - participant
+    ItemShareRequest:
+      type: object
+      properties:
+        participant:
+          type: integer
+        weight:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+      required:
+      - participant
+    LinkRequest:
+      type: object
+      description: 'The two halves of a mailed link: ``/verify-email/<uid>/<token>``.'
+      properties:
+        uid:
+          type: string
+          minLength: 1
+        token:
+          type: string
+          minLength: 1
+      required:
+      - token
+      - uid
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+      required:
+      - password
+      - username
+    Me:
+      type: object
+      description: |-
+        The signed-in user, and the participant that stands for them in splits.
+
+        ``self_participant.id`` is what a client sends as ``paid_by`` for "I
+        paid" and lists among ``participants`` for "I was there".
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Email address
+          description: Used to sign in to support and to reset your password.
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        is_staff:
+          type: boolean
+          readOnly: true
+          title: Staff status
+          description: Designates whether the user can log into this admin site.
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+        last_login:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        self_participant:
+          allOf:
+          - $ref: '#/components/schemas/SelfParticipant'
+          readOnly: true
+      required:
+      - date_joined
+      - email
+      - id
+      - is_staff
+      - last_login
+      - self_participant
+      - username
+    Message:
+      type: object
+      description: |-
+        A plain answer: what happened, and a stable code a client can branch on.
+
+        ``detail`` is for people and may be reworded; ``code`` is for programs
+        and will not change. Error responses from DRF itself use the same
+        ``detail`` key, so a client reads one field for both.
+      properties:
+        detail:
+          type: string
+        code:
+          type: string
+      required:
+      - detail
+    PaginatedBillScanList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BillScan'
+    PaginatedCategoryList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+    PaginatedExpensePageList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpensePage'
+    PaginatedExportJobList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExportJob'
+    PaginatedParticipantList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+    PaginatedSettlementList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Settlement'
+    Participant:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 60
+        is_self:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        shared_count:
+          type: integer
+          readOnly: true
+        item_count:
+          type: integer
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - is_self
+      - item_count
+      - name
+      - shared_count
+    ParticipantRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+      required:
+      - name
+    PasswordChangeRequest:
+      type: object
+      properties:
+        old_password:
+          type: string
+          minLength: 1
+        new_password:
+          type: string
+          minLength: 1
+        new_password_confirm:
+          type: string
+          minLength: 1
+      required:
+      - new_password
+      - new_password_confirm
+      - old_password
+    PasswordResetConfirmRequest:
+      type: object
+      description: 'The two halves of a mailed link: ``/verify-email/<uid>/<token>``.'
+      properties:
+        uid:
+          type: string
+          minLength: 1
+        token:
+          type: string
+          minLength: 1
+        new_password:
+          type: string
+          minLength: 1
+        new_password_confirm:
+          type: string
+          minLength: 1
+      required:
+      - new_password
+      - new_password_confirm
+      - token
+      - uid
+    PasswordResetRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+      required:
+      - email
+    PatchedCategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+    PatchedExpenseRequest:
+      type: object
+      properties:
+        category:
+          type: integer
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        spent_on:
+          type: string
+          format: date
+        note:
+          type: string
+          maxLength: 255
+        paid_by:
+          type: integer
+          nullable: true
+        participants:
+          type: array
+          items:
+            type: integer
+        misc_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        misc_note:
+          type: string
+          maxLength: 100
+        include_self:
+          type: boolean
+          writeOnly: true
+          default: true
+        bill_scan:
+          type: integer
+          writeOnly: true
+          nullable: true
+          description: 'On create only: the scan this expense was confirmed from.'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpenseItemRequest'
+    PatchedMeRequest:
+      type: object
+      description: |-
+        The signed-in user, and the participant that stands for them in splits.
+
+        ``self_participant.id`` is what a client sends as ``paid_by`` for "I
+        paid" and lists among ``participants`` for "I was there".
+      properties:
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+    PatchedParticipantRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 60
+    Period:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date
+        end:
+          type: string
+          format: date
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        count:
+          type: integer
+      required:
+      - count
+      - end
+      - start
+      - total
+    Person:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required:
+      - id
+      - name
+    PrefillItem:
+      type: object
+      properties:
+        name:
+          type: string
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - amount
+      - name
+    RefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    SelfParticipant:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required:
+      - id
+      - name
+    SettleRequestRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          maxLength: 255
+    SettleResponse:
+      type: object
+      description: |-
+        A plain answer: what happened, and a stable code a client can branch on.
+
+        ``detail`` is for people and may be reworded; ``code`` is for programs
+        and will not change. Error responses from DRF itself use the same
+        ``detail`` key, so a client reads one field for both.
+      properties:
+        detail:
+          type: string
+        code:
+          type: string
+        settlement:
+          allOf:
+          - $ref: '#/components/schemas/Settlement'
+          nullable: true
+      required:
+      - detail
+      - settlement
+    Settlement:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        participant:
+          type: integer
+          readOnly: true
+        participant_name:
+          type: string
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        settled_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount
+      - id
+      - note
+      - participant
+      - participant_name
+      - settled_at
+    SignupRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+        password_confirm:
+          type: string
+          minLength: 1
+      required:
+      - email
+      - password
+      - password_confirm
+      - username
+    SplitPerson:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        is_self:
+          type: boolean
+      required:
+      - id
+      - is_self
+      - name
+    SplitRow:
+      type: object
+      properties:
+        participant:
+          $ref: '#/components/schemas/SplitPerson'
+        items:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          description: Their share of the lines or even split.
+        misc:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          description: Their share of tax, tip and the like.
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - items
+      - misc
+      - participant
+      - total
+    Summary:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date
+        end:
+          type: string
+          format: date
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        count:
+          type: integer
+        average:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        biggest:
+          allOf:
+          - $ref: '#/components/schemas/Biggest'
+          nullable: true
+        by_category:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryTotal'
+        previous:
+          allOf:
+          - $ref: '#/components/schemas/Period'
+          description: The previous calendar month for a whole month, else the equally
+            long window just before.
+        change_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+          description: Null when the previous period had no spending.
+      required:
+      - average
+      - biggest
+      - by_category
+      - change_percent
+      - count
+      - end
+      - previous
+      - start
+      - total
+    TokenPair:
+      type: object
+      properties:
+        access:
+          type: string
+          description: 'Send as `Authorization: Bearer <access>`.'
+        refresh:
+          type: string
+          description: Exchange at `auth/refresh/` for a new pair.
+        user:
+          $ref: '#/components/schemas/Me'
+      required:
+      - access
+      - refresh
+      - user
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    ValidationError:
+      type: object
+      description: |-
+        DRF's 400 shape: each invalid field maps to a list of messages.
+
+        Errors that belong to no single field are under ``non_field_errors``.
+        Declared with one example field only because the keys depend on the
+        request; the schema cannot list them all.
+      properties:
+        non_field_errors:
+          type: array
+          items:
+            type: string
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

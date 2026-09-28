@@ -19,6 +19,7 @@ signing in once invalidates every outstanding link, and so does changing
 the password.
 """
 
+from django.conf import settings
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -43,27 +44,34 @@ class EmailVerificationTokenGenerator(PasswordResetTokenGenerator):
 token_generator = EmailVerificationTokenGenerator()
 
 
-def send_verification_email(user, request):
+def send_verification_email(user, request, *, to_frontend=False):
     """Mail a signed activation link.
 
     The absolute URL is built from the request rather than a setting, so a
     link generated on a staging host points back at staging. In production
     behind a proxy this depends on ALLOWED_HOSTS being right, which it
     already must be.
+
+    ``to_frontend`` is for a signup made through the API: the link then
+    goes to the separate frontend's ``/verify-email/<uid>/<token>`` route,
+    which completes it through ``POST /api/v1/auth/verify-email/``. Only
+    when FRONTEND_URL is set; otherwise the Django page handles it, as it
+    always has. DECISIONS D45.
     """
-    path = reverse(
-        "accounts:verify_email",
-        kwargs={
-            "uidb64": urlsafe_base64_encode(force_bytes(user.pk)),
-            "token": token_generator.make_token(user),
-        },
-    )
+    uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+    token = token_generator.make_token(user)
+
+    if to_frontend and settings.FRONTEND_URL:
+        url = f"{settings.FRONTEND_URL}/verify-email/{uidb64}/{token}"
+    else:
+        path = reverse("accounts:verify_email", kwargs={"uidb64": uidb64, "token": token})
+        url = request.build_absolute_uri(path)
 
     send_mail(
         subject="Confirm your email address",
         message=render_to_string(
             "registration/verify_email.txt",
-            {"user": user, "url": request.build_absolute_uri(path)},
+            {"user": user, "url": url},
         ),
         from_email=None,
         recipient_list=[user.email],
