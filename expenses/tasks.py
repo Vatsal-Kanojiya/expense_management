@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
     retry_jitter=True,
     max_retries=3,
 )
-def build_expense_export(self, job_id: int, site_url: str = "") -> int:
+def build_expense_export(self, job_id: int, site_url: str = "", download_url: str = "") -> int:
     """Generate the CSV for one ExportJob and email a link to its owner.
 
     Returns the row count so the result backend carries something useful.
@@ -46,6 +46,11 @@ def build_expense_export(self, job_id: int, site_url: str = "") -> int:
     shared_task rather than @app.task so this module does not import the
     Celery app — it stays importable from anywhere, including tests that
     never start a worker.
+
+    ``download_url``, when given, is the link the email carries verbatim:
+    an export requested through the API links to the separate frontend,
+    where the person is signed in, rather than to a Django page where they
+    may not be (DECISIONS D45).
     """
     # Re-read rather than trusting anything passed in. With acks_late a
     # redelivered task must see the row as it is now.
@@ -71,7 +76,7 @@ def build_expense_export(self, job_id: int, site_url: str = "") -> int:
         raise
 
     job.refresh_from_db()
-    _email_export_ready(job, site_url)
+    _email_export_ready(job, site_url, download_url)
     return row_count
 
 
@@ -116,17 +121,18 @@ def _write_csv(job: ExportJob) -> int:
     return row_count
 
 
-def _email_export_ready(job: ExportJob, site_url: str) -> None:
+def _email_export_ready(job: ExportJob, site_url: str, download_url: str = "") -> None:
     """Email a link, not the file.
 
     Attachments hit mail-size limits and put a copy of the user's financial
     history in an inbox forever. A link keeps the download behind the
     ownership check in the view.
     """
-    path = reverse("expenses:export_download", args=[job.pk])
+    if not download_url:
+        download_url = site_url + reverse("expenses:export_download", args=[job.pk])
     body = render_to_string(
         "expenses/email/export_ready.txt",
-        {"job": job, "download_url": f"{site_url}{path}"},
+        {"job": job, "download_url": download_url},
     )
 
     send_mail(

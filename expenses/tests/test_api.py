@@ -249,8 +249,10 @@ class QueryCountTests(ApiTestCase):
             ItemShare.objects.create(item=item, participant=self.rahul)
 
         # Nested serializers walk three levels. Without the prefetch this
-        # would be one query per expense plus one per item.
-        with self.assertNumQueries(6):
+        # would be one query per expense plus one per item. The seventh is
+        # the count and total over the filtered set (phase 20) -- one query
+        # for the whole list, not one per row.
+        with self.assertNumQueries(7):
             self.client.get(self.list_url)
 
 
@@ -258,11 +260,13 @@ class PaginationTests(ApiTestCase):
     def test_results_are_paginated_with_a_cursor(self):
         response = self.client.get(self.list_url).json()
 
-        # Cursor pagination gives next/previous and deliberately no count:
-        # it cannot know the total without the scan it exists to avoid.
+        # Cursor pagination gives next/previous, not page numbers. The count
+        # and total are not the paginator's: they come from one aggregate
+        # the list adds, because the Expenses page shows the filtered total
+        # and a client cannot add up pages it has not fetched (D46).
         self.assertIn("next", response)
         self.assertIn("results", response)
-        self.assertNotIn("count", response)
+        self.assertEqual((response["count"], response["total_amount"]), (1, "900.00"))
 
 
 class CategoryApiTests(ApiTestCase):

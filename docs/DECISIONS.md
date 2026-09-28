@@ -724,3 +724,172 @@ the app containers each time.
 
 **Reverse it if:** CI/CD starts building images for a registry. Build those with the default
 attestations, or more.
+
+---
+
+## Session 27 — an API a remote frontend can be built on
+
+The brief: the app is about to be hosted. A React developer — a fresher, practising — will build a
+new UI against it from her own machine, and a mobile app or a public web portal may follow. So
+**every action the Django pages offer must have an API endpoint**, and the API must be usable from
+another origin and from a native app. The business-requirements document and the Postman
+collection for that developer come in the next phase. This one makes the backend ready for them.
+
+### D40. The API reaches parity with the Django pages, and the pages stay
+
+**Decided:** every action on a Django page gets an endpoint under `/api/v1/`: account, categories,
+people, expenses and their split, dashboard, balances and settling up, exports, and bill scans.
+The Django pages are neither removed nor changed; they keep working beside the new UI.
+
+**Alternative:** only the endpoints the first React screens need, added as the screens appear.
+
+**Why:** a frontend developer building "from the document alone" needs the whole contract up
+front, and a contract that grows screen by screen is one she has to keep asking about. Parity also
+gives a simple test of done: walk the Django pages and find a matching endpoint for each action.
+The domain code was already out of the views (`summaries.py`, `balances.py`, `settlements.py`,
+`extraction/prefill.py`), so each endpoint is a thin wrapper.
+
+**Reverse it if:** the new UI replaces the Django pages entirely. Then the pages can go, and the
+API is already the whole product.
+
+### D41. JWT bearer tokens alongside sessions
+
+**Decided:** `djangorestframework-simplejwt`, with a short-lived access token, a refresh token
+that rotates on use, and a blacklist so that logout and a password change really revoke access.
+Session authentication stays, for the browsable API and any same-origin client.
+
+**Alternatives:** sessions only, served from the same origin (the recommendation in session 26,
+before the brief changed); DRF's built-in `TokenAuthentication`; `django-rest-knox`.
+
+**Why:** the brief changed. The frontend will be developed on a different machine against the live
+server, which makes it cross-origin, and a native app has no cookie jar worth relying on. Bearer
+tokens work the same in both. DRF's own tokens never expire and allow one per user, so logging out
+on a phone would log out the laptop. Knox is sound but little known. SimpleJWT is the standard a
+MERN developer has already met. Rotation plus the blacklist closes JWT's usual weak spot, a
+refresh token that cannot be taken back.
+
+**Known trade:** a token kept in browser storage can be read by any script that XSS gets onto the
+page, which an HttpOnly session cookie cannot. The frontend documentation (next phase) says where
+to keep each token. Access tokens are short-lived so that a leak expires quickly.
+
+**Reverse it if:** the only client is ever a same-origin web UI. Then sessions are simpler and
+safer.
+
+### D42. CORS by an explicit allow-list, API paths only, no credentials
+
+**Decided:** `django-cors-headers`, with origins from `CORS_ALLOWED_ORIGINS` in the environment
+(for example `http://localhost:5173` for a Vite dev server), applied only to `/api/`. Credentials
+(cookies) are not allowed cross-origin.
+
+**Why:** a wildcard would let any site script the API with a stolen token. Tokens travel in the
+`Authorization` header, so cross-origin cookies are unnecessary. Not sending them also means
+cross-origin requests need no CSRF token, and CSRF stays enforced for the session path.
+
+### D43. The API contract is generated from the code
+
+**Decided:** `drf-spectacular` publishes an OpenAPI 3 schema at `/api/schema/` and Swagger UI at
+`/api/docs/`. Every custom endpoint declares its request and response serializers. A test fails if
+generating the schema produces a warning. The next phase's Postman collection is generated from
+this schema, not written by hand.
+
+**Why:** hand-written API docs drift from the code on the first change after they are written. A
+schema generated from the serializers is the code, and a warning-free test keeps it complete.
+
+### D44. Every rule a Django page enforces is restated at the API
+
+**Decided:** the API gains the rules it had skipped:
+
+- Login is rate-limited with the web's limiter, and an unverified account gets a distinct refusal.
+- A tax/tip amount needs a description and line items.
+- If you are not on an expense, each of its line items must name who had it.
+- Anyone a line item charges is added to the expense's participants.
+- The self participant is marked `is_self`, and cannot be renamed or deleted (issue 34).
+- A delete that the database protects returns 409 with a reason instead of a 500 (issue 44).
+
+**Why:** the rule this project keeps relearning: a rule the database cannot hold must be restated
+at every entry point. The API is about to become the main entry point. Adding line-item people to
+the participants also prevents a cross-entry-point loss: the web edit form offers only an
+expense's participants, so a share the API created outside them would be dropped the first time
+someone saved that expense on the web (issue 45).
+
+### D45. An email links back to the UI that asked for it
+
+**Decided:** a new setting, `FRONTEND_URL`. Verification, password-reset and export-ready emails
+triggered through the API link to `FRONTEND_URL` routes (`/verify-email/<uid>/<token>`,
+`/reset-password/<uid>/<token>`, `/exports/<id>`), and the frontend completes the action through
+the API. Emails triggered by the Django pages keep linking to the Django pages. Unset, everything
+links to the Django pages, as before.
+
+**Why:** a link to a page the person never used — or to an API URL a browser cannot authenticate
+against — is a dead end.
+
+### D46. API defaults that differ from the pages, on purpose
+
+**Decided:**
+
+- The expense list and balances cover all time unless `start`/`end` are given. The Django pages
+  default to the current month.
+- The dashboard summary and exports keep the current-month default.
+- Throttle rates are environment settings, with the per-user default raised from 1000 to 3000
+  requests an hour.
+- The expense list returns `count` and `total_amount` for the whole filtered set, although phase
+  10 had a test asserting that cursor pagination carries no count.
+
+**Why:** a page has a sensible first view; an API should return what was asked for. Balances in
+particular: settling up always settles the *all-time* outstanding amount, so a month-scoped "owes
+you" beside a settle button would disagree with what the button does. A single-page app fires
+several requests per screen and polls a scan's status, which 1000 an hour would throttle in
+ordinary use. On the count: phase 10's reasoning was that a cursor cannot know the total without
+the scan it exists to avoid, and that still holds for the paginator. But the Expenses page shows
+the filtered total, and a client cannot add up pages it has not fetched. One aggregate over the
+filtered set costs a single query per request, not one per row, and the query-count test pins it.
+
+---
+
+## Session 28 — the frontend pack
+
+The brief: professional documents for a frontend developer building the React UI from scratch:
+a business requirements document / scope of work, and a Postman-style collection showing every
+request and its expected response. The developer is a fresher practising MERN, so the pack has to
+work as a complete brief, not a reference only an insider can read.
+
+### D47. The pack lives in the repository, beside the code it describes
+
+**Decided:** `docs/frontend/` on the same branch as the API. It holds the requirements document,
+an integration guide, a generated API reference, the OpenAPI snapshot, the Postman collection and
+environment, and a sample bill image.
+
+**Alternatives:** a shared online document; a wiki.
+
+**Why:** the pack is a contract, and a contract kept away from the code drifts on the first
+commit that changes one and not the other. Here a change to an endpoint and to its documentation
+land in one commit, and review sees both. GitHub renders the Markdown, the diagrams and the tables,
+so the developer needs nothing beyond a link.
+
+### D48. Examples are recorded from the running API, never typed
+
+**Decided:** `python manage.py build_api_docs` spins up a throwaway test database and drives the
+API through the whole user journey with Django's test client. It records every request and the
+response actually returned — successes and the characteristic errors — and writes three files from
+that one run: the Postman collection (with the responses as saved examples), the Markdown API
+reference, and the OpenAPI snapshot. Tests fail if the snapshot no longer matches the code, or if
+any endpoint in the schema has no recorded example.
+
+**Alternative:** write the collection and the examples by hand, or convert the OpenAPI schema with
+a generic converter.
+
+**Why:** a hand-typed example is a guess about what the server returns, and a fresher will build
+against the guess. A converter produces a request for every path but no realistic journey: no
+token handling, no ids carried from one call to the next, and no real responses. A recorded run
+has all three, and regenerating after an API change is one command.
+
+### D49. The requirements specify behaviour and acceptance, not pixels
+
+**Decided:** the document specifies screens, fields, rules, states and acceptance criteria, plus
+non-functional requirements (responsive, accessible, secure token handling). Visual design is the
+developer's to make within those rules. A recommended stack is given, not mandated.
+
+**Why:** the point is for the developer to practise building a UI, and designing it is part of
+that. What must not be left to taste is behaviour: how money is split and rounded, what a balance
+means, which errors can happen and what the user sees then. Those are specified exactly, because
+getting them wrong produces a UI that shows wrong numbers.

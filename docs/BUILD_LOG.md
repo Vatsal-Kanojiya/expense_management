@@ -50,6 +50,19 @@
 > CI/CD is the next request. Its first job is issue 43: coverage has been at 94%, below the 95%
 > gate, since phase 18.
 >
+> **Phase 20 built and verified — an API for a remote frontend, session 27, branch `frontend-api`**
+> (on top of `project-dockerization`; merge that first). Every Django page action now has an
+> endpoint, for React or a mobile app, with JWT, CORS and a generated OpenAPI contract at
+> `/api/v1/docs/`. Decisions D40–D46. **Next: phase 21**, the business-requirements document and
+> the Postman collection for the frontend developer, generated from `/api/v1/schema/`. COMMIT_PLAN
+> phase 20 lists two behaviours that document must explain.
+>
+> **Phase 21 built and verified — the frontend pack, session 28** (branch `frontend-api`).
+> `docs/frontend/` holds the business requirements and scope of work (`BRD.md`), the integration
+> guide, a generated API reference, the OpenAPI snapshot and a Postman collection that Newman runs
+> clean against the Docker stack. Decisions D47–D49. **Hand the developer `docs/frontend/README.md`.**
+> After any API change: `make api-docs`, and commit the diff with the change.
+>
 > **Study material (session 24).** Two pages built from these docs, for revising away from the
 > laptop. Both are committed here and also published as private pages:
 >
@@ -65,19 +78,19 @@
 > Discussion: <https://claude.ai/code/session_0192K6QsQDjhnfxymJ7YfskB>
 
 **Session:** 24 — study pages added; phase 17 still **awaiting owner click-through before tagging**
-**Last code commit:** `9e69951` — *fix(docker): build the app image once, and keep an idle `make up` idle* (branch `project-dockerization`; `master` is at `9371cc5`)
+**Last code commit:** `3f38706` — *fix(api): errors a UI can show as they are; the verification email's expiry* (branch `frontend-api`, on `project-dockerization`; `master` is at `9371cc5`)
 **Phase tags:** 17, `phase-1-foundation` … `phase-16-hardening` (`git tag | sort -V`)
-**Suite:** 477 tests — green on SQLite (9 skipped) and on Postgres in Docker (none skipped), session 26. Coverage 94%, under the 95% gate since phase 18 (issue 43)
+**Suite:** 559 tests — green on SQLite (9 skipped), session 28; on Postgres in Docker (none skipped) at session 27. Coverage 96%
 **Remote:** `github.com/Vatsal-Kanojiya/expense_management` — **in sync**
 
 | Dimension | State |
 |---|---|
 | Database | Postgres 16 (SQLite still works for a zero-setup run; 9 tests skip there) |
-| Interfaces | Server-rendered views · versioned JSON API · admin · management commands |
+| Interfaces | Server-rendered views · versioned JSON API at parity with them (JWT, CORS, OpenAPI at `/api/v1/docs/`) · admin · management commands |
 | Async | Celery worker + beat, Redis broker, separate result backend |
 | Cache | Redis, version-stamped per-user keys (LocMem fallback) |
 | Deploy | Multi-stage image with a dev target; compose stack of five services in two modes (production-like, and development with live code); four named volumes; loopback ports 8765/5433/6380; `make` front door. See `docs/DOCKER.md` |
-| Open issues | 8 — 5 deliberate, the self participant in the API (34), the parked form layout (35), coverage under the gate (43) — see §6 |
+| Open issues | 6 — 5 deliberate, and the parked form layout (35) — see §6 |
 
 > **Phases ran out of order on purpose, and the bet paid off.** Auth was deferred past CRUD so it
 > could be studied properly. That was safe because phase 3's views were written fully user-scoped
@@ -296,6 +309,18 @@ erDiagram
 | Test | Test uploads kept out of `MEDIA_ROOT` | `config/test_runner.py` | ✅ fixed | 26 |
 | Test | Relaxed cookies fail `check --deploy` | `expenses/tests/test_error_pages.py` | ✅ 1 test | 26 |
 | Docs | Docker runbook | `docs/DOCKER.md` | ✅ done | 26 |
+| API | JWT, CORS, OpenAPI schema, 409 on protected deletes, health | `config/settings.py`, `expenses/api/` | ✅ done | 27 |
+| API | Account: signup, verify, login, refresh, logout, passwords, me | `accounts/api.py` | ✅ done | 27 |
+| API | Categories and people with usage; `is_self` protected | `expenses/api/views.py` | ✅ done | 27 |
+| API | Expense filters, count and total, web rules, split | `expenses/api/` | ✅ done | 27 |
+| API | Summary, balances, settle up, settlements | `expenses/api/reports.py` | ✅ done | 27 |
+| API | Exports and bill scans | `expenses/api/jobs.py` | ✅ done | 27 |
+| Query | Category and people usage shared by page and API | `expenses/managers.py` | ✅ done | 27 |
+| Test | API platform, account, resources, reports, jobs | `*/tests/test_api_*.py` | ✅ 75 tests | 27 |
+| Docs | The API journey, rendered as collection, reference and schema | `expenses/api/journey.py`, `build_api_docs` | ✅ done | 28 |
+| Docs | Business requirements and scope of work | `docs/frontend/BRD.md` | ✅ done | 28 |
+| Docs | Integration guide and index | `docs/frontend/API_GUIDE.md`, `README.md` | ✅ done | 28 |
+| Test | The pack stays true: schema snapshot, endpoint coverage, collection shape | `expenses/tests/test_api_docs.py` | ✅ 6 tests | 28 |
 
 Legend: ✅ done · 🔜 next · ⬜ not started · 🅿️ deliberately parked · ❌ problem
 
@@ -514,6 +539,115 @@ cursor bug fails `TransactionTestCase` only.
 `ContentFile` · `queryset.iterator()` and cursor lifetime · `TestCase` vs `TransactionTestCase` ·
 `BaseCommand`, `add_arguments`, `CommandError`, `self.style` · `call_command` in tests ·
 `IntegrityError` as a concurrency primitive · `FileResponse` · `MEDIA_ROOT`.
+
+---
+
+### Session 28 — The frontend pack (phase 21)
+
+The brief: professional documents for the React developer, who is a fresher: a business requirements
+document and scope of work, plus a Postman-style collection showing every request and its expected
+response. Plan and decisions first, as `9059724`: D47–D49.
+
+**The half that is generated.** The user journey is described once, in `expenses/api/journey.py`: 54
+requests in ten folders, with 25 recorded error examples. `build_api_docs` runs it against a
+throwaway test database, as the test runner does, and writes the Postman collection, the Markdown
+reference and the OpenAPI snapshot from that one run. Every response in the pack is one the API
+really returned. Tests fail if the snapshot is stale, if an endpoint in the schema has no recorded
+example, or if the collection uses an undeclared variable or repeats a request name.
+
+**The half that is written.** `BRD.md` (853 lines): 29 business rules, requirements and acceptance
+criteria for every screen, 15 non-functional requirements, milestones, and 16 acceptance scenarios
+whose numbers are the API's recorded answers. `API_GUIDE.md` (622 lines): the conventions every
+endpoint shares, with working code for token refresh, polling, authenticated downloads and
+generated types. `README.md`: the index and a 15-minute start. Every cross-document link was
+checked to resolve.
+
+**Verified.**
+
+| # | Check | Result |
+|---|---|---|
+| F1 | `build_api_docs` regenerates the pack from a throwaway database | ✅ 54 requests, 25 examples |
+| F2 | Tests keep the pack honest | ✅ 6 tests: schema snapshot, endpoint coverage, collection shape, the command end to end |
+| F3 | Newman, Postman's own runner, runs folders 0–8 unedited against the Docker stack | ✅ 48 requests, 50 assertions, **0 failures**. The export poll repeated once, because the worker had not finished, then passed |
+| F4 | The BRD's numbers and rules match the code | ✅ acceptance figures copied from the recorded responses; rules checked against the models, forms and serializers |
+
+**What only running it found:**
+
+1. **Every POST in the first Newman run failed.** Postman rebuilds a URL from its path segments, and
+   the generator dropped the empty last segment that keeps the trailing slash. A GET was redirected
+   and passed; POST `/auth/login` cannot be redirected, so there was no token for anything after it.
+   Fixed in `ea92fab`, then 0 failures.
+2. **Reading the recorded errors as a frontend developer would** turned up three things to fix in
+   the API itself (`3f38706`): "still used by 1 expenses"; password-rule errors reported on the
+   *confirmation* field, where a form would show them under the wrong box; and the verification
+   email promising three days for a link that lasts 24 hours.
+3. **Coverage fell to 92%** with the generator's renderers untested. A test that runs the real
+   command into a temporary directory brought it back to 96% (`da82023`).
+
+**Suite:** 559 tests.
+
+---
+
+### Session 27 — An API for a remote frontend (phase 20)
+
+The brief: the app is about to be hosted, and a React developer — a fresher, practising — will
+build a new UI against it from her own machine. A mobile app or a public portal may follow, so the
+backend must offer an API for everything the Django pages do, usable from another origin and from
+a native client. The requirements document and the Postman collection she will work from are the
+next phase. Plan and decisions first, as `920c6e2`: D40–D46, and COMMIT_PLAN phase 20 with a
+page-to-endpoint parity table.
+
+**Probing the existing API first** found what it could not do, against a scratch database:
+
+| Probe | Result |
+|---|---|
+| Delete a category that has expenses, or a person on a line item | **500** (issue 44) |
+| Rename the self participant | 200 — and no `is_self` to tell a client which one it is (issue 34) |
+| `?start=` / `?search=` on the expense list | silently ignored |
+| Summary, balances, exports, bill scans, login, schema | 404: no endpoints |
+
+Reading the serializer against the web form added issue 45: the API skipped four of the form's
+rules.
+
+**What was built** — 29 paths under `/api/v1/`; commits in COMMIT_PLAN phase 20:
+
+| Area | Summary |
+|---|---|
+| Platform | SimpleJWT with 30-minute access tokens, 14-day rotating refresh tokens, a blacklist and `CHECK_REVOKE_TOKEN`; CORS by allow-list; OpenAPI at `schema/` with Swagger UI at `docs/`; a 409 for every protected delete; `health/` |
+| Account | Signup, verify-email, login, refresh, logout, password change / reset / confirm, `me` GET/PATCH/DELETE — validated by the web's forms, throttled by the web's limiter under the same key |
+| Resources | Usage columns on categories and people; `is_self` protected; expense filters by the page's form; `count` and `total_amount`; the web's rules; `expenses/{id}/split/` |
+| Reports | `summary/`, `balances/`, `balances/{id}/settle/`, `settlements/` — over `summarise`, `outstanding_balances` and `settle_up` |
+| Jobs | Exports and bill scans with 202 and polling, downloads, the scan photo, `prefill/`, and a scan saved at most once under a row lock |
+| Docker | The new settings passed through compose; `.env.example` documents them |
+
+**Verified.**
+
+| # | Check | Result |
+|---|---|---|
+| A1 | Every row of the parity table | ✅ answered by an endpoint, each covered by a test |
+| A2 | Schema | ✅ zero warnings. A test runs `spectacular --fail-on-warn --validate`; Swagger UI loads |
+| A3 | The whole journey over HTTP against the Docker stack, as a browser at `http://localhost:5173` | ✅ **42 of 42**: preflight allowed for that origin and refused for another; every response carries the CORS header; sign up, verify from the mailed frontend link, log in, CRUD, filters, split, summary, balances, settle, export built by the worker and downloaded from web with a readable `Content-Disposition`, bill scan to saved expense and refused a second time, reset through the frontend link, old tokens dead, refresh rotation, logout, account deletion |
+| A4 | Suites | ✅ 552 tests on SQLite (9 skipped) and on Postgres inside Docker (none skipped); ruff; the migrations check; `check --deploy`; coverage 96% |
+
+**What only running it found:**
+
+1. **The split action 404'd its own expense.** It added a second, different `Prefetch("items")`;
+   Django raises `ValueError`, and DRF's `get_object_or_404` turns a `ValueError` into a bare 404,
+   hiding the cause. Fixed before commit with `prefetch_related(None)`.
+2. **`unaccounted_amount` read "900.00" on an expense with no lines** — "900 missing", when there
+   was nothing to reconcile. It is now null without line items.
+3. **The end-to-end script's split came out 50/50** where it expected Rahul alone on the drinks.
+   That is not a bug: D25's `include_self` default adds you to every shared line. A checkbox UI
+   should send `include_self: false` with its exact lists. Recorded for the phase 21 document.
+4. **Two tests read `FRONTEND_URL` from the environment**, and failed inside Docker where `.env`
+   sets it. `make lint` could not write its cache into a checkout the container user does not own;
+   it now runs with `--no-cache`. Commit `e2f1887`.
+
+**Also:** in this sandbox the system `cryptography` package is broken (no `_cffi_backend`), which
+PyJWT tries to import. `cffi` was installed locally. The Docker image does not carry the problem:
+the stack ran A3 on it.
+
+**Suite:** 552 tests.
 
 ---
 
@@ -1506,6 +1640,16 @@ this is the file set that silently drifts and is worth being able to reconstruct
 | 7 | `MEDIA_URL` / `MEDIA_ROOT` | — | `media/` | Generated exports |
 | 26 | `MEDIA_ROOT` | `BASE_DIR / "media"` | `env("MEDIA_ROOT")`, same default | The image sets `/data/media`, a volume that web and worker share, outside the code. D34 |
 | 26 | `SESSION_COOKIE_SECURE` / `CSRF_COOKIE_SECURE` | `True` | `env.bool`, default `True` | Off only in `compose.yaml`, which serves plain HTTP. A test asserts that turning them off fails `check --deploy`. D35 |
+| 27 | `INSTALLED_APPS` | — | `+ corsheaders, token_blacklist, drf_spectacular` | Phase 20. The blacklist brings its own migrations |
+| 27 | `MIDDLEWARE` | — | `+ CorsMiddleware` after WhiteNoise | Before anything that can answer a request itself |
+| 27 | `REST_FRAMEWORK` auth | Session only | JWT first, then session | D41 |
+| 27 | `REST_FRAMEWORK` throttles | `1000/hour` user, `60/hour` anon | `env`, defaults `3000/hour`, `60/hour` | D46 |
+| 27 | `REST_FRAMEWORK` schema, exception handler | — | drf-spectacular; `expenses.api.exceptions` | D43; issue 44 |
+| 27 | `SIMPLE_JWT` | — | 30 min / 14 days (`env`), rotate, blacklist, `CHECK_REVOKE_TOKEN` | D41 |
+| 27 | `CORS_*` | — | `CORS_ALLOWED_ORIGINS` from `env`, `/api/` only, no credentials, `Content-Disposition` exposed | D42 |
+| 27 | `FRONTEND_URL` | — | `env`, default `""` | D45 |
+| 27 | `SPECTACULAR_SETTINGS` | — | Title, split request/response components, `/api/v1` prefix | D43 |
+| 27 | `EMAIL_HOST` … `EMAIL_USE_TLS` | Django defaults | `env`, same defaults | SMTP on a hosted server |
 
 > The old `SECRET_KEY` is in git history (commit `925f501`) and is permanently compromised. A fresh
 > key was generated rather than reused. Lesson: once a secret is committed, rotating is the only
@@ -1679,6 +1823,10 @@ interview-gap list.
 | 40 | Web and worker had separate media directories | session 26 — `6db7734`, one `media` volume in both. Verified V5, V6 |
 | 41 | The test suite wrote into the real `MEDIA_ROOT` | session 26 — `e15f2f2`, `FastTestRunner` temp dir. Verified V11 |
 | 42 | Beat's schedule state was lost on every restart | session 26 — `6db7734`, `beat-schedule` volume |
+| 34 | The self participant was unprotected in the API | session 27 — `17a935b`: listed with `is_self`, rename and delete refused with 403. The data-model redesign the owner mentioned stays open as a question, but nothing is broken any more |
+| 43 | Coverage 94%, under the 95% gate | session 27 — the phase 20 tests took it to 96% |
+| 44 | A protected delete through the API was a 500 | session 27 — `1fc9fe3`, a 409 with a reason from one exception handler |
+| 45 | The API skipped the web's expense rules | session 27 — `17a935b`, the rules restated in the serializer; line-item people join the participants |
 
 ### Open
 
@@ -1689,6 +1837,4 @@ interview-gap list.
 | 20 | No worker supervision, monitoring or dead-letter handling | A crashed worker stays down; after `max_retries` a task is simply lost with nothing visible | systemd unit or container for the worker; Flower or event export for monitoring. See RUNNING_ASYNC.md |
 | 21 | `FileResponse` streams exports through Python | Fine in development, wasteful in production | `X-Accel-Redirect` (nginx) or a signed object-storage URL |
 | 25 | Participant deletion is refused once they are on a line item | `ItemShare.participant` is `PROTECT`, so removing someone from your list fails while any item still charges them. The view explains it rather than 500ing, but there is no way to re-share those items in bulk | Same shape as issue 10: an ordered delete, or a bulk re-share action. Deliberately left visible rather than papered over with `CASCADE`, which would leave items charged to nobody |
-| 34 | The self participant is unprotected in the API | The web People pages filter out `is_self`, but the API participant endpoints list, rename and delete it like any contact. Renaming it makes the owner appear under a friend's name; deleting it strands `paid_by` on every expense the owner paid | **Parked for better design, session 21.** Proposed: keep it listed with an `is_self` marker, since API clients need its id to set `paid_by` and participation, and refuse rename and delete. The owner judged the self-participant design itself may need rethinking before patching it, so no fix was applied. **Same design review should cover:** `balances()` calling `get_or_create_self` on every read (fixed tactically in session 21 by treating a null `paid_by` as the owner, but the owner judged the self-participant data model as a whole needs a better design), and self naming, now `FirstName (self)` with a numeric suffix on collision |
 | 35 | The expense form wastes vertical space | `{{ form.as_p }}` gives every field a full-width row | **Parked by the owner, session 20.** Presentation rather than function, and the UI may move to a separate frontend such as React. Was T7 in the first handoff plan |
-| 43 | Coverage is 94%, under the 95% gate | Found in session 26, and already true on `master`: phase 18's `extraction/providers/base.py` (0%), `prefill.py` (80%), `openai.py`, `registry.py` and `claude.py` pulled the total under. CI's coverage step fails for a reason no current branch caused | Tests for the uncovered prefill and provider error paths, as part of the CI/CD work that comes next |

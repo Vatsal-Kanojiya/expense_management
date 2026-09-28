@@ -83,13 +83,25 @@ class ExpenseFilterForm(DateRangeForm):
         # crafted ?category=<id> filter against one.
         self.fields["category"].queryset = Category.objects.filter(user=user)
 
-    def apply(self, queryset):
-        """Narrow a queryset by whatever was actually supplied."""
-        start, end = self.range_or_default()
-        queryset = queryset.in_range(start, end)
+    def apply(self, queryset, *, default_to_month=True):
+        """Narrow a queryset by whatever was actually supplied.
+
+        The Expenses page opens on the current month. The API passes
+        ``default_to_month=False`` and gets exactly what was asked for: all
+        time unless ``start`` or ``end`` narrows it (DECISIONS D46).
+        """
+        if default_to_month:
+            start, end = self.range_or_default()
+            queryset = queryset.in_range(start, end)
 
         if not self.is_valid():
             return queryset
+
+        if not default_to_month:
+            if start := self.cleaned_data.get("start"):
+                queryset = queryset.filter(spent_on__gte=start)
+            if end := self.cleaned_data.get("end"):
+                queryset = queryset.filter(spent_on__lte=end)
 
         if category := self.cleaned_data.get("category"):
             queryset = queryset.filter(category=category)

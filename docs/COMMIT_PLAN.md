@@ -485,6 +485,142 @@ pushing images to a registry · merging to `master`.
 
 **Tag:** `phase-19-docker-daily-use`, once the owner has run the stack on their own machine.
 
+### Phase 20 — An API for a remote frontend ✅ *(session 27, built and verified on branch `frontend-api`, on top of `project-dockerization`; not merged)*
+
+> **Prerequisite:** phase 19. This phase adds three dependencies, API code, tests and settings. It
+> does **not** change the Django pages, models or migrations — apart from the migrations of the
+> JWT blacklist app, which ship with the library.
+
+A React developer will build a new UI from her own machine against the hosted server, and a mobile
+app may follow. So every action a Django page offers gets an endpoint (D40–D46). The
+business-requirements document and the Postman collection come in phase 21, generated from this
+phase's OpenAPI schema.
+
+**Parity: every page action, and its endpoint** (all under `/api/v1/` unless noted)
+
+| Django page | Action | Endpoint |
+|---|---|---|
+| Sign up, verify email | register; confirm the mailed link | `POST auth/signup/`, `POST auth/verify-email/` |
+| Log in / log out | | `POST auth/login/`, `POST auth/refresh/`, `POST auth/logout/` |
+| Password change / reset | | `POST auth/password/change/`, `POST auth/password/reset/`, `POST auth/password/reset/confirm/` |
+| Delete account | | `DELETE me/` (plus `GET`/`PATCH me/` for the profile) |
+| Overview (dashboard) | totals, previous period, by category, biggest | `GET summary/` |
+| Expenses | list with date / category / search filters and the filtered total | `GET expenses/` |
+| Expense form | create, edit, delete, with line items, shares, tax/tip, payer | `POST/GET/PUT/PATCH/DELETE expenses/…` |
+| Expense form, Split tab | who owes what on one expense | `GET expenses/{id}/split/` |
+| Categories | list with counts and totals; add, rename, delete | `categories/` (409 when in use) |
+| People | list with counts; add, rename, delete | `participants/` (`is_self`; 409 when in use) |
+| Balances | who owes you, whom you owe; settle up | `GET balances/`, `POST balances/{participant}/settle/`, `GET settlements/` |
+| Exports | request, list, download | `POST/GET exports/`, `GET exports/{id}/download/` |
+| Scan a bill | upload, watch status, review, save | `POST/GET bill-scans/`, `GET bill-scans/{id}/image/`, `GET bill-scans/{id}/prefill/`, `POST expenses/` with `bill_scan` |
+| — | contract and health | `GET schema/` (OpenAPI 3), `GET docs/` (Swagger UI), `GET health/` |
+
+| # | Commit | Architecture note |
+|---|---|---|
+| 20.1 | `docs: plan phase 20, an API for a remote frontend` | D40–D46 and this section |
+| 20.2 | `feat(api): JWT, CORS, an OpenAPI schema and 409 for protected deletes` | Dependencies, settings, exception handler, health |
+| 20.3 | `feat(api): account endpoints` | Reuses the web's forms, rate limiter, token generators and ordered deletion |
+| 20.4 | `feat(api): categories, people and expenses at parity with the pages` | Aggregates, `is_self`, filters and totals, the web's expense rules, split |
+| 20.5 | `feat(api): dashboard summary, balances and settling up` | Wraps `summarise`, `outstanding_balances`, `settle_up` |
+| 20.6 | `feat(api): exports and bill scans` | Same Celery tasks; the scan links to its expense under a row lock |
+| 20.7 | `feat(docker): pass the frontend settings through compose` | `CORS_ALLOWED_ORIGINS`, `FRONTEND_URL`, JWT lifetimes, SMTP |
+| 20.8 | `docs: record session 27` | BUILD_LOG, README |
+
+**Definition of done:**
+
+| # | Check |
+|---|---|
+| A1 | Every row of the parity table answers as documented |
+| A2 | The OpenAPI schema generates with zero warnings; Swagger UI loads |
+| A3 | Against the Docker stack, over HTTP only, as a browser on another origin would: CORS preflight passes for an allowed origin and is refused for any other; the whole journey works — sign up, verify, log in, every CRUD path, summary, balances, settle, export and download, bill scan to saved expense, refresh, logout — and a revoked refresh token is refused |
+| A4 | The suite passes on SQLite and on Postgres in Docker; ruff; `check --deploy` |
+
+**Progress.**
+
+| Task | Status | Commit |
+|---|---|---|
+| 20.1 | done | `920c6e2` |
+| 20.2 | done | `1fc9fe3` |
+| 20.3 | done | `b633357` |
+| 20.4 | done | `17a935b` |
+| 20.5 | done | `4d0fe98` |
+| 20.6 | done | `c9e3fe9` |
+| 20.7 | done | `a29b29c` |
+| — | done, found by verification | `e2f1887` `fix(api): pin FRONTEND_URL in the tests that assume it unset; lint without a cache` |
+| 20.8 | done | the commit that records session 27 |
+
+**As built.** A1–A4 all pass; the results are in BUILD_LOG session 27. Four departures from the
+plan:
+
+- **The schema and Swagger UI live inside the version**, at `/api/v1/schema/` and `/api/v1/docs/`.
+  With namespace versioning, drf-spectacular documents the endpoints of the version the schema
+  was requested from.
+- **`GET settlements/` was added.** No page lists repayments, but a client has no other way to
+  show what "settled" meant.
+- **The expense list carries `count` and `total_amount`**, reversing a phase 10 test (D46).
+- **One commit came from running the suite inside Docker**, where `.env` sets `FRONTEND_URL`: two
+  tests of the unset default had been reading the environment.
+
+**For phase 21 (the frontend document).** Two behaviours a UI developer must be told, both found
+while verifying:
+
+- **Send `include_self: false` together with the exact lists your checkboxes show.** D25's default
+  adds you to every shared line, so "only Rahul had the drinks" would otherwise come back as a
+  50/50 line.
+- **`unaccounted_amount` is null when an expense has no line items** — there is nothing to
+  reconcile. A number there always means "these lines do not add up".
+
+**Out of scope, for phase 21 and later:** the business-requirements document and Postman
+collection (phase 21) · changing the email address on an account (needs its own verification
+flow) · push notifications · resending a verification email · per-device session management.
+
+### Phase 21 — The frontend pack ✅ *(session 28, built and verified on branch `frontend-api`; not merged)*
+
+> **Prerequisite:** phase 20. Documentation, a management command that generates part of it, and
+> tests that keep it honest. No API behaviour changes.
+
+The documents a frontend developer builds the React UI from (D47–D49), in `docs/frontend/`:
+
+| File | What it is | How it is made |
+|---|---|---|
+| `README.md` | Start here: what is in the pack, in what order to read it, a 15-minute quick start | written |
+| `BRD.md` | Business requirements and scope of work: users, domain, business rules, every screen with its acceptance criteria, non-functional requirements, milestones | written |
+| `API_GUIDE.md` | Integration guide: base URLs, the token lifecycle, errors and codes, pagination, formats, uploads, downloads, polling | written |
+| `API_REFERENCE.md` | Every endpoint, with a real request and response | **generated** |
+| `openapi.yaml` | The OpenAPI 3 snapshot, for code generators and Postman import | **generated** |
+| `postman/*.json` | The collection (a runnable journey, with the recorded responses as examples) and environments | **generated** |
+
+| # | Commit |
+|---|---|
+| 21.1 | `docs: plan phase 21, the frontend pack` |
+| 21.2 | `feat(docs): record the API journey into a Postman collection, reference and schema` |
+| 21.3 | `docs: the requirements document, the integration guide and the index` |
+| 21.4 | `docs: record session 28` |
+
+**Definition of done:**
+
+| # | Check |
+|---|---|
+| F1 | `build_api_docs` regenerates all generated files from a throwaway database |
+| F2 | Tests fail if `openapi.yaml` is stale or an endpoint has no recorded example |
+| F3 | Newman — Postman's own runner — runs the collection against the Docker stack with every test passing, and no step edited by hand |
+| F4 | Every screen in the BRD maps to endpoints in the reference, and every rule it states matches the code |
+
+**Progress.**
+
+| Task | Status | Commit |
+|---|---|---|
+| 21.1 | done | `9059724` |
+| 21.2 | done | `0dcaa72`, test `da82023` |
+| — | done, found by verification | `ea92fab` `fix(docs): keep the trailing slash on Postman request URLs` |
+| — | done, found by verification | `3f38706` `fix(api): errors a UI can show as they are; the verification email's expiry` |
+| 21.3 | done | `4c1aeef` |
+| 21.4 | done | the commit that records session 28 |
+
+**As built.** F1–F4 pass; the results are in BUILD_LOG session 28. Writing against recorded
+responses, rather than against the code, found three things worth fixing in the API itself. They are
+listed there.
+
 ---
 
 ## 3. Practice branches — re-implementing a phase by hand
