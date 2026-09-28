@@ -388,3 +388,39 @@ class PurgeSecurityEventsCommandTests(TestCase):
         call_command("purge_security_events", days=365, dry_run=True)
 
         self.assertTrue(SecurityEvent.objects.filter(pk=old.pk).exists())
+
+
+class EventAddressTests(TestCase):
+    """The address column only ever gets a real IP address.
+
+    On Postgres it is an IP type, and a value like "unknown" made the whole
+    event fail to save.
+    """
+
+    def test_a_request_without_an_address_still_records_the_event(self):
+        from django.test import RequestFactory
+
+        from accounts import audit
+        from accounts.models import SecurityEvent
+
+        request = RequestFactory().get("/")
+        del request.META["REMOTE_ADDR"]
+
+        audit.record("login_failed", request=request, username="nobody")
+
+        event = SecurityEvent.objects.get(event="login_failed", username="nobody")
+        self.assertIsNone(event.ip)
+
+    def test_a_real_address_is_kept(self):
+        from django.test import RequestFactory
+
+        from accounts import audit
+        from accounts.models import SecurityEvent
+
+        audit.record(
+            "login_failed",
+            request=RequestFactory().get("/", REMOTE_ADDR="203.0.113.7"),
+            username="x",
+        )
+
+        self.assertEqual(SecurityEvent.objects.get(username="x").ip, "203.0.113.7")

@@ -20,6 +20,7 @@ see what happened" -- don't. Passwords, tokens, codes and hashes never
 belong in a table admins can browse.
 """
 
+import ipaddress
 import logging
 
 from django.db import transaction
@@ -52,7 +53,7 @@ def record(event, request=None, user=None, username="", **detail):
         # request is passed at all.
         from config.middleware import get_request_id
 
-        ip = client_ip(request)
+        ip = _valid_ip(client_ip(request))
         request_id = get_request_id()
 
     try:
@@ -71,3 +72,16 @@ def record(event, request=None, user=None, username="", **detail):
             )
     except Exception:
         logger.warning("Failed to record security event %r", event, exc_info=True)
+
+
+def _valid_ip(value):
+    """``value`` if it is an IP address, else ``None``.
+
+    client_ip() answers "unknown" when a request has no address, and a
+    forwarded header can carry anything. The column is a real IP type on
+    Postgres, which refuses such a value -- and the whole event with it.
+    """
+    try:
+        return str(ipaddress.ip_address(value))
+    except ValueError:
+        return None
