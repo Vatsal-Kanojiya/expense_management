@@ -633,11 +633,20 @@ CELERY_BEAT_SCHEDULE = {
         "task": "expenses.tasks.purge_unverified",
         "schedule": 24 * 60 * 60,
     },
+    # Roadmap A3: the security event trail keeps growing otherwise.
+    "purge-old-security-events": {
+        "task": "expenses.tasks.purge_security_events",
+        "schedule": 24 * 60 * 60,
+    },
 }
 
 
-# How long an account may sit unverified before purge_unverified removes it
-# (roadmap A1 -- SECURITY_ROADMAP.md). Read here, not hardcoded in the
-# command, so an operator can tune it without a deploy -- the command's own
-# --days flag still overrides this for a one-off run.
+# Account retention (roadmap A1, A3 -- SECURITY_ROADMAP.md)
+#
+# How long an account may sit unverified before purge_unverified removes it,
+# and how long a security event is kept before purge_security_events does.
+# Read here, not hardcoded in the commands, so an operator can tune either
+# without a deploy -- the commands' own --days flag still overrides this
+# for a one-off run.
 UNVERIFIED_ACCOUNT_DAYS = env.int("UNVERIFIED_ACCOUNT_DAYS", default=7)
+SECURITY_EVENT_RETENTION_DAYS = env.int("SECURITY_EVENT_RETENTION_DAYS", default=365)

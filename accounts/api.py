@@ -274,6 +274,7 @@ class SignupView(PublicView):
         user = form.save()
         Participant.get_or_create_self(user)
         send_verification_email(user, request, to_frontend=True)
+        audit.record("signed_up", request=request, user=user)
 
         return Response(
             {
@@ -307,6 +308,8 @@ class VerifyEmailView(PublicView):
             user.email_verified_at = timezone.now()
             user.save(update_fields=["is_active", "email_verified_at"])
 
+        audit.record("email_verified", request=request, user=user)
+
         return Response(issue_tokens(user))
 
 
@@ -339,8 +342,12 @@ class LoginView(PublicView):
         password = body.validated_data["password"]
 
         if ratelimit.login_blocked(request, username):
+            audit.record("login_blocked", request=request, username=username)
             return rate_limited("Too many sign-in attempts. Wait a few minutes and try again.")
 
+        # django_authenticate() sends Django's own user_login_failed signal
+        # on any rejected attempt, which accounts/signals.py turns into a
+        # login_failed event -- no explicit call needed here for that case.
         user = django_authenticate(request, username=username, password=password)
 
         if user is None:
@@ -374,6 +381,9 @@ class LoginView(PublicView):
             )
 
         ratelimit.clear_login(request, username)
+        # No django.contrib.auth.login() call here -- a JWT pair is handed
+        # back instead of a session -- so nothing else records this login.
+        audit.record("login_succeeded", request=request, user=user)
         return Response(issue_tokens(user))
 
 
@@ -403,12 +413,19 @@ class LogoutView(PublicView):
         body.is_valid(raise_exception=True)
 
         try:
-            RefreshToken(body.validated_data["refresh"]).blacklist()
+            token = RefreshToken(body.validated_data["refresh"])
+            # The claim, not request.user: this endpoint takes no
+            # authentication (PublicView), only the refresh token itself,
+            # so the token's own subject is the only reliable "who".
+            user = User.objects.filter(pk=token.payload.get("user_id")).first()
+            token.blacklist()
         except TokenError:
             return Response(
                 {"detail": "That token is invalid or already revoked.", "code": "token_invalid"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        audit.record("logged_out", request=request, user=user)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -455,7 +472,8 @@ class PasswordChangeView(APIView):
 
         ratelimit.clear_password_change(request.user)
         user = form.save()
-        revoke_refresh_tokens(user)
+        revoke_refresh_tokens(user, request=request)
+        audit.record("password_changed", request=request, user=user)
         if request.auth is None:
             # Signed in by session: keep that session, as the web page does.
             update_session_auth_hash(request, user)
@@ -484,6 +502,11 @@ class PasswordResetView(PublicView):
         ):
             return rate_limited("Too many reset requests. Wait an hour and try again.")
         ratelimit.record_attempt("reset", request, email, ratelimit.RESET_WINDOW)
+
+        # Recorded whether or not the address matches an account -- like
+        # the response itself, which never says either way.
+        matched_user = User.objects.filter(email__iexact=email).first()
+        audit.record("password_reset_requested", request=request, user=matched_user, email=email)
 
         form = PasswordResetForm(data={"email": email})
         if form.is_valid():
@@ -538,7 +561,8 @@ class PasswordResetConfirmView(PublicView):
             )
 
         form.save()
-        revoke_refresh_tokens(user)
+        revoke_refresh_tokens(user, request=request)
+        audit.record("password_reset_completed", request=request, user=user)
         return Response(
             {"detail": "Your password has been set. You can log in now.", "code": "password_set"}
         )
@@ -588,7 +612,7 @@ class MeView(APIView):
         username = user.get_username()
         if request.auth is None:
             logout(request)
-        counts = delete_account(user)
+        counts = delete_account(user, request=request)
         logger.info("Account %s deleted through the API: %s", username, counts)
         return Response(status=status.HTTP_204_NO_CONTENT)
 

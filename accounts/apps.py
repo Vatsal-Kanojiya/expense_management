@@ -6,5 +6,7 @@ class AccountsConfig(AppConfig):
     name = "accounts"
 
     def ready(self):
-        # Registers the deploy check for the rate limits' cache.
-        from . import checks  # noqa: F401
+        from . import (
+            checks,  # noqa: F401 -- registers the deploy check for the rate limits' cache.
+            signals,  # noqa: F401 -- connects login/logout to accounts/audit.py; see its docstring.
+        )
