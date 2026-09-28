@@ -6,6 +6,7 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, TemplateView
 
@@ -224,7 +225,8 @@ class VerifyEmailView(View):
 
         if not user.is_active:
             user.is_active = True
-            user.save(update_fields=["is_active"])
+            user.email_verified_at = timezone.now()
+            user.save(update_fields=["is_active", "email_verified_at"])
 
         # login() rotates the session key, which is what prevents session
         # fixation. Passing the backend explicitly is unnecessary here

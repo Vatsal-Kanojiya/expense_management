@@ -21,6 +21,7 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import update_last_login
 from django.contrib.auth.tokens import default_token_generator
 from django.urls import path
+from django.utils import timezone
 from django.utils.http import urlsafe_base64_decode
 from django.views.decorators.debug import sensitive_variables
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_field
@@ -36,7 +37,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from expenses.api.common import MessageSerializer, ValidationErrorSerializer, raise_form_errors
 from expenses.models import Participant
 
-from . import ratelimit
+from . import audit, ratelimit
 from .deletion import delete_account
 from .forms import SignUpForm
 from .verification import send_verification_email, verify
@@ -173,15 +174,20 @@ def issue_tokens(user):
     }
 
 
-def revoke_refresh_tokens(user):
+def revoke_refresh_tokens(user, request=None):
     """Blacklist every refresh token the user holds, on every device.
 
     Access tokens need no list: CHECK_REVOKE_TOKEN ties each one to the
     password hash, so the password change that calls this has already
     ended them.
+
+    Records ``tokens_revoked`` here rather than at each call site (a
+    password change or reset, on the web page or the API), so every caller
+    gets the event for free and none can forget it.
     """
     for token in OutstandingToken.objects.filter(user=user):
         BlacklistedToken.objects.get_or_create(token=token)
+    audit.record("tokens_revoked", request=request, user=user)
 
 
 def user_from_uid(uid):
@@ -298,7 +304,8 @@ class VerifyEmailView(PublicView):
 
         if not user.is_active:
             user.is_active = True
-            user.save(update_fields=["is_active"])
+            user.email_verified_at = timezone.now()
+            user.save(update_fields=["is_active", "email_verified_at"])
 
         return Response(issue_tokens(user))
 
