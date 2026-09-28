@@ -220,6 +220,41 @@ Never put a token in a URL, a query string, a log line or an error report.
 activates the account and returns a token pair, so the user is signed in. Until then, logging in
 answers 403 `email_not_verified` (only when the password was right).
 
+### 3.7 Two-step sign-in (MFA)
+
+Once a user turns it on, **every** sign-in asks for a code from an authenticator app (or a
+recovery code) after the password — this API and the web pages alike. (The admin site has no
+second-step form of its own: its login page redirects to the web login, so a staff account with
+MFA on gets the same challenge there too.)
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant A as API
+    C->>A: POST auth/login/ {username, password}
+    A-->>C: 200 {mfa_required: true, mfa_ticket}
+    Note over C: No tokens yet. Show the code-entry screen.
+    C->>A: POST auth/mfa/verify/ {mfa_ticket, code}
+    A-->>C: 200 {access, refresh, user}
+```
+
+If `auth/login/`'s answer has `mfa_required: true`, there is **no `access` or `refresh` token in
+it** — show a code-entry screen and send the `mfa_ticket` it carries, with the code the user typed,
+to `POST auth/mfa/verify/`. That answers exactly like a plain login: a token pair and the profile.
+The ticket is short-lived (5 minutes) and single-use in spirit — wrong codes count against a limit
+of 5 per 15 minutes for that account (§11) — so a client should not cache or retry it silently; if
+`auth/mfa/verify/` answers 400 `invalid_ticket`, send the user back to the login form.
+
+**Managing it**, once signed in (all under `Bearer` auth):
+
+| Request | Does |
+|---|---|
+| `GET auth/mfa/` | `{enabled, recovery_codes_left}` |
+| `POST auth/mfa/setup/` | Starts enrolment: `{secret, otpauth_uri}`. Build a QR code from `otpauth_uri` (e.g. with a JS QR library) and also show `secret` for manual entry. Calling it again before confirming replaces the pending secret. 400 `mfa_already_enabled` if already on. |
+| `POST auth/mfa/confirm/ {code}` | Confirms the pending device with a code from the app. Returns `{recovery_codes: [...ten strings], access, refresh, user}` — **the only time the codes are shown**; tell the user to save them. Every other refresh token is revoked. |
+| `POST auth/mfa/disable/ {password, code}` | Turns it off. Needs the **current password and a current code** (or a recovery code) — neither alone is enough. Revokes every other refresh token. |
+| `POST auth/mfa/recovery-codes/ {code}` | A fresh set of ten, replacing the old one. Needs a current **authenticator** code — a recovery code does not work here, so spending the last one cannot itself mint ten more. |
+
 ---
 
 ## 4. Cross-origin requests (CORS)
@@ -328,7 +363,11 @@ A robust client handles all three: show `detail` as a message, map field keys on
 |---|---|---|---|---|
 | `invalid_credentials` | 401 | `auth/login/` | Wrong username or password | "Wrong username or password." |
 | `email_not_verified` | 403 | `auth/login/` | Right password; account not activated | Tell them to use the emailed link |
-| `rate_limited` | 429 | `auth/login/`, `auth/password/reset/` | Too many attempts (§11) | "Too many attempts. Try again in a few minutes." |
+| `rate_limited` | 429 | `auth/login/`, `auth/password/reset/`, `auth/mfa/verify/` | Too many attempts (§11) | "Too many attempts. Try again in a few minutes." |
+| `invalid_ticket` | 400 | `auth/mfa/verify/` | The `mfa_ticket` is missing, tampered with, expired (5 min), or the password changed since | Send back to the login form |
+| `mfa_already_enabled` | 400 | `auth/mfa/setup/` | Two-step sign-in is already on | Send to the manage screen instead |
+| `mfa_setup_not_started` | 400 | `auth/mfa/confirm/` | No pending enrolment to confirm | Send back to `auth/mfa/setup/` |
+| `mfa_not_enabled` | 400 | `auth/mfa/disable/`, `auth/mfa/recovery-codes/` | Two-step sign-in is not on | Send to the setup screen |
 | `token_not_valid` | 401 | any | Access token expired or malformed; or refresh token revoked or expired | Refresh once; if it fails, sign out |
 | `password_changed` | 401 | any | The password changed after this token was issued | Sign out; ask them to sign in again |
 | `user_not_found` | 401 | any | The account no longer exists | Sign out |
@@ -551,6 +590,7 @@ When the draft endpoint answers 409 `already_saved`, open that expense instead.
 | 50 failed logins per 15 minutes | Per address, across all usernames | 429 `rate_limited` |
 | 10 sign-up attempts per hour | Per address (the web page and the API share it) | 429 `rate_limited` |
 | 5 wrong current passwords per 15 minutes | Per account, on password change (page and API share it) | 429 `rate_limited` |
+| 5 wrong two-step codes per 15 minutes | Per account, verifying the login ticket (`auth/mfa/verify/`) | 429 `rate_limited` |
 | 5 reset requests per hour | Per email address per address | 429 `rate_limited` |
 | 30 bill scans per hour | Per account (the web page and the API share it) | 429 `rate_limited` |
 | 20 CSV exports per hour | Per account (the web page and the API share it) | 429 `rate_limited` |
