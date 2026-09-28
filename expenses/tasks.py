@@ -203,6 +203,20 @@ def purge_unverified():
     call_command("purge_unverified")
 
 
+@shared_task
+def purge_security_events():
+    """Beat's entry point into `manage.py purge_security_events` (roadmap A3).
+
+    Same reasoning as `purge_unverified` above: no `days` argument, so the
+    command's own SECURITY_EVENT_RETENTION_DAYS default is what actually
+    runs, not whatever value happened to be current when the schedule was
+    written.
+    """
+    from django.core.management import call_command
+
+    call_command("purge_security_events")
+
+
 @shared_task(
     bind=True,
     # Same backoff shape as build_expense_export. A vision API rate-limiting

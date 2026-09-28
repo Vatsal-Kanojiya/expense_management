@@ -12,7 +12,7 @@ from django.views.generic import CreateView, TemplateView
 
 from expenses.models import Category, Expense, Participant
 
-from . import ratelimit
+from . import audit, ratelimit
 from .api import revoke_refresh_tokens
 from .deletion import delete_account
 from .forms import SignUpForm
@@ -50,6 +50,7 @@ class ThrottledLoginView(auth_views.LoginView):
         username = request.POST.get("username", "")
 
         if ratelimit.login_blocked(request, username):
+            audit.record("login_blocked", request=request, username=username)
             form = self.get_form()
             form.full_clean()
             form.add_error(
@@ -94,7 +95,8 @@ class ThrottledPasswordChangeView(auth_views.PasswordChangeView):
         # a stolen refresh token outlives the password that was supposed to
         # shut it out -- the same gap PasswordChangeView in accounts/api.py
         # already closes for a change made through the API. Security pass 4.
-        revoke_refresh_tokens(form.user)
+        revoke_refresh_tokens(form.user, request=self.request)
+        audit.record("password_changed", request=self.request, user=form.user)
         return response
 
 
@@ -120,6 +122,11 @@ class ThrottledPasswordResetView(auth_views.PasswordResetView):
 
         ratelimit.record_attempt("reset", request, email, ratelimit.RESET_WINDOW)
 
+        # Recorded whether or not the address matches an account -- like
+        # the response itself, which never says either way.
+        user = get_user_model().objects.filter(email__iexact=email).first()
+        audit.record("password_reset_requested", request=request, user=user, email=email)
+
         return super().post(request, *args, **kwargs)
 
 
@@ -138,7 +145,8 @@ class ThrottledPasswordResetConfirmView(auth_views.PasswordResetConfirmView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        revoke_refresh_tokens(self.user)
+        revoke_refresh_tokens(self.user, request=self.request)
+        audit.record("password_reset_completed", request=self.request, user=self.user)
         return response
 
 
@@ -195,6 +203,7 @@ class SignUpView(CreateView):
 
         Participant.get_or_create_self(self.object)
         send_verification_email(self.object, self.request)
+        audit.record("signed_up", request=self.request, user=self.object)
 
         return response
 
@@ -227,6 +236,8 @@ class VerifyEmailView(View):
             user.is_active = True
             user.email_verified_at = timezone.now()
             user.save(update_fields=["is_active", "email_verified_at"])
+
+        audit.record("email_verified", request=request, user=user)
 
         # login() rotates the session key, which is what prevents session
         # fixation. Passing the backend explicitly is unnecessary here
@@ -269,7 +280,7 @@ class DeleteAccountView(LoginRequiredMixin, View):
         # Log out before deleting. Afterwards the session points at a row
         # that no longer exists, and the next request would fail loading it.
         logout(request)
-        counts = delete_account(user)
+        counts = delete_account(user, request=request)
 
         logger.info("Account %s deleted: %s", username, counts)
         messages.success(request, "Your account and all its data have been deleted.")

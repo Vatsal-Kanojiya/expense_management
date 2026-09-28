@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import User
+from .models import SecurityEvent, User
 
 
 @admin.register(User)
@@ -17,6 +17,30 @@ class UserAdmin(BaseUserAdmin):
     ordering = ("username",)
 
 
+@admin.register(SecurityEvent)
+class SecurityEventAdmin(admin.ModelAdmin):
+    """Read-only: this is an audit trail, and an audit trail nobody can
+    edit or delete from the admin is the only kind worth keeping. Rows
+    are written exclusively through accounts.audit.record and pruned only
+    by the retention job (accounts/management/commands/purge_security_events.py).
+    """
+
+    list_display = ("created_at", "event", "username", "user", "ip")
+    list_filter = ("event", "created_at")
+    search_fields = ("username", "ip")
+    date_hierarchy = "created_at"
+    ordering = ("-created_at",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
 # --- The admin login, behind the same guard as every other login ---------
 #
 # admin.site.login is its own view, so the throttling on the web and API
@@ -30,13 +54,14 @@ _admin_login = admin.site.login
 def throttled_admin_login(request, extra_context=None):
     from django.http import HttpResponse
 
-    from . import ratelimit
+    from . import audit, ratelimit
 
     if request.method != "POST":
         return _admin_login(request, extra_context)
 
     username = request.POST.get("username", "")
     if ratelimit.login_blocked(request, username):
+        audit.record("login_blocked", request=request, username=username)
         return HttpResponse(
             "Too many sign-in attempts. Wait a few minutes and try again.",
             status=429,

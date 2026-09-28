@@ -51,9 +51,12 @@ upload and input chapters. What stands between us and an honest L2 claim is belo
       service is unreachable.
       Done: `accounts/password_validation.py`'s `PwnedPasswordValidator`, setting
       `PWNED_PASSWORDS_ENABLED` (off in tests, `config/test_runner.py`).
-- [ ] **A security event trail.** One structured log (or table) of: sign-ins and failures, password
+- [x] **A security event trail.** One structured log (or table) of: sign-ins and failures, password
       changes and resets, token revocations, verification, account deletion, admin changes — each
       with user, time, address and request id. Today only failed logins are logged.
+      Done: `accounts.SecurityEvent` + `accounts/audit.py`, wired into the web pages, the API and
+      the admin login; retention via `purge_security_events`
+      (setting `SECURITY_EVENT_RETENTION_DAYS`).
 
 ### 4. Features that touch security
 
