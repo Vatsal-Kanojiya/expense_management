@@ -49,7 +49,7 @@ def user_for_ticket(ticket, user_model):
     except user_model.DoesNotExist:
         return None
 
-    if _password_fingerprint(user) != data.get("pwfp"):
+    if not user.is_active or _password_fingerprint(user) != data.get("pwfp"):
         return None
     return user
 
@@ -86,3 +86,44 @@ def verify_code(user, code, request=None):
         audit.record("mfa_challenge_failed", request=request, user=user)
 
     return ok
+
+
+def check_for_change(user, code, request=None, password=None, recovery_allowed=True):
+    """The guard for changing two-step settings: disabling, new recovery codes.
+
+    Returns ``None`` when the change may go ahead, or why not: ``"blocked"``
+    (too many recent failures), ``"password"`` or ``"code"``.
+
+    These actions are reached with a signed-in session, which is exactly
+    what someone who found an unlocked laptop or a stolen token has. Without
+    a limit they could guess the password and then the six-digit code until
+    two-step sign-in was off. So wrong passwords count against the
+    per-account password-change budget, and wrong codes against the same
+    per-account budget as the sign-in step.
+    """
+    if ratelimit.mfa_blocked(user) or (
+        password is not None and ratelimit.password_change_blocked(user)
+    ):
+        return "blocked"
+
+    if password is not None and not user.check_password(password):
+        ratelimit.record_password_change_failure(user)
+        return "password"
+
+    device = TOTPDevice.objects.filter(user=user, confirmed=True).first()
+    ok = device is not None and device.verify(code)
+    used_recovery_code = False
+    if not ok and recovery_allowed:
+        ok = used_recovery_code = RecoveryCode.try_use(user, code)
+
+    if not ok:
+        ratelimit.record_mfa_failure(user)
+        audit.record("mfa_challenge_failed", request=request, user=user)
+        return "code"
+
+    ratelimit.clear_mfa(user)
+    if password is not None:
+        ratelimit.clear_password_change(user)
+    if used_recovery_code:
+        audit.record("recovery_code_used", request=request, user=user)
+    return None

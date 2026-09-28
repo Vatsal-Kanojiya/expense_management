@@ -70,6 +70,13 @@ user; once a user turns it on, every way of signing in asks for it.
   reach the admin with the session the site login created, MFA included. Update the pass-1 admin
   tests to match (the admin login now redirects; the limit is the site login's).
 
+### Changing the settings is limited too (added in review)
+- Disabling and new recovery codes go through `mfa.check_for_change`: wrong passwords count
+  against the per-account password-change limit, wrong codes against `MFA_LIMIT`, on the web and
+  the API alike. Both actions are reachable from a signed-in session alone, which is what a
+  stolen session gives; unlimited, it could guess its way to turning two-step sign-in off.
+- A ticket stops working if the account is deactivated between the two steps.
+
 ### Sessions and tokens
 - Enabling or disabling MFA revokes the user's other refresh tokens (`revoke_refresh_tokens`),
   then issues a fresh pair for this client (API) or keeps this session (web).
