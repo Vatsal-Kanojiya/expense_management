@@ -126,7 +126,8 @@ class MFALoginView(View):
         next_url = request.session.pop("mfa_next", "") or ""
         request.session.pop("mfa_ticket", None)
 
-        audit.record("login_succeeded", request=request, user=user)
+        # login() below fires user_logged_in, which records login_succeeded
+        # (accounts/signals.py); recording it here as well counted it twice.
         # login() rotates the session key again, which is fine -- there is
         # no fixation risk in rotating an already-anonymous session key
         # once more on the way to attaching a user to it.
