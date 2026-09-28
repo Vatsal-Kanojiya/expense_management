@@ -72,6 +72,11 @@ x-django-env: &django-env
   EMAIL_HOST_USER:
   EMAIL_HOST_PASSWORD:
   EMAIL_USE_TLS:
+  # Hosting behind a reverse proxy (security pass 1). Passed through only
+  # when set; see .env.example and docs/HANDOVER.md section 4.
+  USE_X_FORWARDED_PROTO:
+  TRUSTED_PROXY_COUNT:
+  ADMIN_URL:
 
 # One image for web, worker and beat, and only web builds it. Compose stamps
 # the building service's name into the image as a label, so giving all three

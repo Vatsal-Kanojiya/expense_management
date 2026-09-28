@@ -6,6 +6,60 @@ info:
     up, CSV exports and bill scanning. Authenticate with `POST /api/v1/auth/login/`
     and send `Authorization: Bearer <access>`.'
 paths:
+  /api/v1/auth/google/:
+    post:
+      operationId: auth_google_create
+      description: |-
+        Sign in (or sign up) with a Google ID token.
+
+        404 when ``GOOGLE_OAUTH_CLIENT_ID`` is unset -- Sign in with Google does
+        not exist as a feature at all until then (docs/design/GOOGLE_SIGNIN.md).
+        Rate-limited like the login's per-address cap (``login-ip``): there is
+        no username to key an attempt on before the token is verified, only an
+        address.
+      summary: Sign in with Google
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+          description: 'Signed in -- or, for an account with two-step sign-in on,
+            `{mfa_required: true, mfa_ticket}` instead, exactly as `auth/login/`.'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Google sign-in failed.
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Not configured.
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Too many attempts.
   /api/v1/auth/login/:
     post:
       operationId: auth_login_create
@@ -38,7 +92,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenPair'
-          description: ''
+          description: 'Signed in -- or, for an account with two-step sign-in on,
+            `{mfa_required: true, mfa_ticket}` instead, with no tokens yet: send the
+            ticket and a code to `auth/mfa/verify/`.'
         '401':
           content:
             application/json:
@@ -88,6 +144,205 @@ paths:
               schema:
                 $ref: '#/components/schemas/Message'
           description: ''
+  /api/v1/auth/mfa/:
+    get:
+      operationId: auth_mfa_retrieve
+      description: Whether two-step sign-in is on, and how many recovery codes are
+        left.
+      summary: Two-step sign-in status
+      tags:
+      - Account
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MFAStatus'
+          description: ''
+  /api/v1/auth/mfa/confirm/:
+    post:
+      operationId: auth_mfa_confirm_create
+      description: Confirm the first code, turning two-step sign-in on.
+      summary: Confirm two-step sign-in setup
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MFAConfirmRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MFAConfirmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MFAConfirmRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MFAConfirmResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+          description: Wrong code, or none pending.
+  /api/v1/auth/mfa/disable/:
+    post:
+      operationId: auth_mfa_disable_create
+      description: Turn two-step sign-in off. Needs the password and a current code.
+      summary: Turn off two-step sign-in
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MFADisableRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MFADisableRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MFADisableRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+          description: Wrong password or code.
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Too many wrong attempts.
+  /api/v1/auth/mfa/recovery-codes/:
+    post:
+      operationId: auth_mfa_recovery_codes_create
+      description: A fresh set of ten recovery codes, replacing the old set.
+      summary: Regenerate recovery codes
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MFARegenerateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MFARegenerateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MFARegenerateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MFARecoveryCodes'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+          description: Wrong code, or MFA off.
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Too many wrong attempts.
+  /api/v1/auth/mfa/setup/:
+    post:
+      operationId: auth_mfa_setup_create
+      description: 'Start (or restart) enrolment: a secret and a QR-code URI, unconfirmed.'
+      summary: Start two-step sign-in setup
+      tags:
+      - Account
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MFASetup'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Already on.
+  /api/v1/auth/mfa/verify/:
+    post:
+      operationId: auth_mfa_verify_create
+      description: 'The second step: a ticket from `auth/login/` plus a code, tokens
+        out.'
+      summary: Verify a two-step sign-in code
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MFAVerifyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MFAVerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MFAVerifyRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+          description: Wrong code, or an invalid/expired ticket.
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Too many attempts.
   /api/v1/auth/password/change/:
     post:
       operationId: auth_password_change_create
@@ -123,6 +378,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ValidationError'
           description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Too many wrong passwords.
   /api/v1/auth/password/reset/:
     post:
       operationId: auth_password_reset_create
@@ -253,6 +514,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ValidationError'
           description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Too many sign-ups.
   /api/v1/auth/verify-email/:
     post:
       operationId: auth_verify_email_create
@@ -429,6 +696,12 @@ paths:
           description: ''
         '400':
           description: Not a usable photo.
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Too many, too recently.
   /api/v1/bill-scans/{id}/:
     get:
       operationId: bill_scans_retrieve
@@ -1032,6 +1305,12 @@ paths:
           description: ''
         '400':
           description: Invalid dates.
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+          description: Too many, too recently.
   /api/v1/exports/{id}/:
     get:
       operationId: exports_retrieve
@@ -2059,6 +2338,15 @@ components:
           type: string
           format: date
           description: Defaults to the end of this month.
+    GoogleLoginRequest:
+      type: object
+      properties:
+        credential:
+          type: string
+          minLength: 1
+          description: The ID token Google Identity Services returns.
+      required:
+      - credential
     Health:
       type: object
       properties:
@@ -2080,9 +2368,8 @@ components:
           type: integer
         weight:
           type: integer
-          maximum: 9223372036854775807
-          minimum: 0
-          format: int64
+          maximum: 32767
+          minimum: 1
       required:
       - participant
     ItemShareRequest:
@@ -2092,9 +2379,8 @@ components:
           type: integer
         weight:
           type: integer
-          maximum: 9223372036854775807
-          minimum: 0
-          format: int64
+          maximum: 32767
+          minimum: 1
       required:
       - participant
     LinkRequest:
@@ -2122,6 +2408,101 @@ components:
       required:
       - password
       - username
+    MFAConfirmRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+      required:
+      - code
+    MFAConfirmResponse:
+      type: object
+      properties:
+        access:
+          type: string
+          description: 'Send as `Authorization: Bearer <access>`.'
+        refresh:
+          type: string
+          description: Exchange at `auth/refresh/` for a new pair.
+        user:
+          $ref: '#/components/schemas/Me'
+        recovery_codes:
+          type: array
+          items:
+            type: string
+          description: Shown once. Store them somewhere safe.
+      required:
+      - access
+      - recovery_codes
+      - refresh
+      - user
+    MFADisableRequest:
+      type: object
+      properties:
+        password:
+          type: string
+          minLength: 1
+        code:
+          type: string
+          minLength: 1
+          description: A current authenticator code, or a recovery code.
+      required:
+      - code
+      - password
+    MFARecoveryCodes:
+      type: object
+      properties:
+        recovery_codes:
+          type: array
+          items:
+            type: string
+          description: Shown once. Store them somewhere safe.
+      required:
+      - recovery_codes
+    MFARegenerateRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: A current authenticator code.
+      required:
+      - code
+    MFASetup:
+      type: object
+      properties:
+        secret:
+          type: string
+          description: For manual entry, if the QR code can't be scanned.
+        otpauth_uri:
+          type: string
+      required:
+      - otpauth_uri
+      - secret
+    MFAStatus:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        recovery_codes_left:
+          type: integer
+      required:
+      - enabled
+      - recovery_codes_left
+    MFAVerifyRequest:
+      type: object
+      properties:
+        mfa_ticket:
+          type: string
+          minLength: 1
+        code:
+          type: string
+          minLength: 1
+          description: A 6-digit authenticator code, or a recovery code.
+      required:
+      - code
+      - mfa_ticket
     Me:
       type: object
       description: |-
@@ -2168,9 +2549,15 @@ components:
           allOf:
           - $ref: '#/components/schemas/SelfParticipant'
           readOnly: true
+        has_password:
+          type: boolean
+          readOnly: true
+          description: 'False for a Google-only account: it has no password to change,
+            only to set (docs/design/GOOGLE_SIGNIN.md).'
       required:
       - date_joined
       - email
+      - has_password
       - id
       - is_staff
       - last_login

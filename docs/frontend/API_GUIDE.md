@@ -100,13 +100,18 @@ profile**:
     "is_staff": false,
     "date_joined": "2026-09-24T09:18:18.465911+05:30",
     "last_login": "2026-09-24T09:18:18.472005+05:30",
-    "self_participant": { "id": 1, "name": "priya (self)" }
+    "self_participant": { "id": 1, "name": "priya (self)" },
+    "has_password": true
   }
 }
 ```
 
 `self_participant.id` stands for the user in splits: it is what to send as `paid_by`, and among
 `participants` and line-item `shares`, to mean "me". Keep it with the session.
+
+`has_password` is `false` for an account created through Sign in with Google that has never set
+one (§3.8) -- it has no current password to give `auth/password/change/`, so offer "set a
+password" (`auth/password/reset/`) instead of a change form when it is `false`.
 
 ### 3.2 The lifecycle
 
@@ -220,6 +225,84 @@ Never put a token in a URL, a query string, a log line or an error report.
 activates the account and returns a token pair, so the user is signed in. Until then, logging in
 answers 403 `email_not_verified` (only when the password was right).
 
+### 3.7 Two-step sign-in (MFA)
+
+Once a user turns it on, **every** sign-in asks for a code from an authenticator app (or a
+recovery code) after the password — this API and the web pages alike. (The admin site has no
+second-step form of its own: its login page redirects to the web login, so a staff account with
+MFA on gets the same challenge there too.)
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant A as API
+    C->>A: POST auth/login/ {username, password}
+    A-->>C: 200 {mfa_required: true, mfa_ticket}
+    Note over C: No tokens yet. Show the code-entry screen.
+    C->>A: POST auth/mfa/verify/ {mfa_ticket, code}
+    A-->>C: 200 {access, refresh, user}
+```
+
+If `auth/login/`'s answer has `mfa_required: true`, there is **no `access` or `refresh` token in
+it** — show a code-entry screen and send the `mfa_ticket` it carries, with the code the user typed,
+to `POST auth/mfa/verify/`. That answers exactly like a plain login: a token pair and the profile.
+The ticket is short-lived (5 minutes) and single-use in spirit — wrong codes count against a limit
+of 5 per 15 minutes for that account (§11) — so a client should not cache or retry it silently; if
+`auth/mfa/verify/` answers 400 `invalid_ticket`, send the user back to the login form.
+
+**Managing it**, once signed in (all under `Bearer` auth):
+
+| Request | Does |
+|---|---|
+| `GET auth/mfa/` | `{enabled, recovery_codes_left}` |
+| `POST auth/mfa/setup/` | Starts enrolment: `{secret, otpauth_uri}`. Build a QR code from `otpauth_uri` (e.g. with a JS QR library) and also show `secret` for manual entry. Calling it again before confirming replaces the pending secret. 400 `mfa_already_enabled` if already on. |
+| `POST auth/mfa/confirm/ {code}` | Confirms the pending device with a code from the app. Returns `{recovery_codes: [...ten strings], access, refresh, user}` — **the only time the codes are shown**; tell the user to save them. Every other refresh token is revoked. |
+| `POST auth/mfa/disable/ {password, code}` | Turns it off. Needs the **current password and a current code** (or a recovery code) — neither alone is enough. Revokes every other refresh token. Wrong passwords and wrong codes count against the account's limits (429 `rate_limited`). |
+| `POST auth/mfa/recovery-codes/ {code}` | A fresh set of ten, replacing the old one. Needs a current **authenticator** code — a recovery code does not work here, so spending the last one cannot itself mint ten more. Wrong codes count against the sign-in code limit (429). |
+
+### 3.8 Sign in with Google
+
+`POST auth/google/ {credential}` — an alternative to `auth/login/`, not a replacement for it: an
+account can have a password, Google, or both. `credential` is the ID token Google Identity
+Services hands back after someone picks an account with its own button
+([docs](https://developers.google.com/identity/gsi/web)):
+
+```mermaid
+sequenceDiagram
+    participant U as Google's button
+    participant C as Client
+    participant A as API
+    U->>C: credential (an ID token)
+    C->>A: POST auth/google/ {credential}
+    A-->>C: 200 {access, refresh, user} -- or {mfa_required: true, mfa_ticket}
+```
+
+The server verifies `credential` with Google (signature, audience, expiry, issuer, and that the
+email is Google-verified) and answers **exactly like `auth/login/`**: a token pair and the profile,
+or — for an account with two-step sign-in on — `{mfa_required: true, mfa_ticket}` instead, sent to
+`auth/mfa/verify/` the same way (§3.7). No separate MFA flow for Google: the same ticket, the same
+code screen.
+
+Matching is by the token's own email, case-insensitively:
+
+* An existing, active account signs in.
+* An account that signed up but never verified its email is **replaced** by a fresh account, which
+  is signed in. (Its password was set by whoever signed up, which might not be the address's owner.)
+* An account an admin deactivated after it was verified is **refused**, 400 `google_failed` —
+  Google proving the address again does not undo that.
+* No match creates a new account: active immediately, with `has_password: false` (§3.1) until it
+  sets one through `auth/password/reset/`.
+
+`404` when the server has not configured a Google OAuth client id — the feature does not exist at
+all then, so hide the button rather than show one that always fails. Rate-limited by the same
+per-address cap as `auth/login/`, since there is no username to key an early attempt on: `429
+rate_limited`.
+
+Building the button: load `https://accounts.google.com/gsi/client`, initialise it with the app's
+client id in **callback mode** (`ux_mode: "popup"` or the default, never `"redirect"`), and send
+whatever `credential` its callback receives straight to `auth/google/` — nothing else about the
+token needs inspecting on the client.
+
 ---
 
 ## 4. Cross-origin requests (CORS)
@@ -328,12 +411,18 @@ A robust client handles all three: show `detail` as a message, map field keys on
 |---|---|---|---|---|
 | `invalid_credentials` | 401 | `auth/login/` | Wrong username or password | "Wrong username or password." |
 | `email_not_verified` | 403 | `auth/login/` | Right password; account not activated | Tell them to use the emailed link |
-| `rate_limited` | 429 | `auth/login/`, `auth/password/reset/` | Too many attempts (§11) | "Too many attempts. Try again in a few minutes." |
+| `rate_limited` | 429 | `auth/login/`, `auth/password/reset/`, `auth/mfa/verify/` | Too many attempts (§11) | "Too many attempts. Try again in a few minutes." |
+| `invalid_ticket` | 400 | `auth/mfa/verify/` | The `mfa_ticket` is missing, tampered with, expired (5 min), or the password changed since | Send back to the login form |
+| `google_failed` | 400 | `auth/google/` | The Google ID token failed verification, or named a deactivated account | "Google sign-in failed. Try again, or use your password." |
+| `mfa_already_enabled` | 400 | `auth/mfa/setup/` | Two-step sign-in is already on | Send to the manage screen instead |
+| `mfa_setup_not_started` | 400 | `auth/mfa/confirm/` | No pending enrolment to confirm | Send back to `auth/mfa/setup/` |
+| `mfa_not_enabled` | 400 | `auth/mfa/disable/`, `auth/mfa/recovery-codes/` | Two-step sign-in is not on | Send to the setup screen |
 | `token_not_valid` | 401 | any | Access token expired or malformed; or refresh token revoked or expired | Refresh once; if it fails, sign out |
 | `password_changed` | 401 | any | The password changed after this token was issued | Sign out; ask them to sign in again |
 | `user_not_found` | 401 | any | The account no longer exists | Sign out |
 | `token_invalid` | 400 | `auth/logout/` | That refresh token is already revoked | Treat as signed out |
 | `invalid_link` | 400 | `auth/verify-email/`, `auth/password/reset/confirm/` | The link is wrong, used, or expired (24 h) | Explain; offer to start again |
+| `password_breached` | 400 | `auth/signup/`, `auth/password/change/`, `auth/password/reset/confirm/` | The password has appeared in a known data breach (Have I Been Pwned) | "Choose a different password." beside the password field |
 | `verification_sent` | 201 | `auth/signup/` | Account created, email sent | "Check your email" page |
 | `reset_sent` | 200 | `auth/password/reset/` | Always the answer, whatever the address | Same confirmation for everyone |
 | `password_set` | 200 | `auth/password/reset/confirm/` | New password saved | Go to login |
@@ -547,7 +636,22 @@ When the draft endpoint answers 409 `already_saved`, open that expense instead.
 | 3,000 requests per hour | Per signed-in user | 429 with `Retry-After` |
 | 60 requests per hour | Per address, for requests without a token (login, sign-up, refresh, reset) | 429 with `Retry-After` |
 | 10 failed logins per 15 minutes | Per username per address | 429 `rate_limited` |
+| 50 failed logins per 15 minutes | Per address, across all usernames | 429 `rate_limited` |
+| (shares the limit above) | `auth/google/` attempts, per address -- there is no username to key one on before the token is verified | 429 `rate_limited` |
+| 10 sign-up attempts per hour | Per address (the web page and the API share it) | 429 `rate_limited` |
+| 5 wrong current passwords per 15 minutes | Per account, on password change (page and API share it) | 429 `rate_limited` |
+| 5 wrong two-step codes per 15 minutes | Per account, verifying the login ticket (`auth/mfa/verify/`) | 429 `rate_limited` |
 | 5 reset requests per hour | Per email address per address | 429 `rate_limited` |
+| 30 bill scans per hour | Per account (the web page and the API share it) | 429 `rate_limited` |
+| 20 CSV exports per hour | Per account (the web page and the API share it) | 429 `rate_limited` |
+
+The login limits apply to every way in (this API, the web page and the admin site), so attempts
+through one count towards the others. "Address" is the caller's network address as the server's
+trusted proxy reports it. Headers the client sends itself do not change it.
+
+The scan and export limits (security pass 2) are the one exception: they are keyed on the signed-in
+account, not the address, since a scan or an export ties up a worker -- and a scan spends money with
+a real vision provider -- no matter which device or network the account uses.
 
 The figures are server settings and may differ per environment. A well-behaved client polls no more
 often than §10 suggests, and refreshes tokens only when a request fails with 401.

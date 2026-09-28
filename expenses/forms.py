@@ -4,7 +4,7 @@ from django import forms
 from django.forms import BaseInlineFormSet, inlineformset_factory
 from django.utils import timezone
 
-from .extraction import ACCEPTED_MIME_TYPES, MAX_UPLOAD_SIZE
+from .extraction import IMAGE_EXTENSIONS, MAX_UPLOAD_SIZE, sniff_image_type
 from .models import (
     ROUNDING_TOLERANCE,
     Category,
@@ -475,10 +475,25 @@ class BillScanForm(forms.Form):
     def clean_image(self):
         image = self.cleaned_data["image"]
 
-        if image.content_type not in ACCEPTED_MIME_TYPES:
-            raise forms.ValidationError("Please upload a JPEG, PNG or WebP photo.")
-
         if image.size > MAX_UPLOAD_SIZE:
             raise forms.ValidationError("That photo is too large -- the limit is 5 MB.")
+
+        # The declared Content-Type is what the browser chose to send, not
+        # what the file actually is; a renamed .exe arrives as "image/jpeg"
+        # for the asking. Read the bytes the format itself requires at the
+        # start instead -- the same thing a real decoder checks before
+        # trusting the rest of the file.
+        header = image.read(12)
+        image.seek(0)
+        mime_type = sniff_image_type(header)
+        if mime_type is None:
+            raise forms.ValidationError("Please upload a JPEG, PNG or WebP photo.")
+
+        # Renamed to the extension the bytes verified as, not whatever name
+        # the browser sent -- bill_upload_path (models.py) takes the saved
+        # extension straight from this name, and the scan image endpoint
+        # (expenses/api/jobs.py) trusts that extension when it serves the
+        # file back with a Content-Type.
+        image.name = f"upload{IMAGE_EXTENSIONS[mime_type]}"
 
         return image

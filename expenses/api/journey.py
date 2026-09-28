@@ -45,6 +45,9 @@ ACCOUNT_VARIABLES = {
     "signup_password": "First-Pass-2026",
     "signup_new_password": "Second-Pass-2026",
     "reset_password": "Third-Pass-2026",
+    # Computed by hand from the `secret` "Start two-step sign-in setup" returns --
+    # there is no TOTP implementation in a Postman pre-request script here.
+    "mfa_code": "",
 }
 
 
@@ -87,11 +90,19 @@ class Raw:
 
 @dataclass(frozen=True)
 class Upload:
-    """A multipart upload of the sample bill."""
+    """A multipart upload of the sample bill.
+
+    ``content`` defaults to the real sample PNG's bytes, not to whatever
+    ``filename``/``content_type`` claim -- BillScanForm now sniffs the file's
+    own signature (security pass 2), so an example meant to be rejected as
+    "not a photo" has to send bytes that are not one, not just a misleading
+    name.
+    """
 
     field: str = "image"
     filename: str = "sample-bill.png"
     content_type: str = "image/png"
+    content: bytes | None = None
 
 
 MISSING = object()
@@ -154,6 +165,40 @@ def _make_unverified(journey):
     )
 
 
+def _enable_google_signin(journey):
+    """Mock the one call to Google this example makes (docs/design/GOOGLE_SIGNIN.md).
+
+    ``GOOGLE_OAUTH_CLIENT_ID`` is already set for the whole journey run
+    (``build_api_docs``'s ``JOURNEY_SETTINGS``), so ``auth/google/`` exists;
+    only Google's own verification is faked, exactly as the tests do
+    (``accounts/tests/test_google_login.py``) -- the journey never talks to
+    Google either.
+    """
+    from unittest.mock import patch
+
+    from django.conf import settings
+
+    from accounts import google as google_accounts
+
+    patcher = patch.object(
+        google_accounts.google_id_token,
+        "verify_oauth2_token",
+        return_value={
+            "iss": "https://accounts.google.com",
+            "aud": settings.GOOGLE_OAUTH_CLIENT_ID,
+            "email": "journey.google@example.com",
+            "email_verified": True,
+            "exp": 9999999999,
+        },
+    )
+    patcher.start()
+    journey.vars["_google_patcher"] = patcher
+
+
+def _disable_google_signin(journey):
+    journey.vars.pop("_google_patcher").stop()
+
+
 def _placeholder_expense(journey, share_with=None):
     from expenses.models import Category, Expense, ExpenseItem, ItemShare
 
@@ -196,6 +241,29 @@ def _keep_refresh_token(journey):
     journey.vars["old_refresh_token"] = journey.vars["refresh_token"]
 
 
+def _mfa_code(varname):
+    """A ``before`` hook: a currently-valid code for the ACCOUNT folder's
+    own account (not ``journey.user``, which is folders 0-8's), computed
+    fresh each time by resetting the device's replay guard first -- the
+    steps below run fast enough, back to back, that the real clock alone
+    could not be trusted to hand out a new 30-second step for each one.
+    """
+
+    def hook(journey):
+        from django.contrib.auth import get_user_model
+
+        from accounts import totp
+        from accounts.models import TOTPDevice
+
+        user = get_user_model().objects.get(username=journey.vars["signup_username"])
+        device = TOTPDevice.objects.get(user=user)
+        device.last_used_step = 0
+        device.save(update_fields=["last_used_step"])
+        journey.vars[varname] = totp._hotp(device.secret, totp.current_step())
+
+    return hook
+
+
 # --- The journey --------------------------------------------------------------
 
 START = "0 · Start here"
@@ -225,10 +293,13 @@ FOLDER_NOTES = {
     "draft expense built from what it read.",
     SIGN_OUT: "Refreshing tokens and logging out. Run last: logging out ends the session the "
     "folders above use.",
-    ACCOUNT: "Sign-up, email verification, password change and reset, and deleting the account. "
+    ACCOUNT: "Sign-up, email verification, password change and reset, two-step sign-in, and "
+    "deleting the account. "
     "**Not part of an automated run.** Verification and reset need the `uid` and `token` from a "
     "mailed link, which you copy into the collection variables `verify_uid`/`verify_token` or "
-    "`reset_uid`/`reset_token` by hand, and the last request deletes the account.",
+    "`reset_uid`/`reset_token` by hand; the two-step sign-in requests need a code from an "
+    "authenticator app, which you compute from the `secret` the setup request returns; and the "
+    "last request deletes the account.",
 }
 
 SEPTEMBER = "start=2026-09-01&end=2026-09-30"
@@ -310,6 +381,24 @@ STEPS = [
                 note="Said only when the password was right; otherwise a plain 401.",
             ),
         ],
+    ),
+    Step(
+        START,
+        "Sign in with Google",
+        "POST",
+        "/auth/google/",
+        200,
+        "An alternative to the step above: `credential` is the ID token Google Identity "
+        "Services returns from its own button. The server verifies it with Google, then finds "
+        "or creates the account by its (Google-verified) email and answers exactly like a "
+        "plain login -- a token pair, or `{mfa_required: true, mfa_ticket}` for an account with "
+        "two-step sign-in on. `404` when the server has no `GOOGLE_OAUTH_CLIENT_ID` "
+        "configured -- the feature does not exist at all until then, and the button is not "
+        "shown.",
+        body={"credential": "google-id-token"},
+        public=True,
+        before=_enable_google_signin,
+        after=lambda journey, body: _disable_google_signin(journey),
     ),
     Step(
         START,
@@ -760,7 +849,9 @@ STEPS = [
             Example(
                 "Not a photo",
                 400,
-                body=Upload(filename="bill.pdf", content_type="application/pdf"),
+                body=Upload(
+                    filename="bill.pdf", content_type="application/pdf", content=b"%PDF-1.4"
+                ),
             )
         ],
     ),
@@ -961,6 +1052,113 @@ STEPS = [
     ),
     Step(
         ACCOUNT,
+        "Check two-step sign-in status",
+        "GET",
+        "/auth/mfa/",
+        200,
+        "Whether two-step sign-in -- an authenticator-app code asked for after the password -- "
+        "is on, and how many recovery codes are left.",
+    ),
+    Step(
+        ACCOUNT,
+        "Start two-step sign-in setup",
+        "POST",
+        "/auth/mfa/setup/",
+        200,
+        "A fresh secret and an `otpauth://` URI to build a QR code from. The account is not "
+        "protected yet -- that needs the first code confirmed below. Calling this again before "
+        "confirming replaces the pending secret.",
+    ),
+    Step(
+        ACCOUNT,
+        "Confirm and turn it on",
+        "POST",
+        "/auth/mfa/confirm/",
+        200,
+        "Confirms the pending device with a code from it. Returns ten recovery codes -- shown "
+        "only this once, so store them somewhere safe -- and a fresh token pair: every other "
+        "refresh token is revoked, the same as a password change.",
+        before=_mfa_code("mfa_code"),
+        body={"code": V("mfa_code")},
+        capture={"access_token": "access", "refresh_token": "refresh"},
+        examples=[
+            Example("Wrong code", 400, body={"code": "000000"}, before_main=True),
+        ],
+    ),
+    Step(
+        ACCOUNT,
+        "Log in again",
+        "POST",
+        "/auth/login/",
+        200,
+        "With two-step sign-in on, a right password is not enough by itself: the response "
+        "carries a ticket instead of tokens. Send it, and a code, to `auth/mfa/verify/`.",
+        body={"username": "{{signup_username}}", "password": "{{reset_password}}"},
+        public=True,
+        capture={"mfa_ticket": "mfa_ticket"},
+    ),
+    Step(
+        ACCOUNT,
+        "Enter the two-step code",
+        "POST",
+        "/auth/mfa/verify/",
+        200,
+        "The ticket from the login above, plus a code -- from the authenticator app, or one of "
+        "the recovery codes shown at setup. Either way the response is the token pair a plain "
+        "login would have returned.\n\n"
+        "Five wrong codes for one account in 15 minutes lock it: 429 `rate_limited`. Whoever "
+        "holds a ticket already knows the password, so this cannot be used to lock out someone "
+        "else's account.",
+        before=_mfa_code("mfa_code"),
+        body={"mfa_ticket": V("mfa_ticket"), "code": V("mfa_code")},
+        public=True,
+        capture={"access_token": "access", "refresh_token": "refresh"},
+        examples=[
+            Example(
+                "Wrong code",
+                400,
+                body={"mfa_ticket": V("mfa_ticket"), "code": "000000"},
+            ),
+            Example(
+                "Invalid or expired ticket",
+                400,
+                body={"mfa_ticket": "not-a-real-ticket", "code": "000000"},
+            ),
+        ],
+    ),
+    Step(
+        ACCOUNT,
+        "Get new recovery codes",
+        "POST",
+        "/auth/mfa/recovery-codes/",
+        200,
+        "Replaces the current set of ten with a fresh one. Needs a current authenticator code, "
+        "not a recovery code -- otherwise spending the last one could mint ten more.",
+        before=_mfa_code("mfa_code"),
+        body={"code": V("mfa_code")},
+    ),
+    Step(
+        ACCOUNT,
+        "Turn off two-step sign-in",
+        "POST",
+        "/auth/mfa/disable/",
+        200,
+        "Needs the current password **and** a current code -- neither is enough on its own. "
+        "Deletes the device and every recovery code, and revokes other refresh tokens.",
+        before=_mfa_code("mfa_code"),
+        body={"password": "{{reset_password}}", "code": V("mfa_code")},
+        capture={"access_token": "access", "refresh_token": "refresh"},
+        examples=[
+            Example(
+                "Wrong password",
+                400,
+                body={"password": "wrong", "code": "000000"},
+                before_main=True,
+            ),
+        ],
+    ),
+    Step(
+        ACCOUNT,
         "Delete the account",
         "DELETE",
         "/me/",
@@ -1033,7 +1231,8 @@ class Journey:
         call = getattr(self.client, method.lower())
 
         if isinstance(body, Upload):
-            upload = SimpleUploadedFile(body.filename, sample_bill_png(), body.content_type)
+            content = body.content if body.content is not None else sample_bill_png()
+            upload = SimpleUploadedFile(body.filename, content, body.content_type)
             response = call(url, {body.field: upload}, format="multipart", **extra)
             sent = {body.field: f"<file {body.filename}, {body.content_type}>"}
         elif body is None:

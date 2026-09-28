@@ -16,11 +16,15 @@ import logging
 from django.conf import settings
 from django.contrib.auth import authenticate as django_authenticate
 from django.contrib.auth import get_user_model, logout, update_session_auth_hash
-from django.contrib.auth.forms import PasswordChangeForm, PasswordResetForm, SetPasswordForm
+from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import update_last_login
 from django.contrib.auth.tokens import default_token_generator
+from django.http import Http404
 from django.urls import path
+from django.utils import timezone
 from django.utils.http import urlsafe_base64_decode
+from django.views.decorators.debug import sensitive_variables
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_field
 from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -34,9 +38,12 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from expenses.api.common import MessageSerializer, ValidationErrorSerializer, raise_form_errors
 from expenses.models import Participant
 
-from . import ratelimit
+from . import audit, mfa, ratelimit, totp
 from .deletion import delete_account
-from .forms import SignUpForm
+from .forms import AnyActiveAccountPasswordResetForm, SignUpForm
+from .google import GoogleSignInError, google_signin_enabled, sign_in_with_google
+from .models import RecoveryCode, TOTPDevice
+from .models import mfa_enabled as user_has_mfa
 from .verification import send_verification_email, verify
 
 User = get_user_model()
@@ -61,6 +68,10 @@ class MeSerializer(serializers.ModelSerializer):
     """
 
     self_participant = serializers.SerializerMethodField()
+    has_password = serializers.SerializerMethodField(
+        help_text="False for a Google-only account: it has no password to change, only "
+        "to set (docs/design/GOOGLE_SIGNIN.md)."
+    )
 
     class Meta:
         model = User
@@ -74,6 +85,7 @@ class MeSerializer(serializers.ModelSerializer):
             "date_joined",
             "last_login",
             "self_participant",
+            "has_password",
         ]
         read_only_fields = ["id", "username", "email", "is_staff", "date_joined", "last_login"]
 
@@ -81,6 +93,10 @@ class MeSerializer(serializers.ModelSerializer):
     def get_self_participant(self, user):
         participant = Participant.get_or_create_self(user)
         return {"id": participant.id, "name": participant.name}
+
+    @extend_schema_field(serializers.BooleanField)
+    def get_has_password(self, user):
+        return user.has_usable_password()
 
 
 class TokenPairSerializer(serializers.Serializer):
@@ -112,6 +128,10 @@ class RefreshSerializer(serializers.Serializer):
     refresh = serializers.CharField()
 
 
+class GoogleLoginSerializer(serializers.Serializer):
+    credential = serializers.CharField(help_text="The ID token Google Identity Services returns.")
+
+
 class PasswordChangeSerializer(serializers.Serializer):
     old_password = serializers.CharField(trim_whitespace=False)
     new_password = serializers.CharField(trim_whitespace=False)
@@ -129,6 +149,49 @@ class PasswordResetConfirmSerializer(LinkSerializer):
 
 class DeleteAccountSerializer(serializers.Serializer):
     confirm = serializers.CharField(help_text="The account's username, typed out.")
+
+
+class MFARequiredSerializer(serializers.Serializer):
+    mfa_required = serializers.BooleanField(default=True)
+    mfa_ticket = serializers.CharField(help_text="Send back to `auth/mfa/verify/` with a code.")
+
+
+class MFAVerifySerializer(serializers.Serializer):
+    mfa_ticket = serializers.CharField()
+    code = serializers.CharField(help_text="A 6-digit authenticator code, or a recovery code.")
+
+
+class MFAStatusSerializer(serializers.Serializer):
+    enabled = serializers.BooleanField()
+    recovery_codes_left = serializers.IntegerField()
+
+
+class MFASetupSerializer(serializers.Serializer):
+    secret = serializers.CharField(help_text="For manual entry, if the QR code can't be scanned.")
+    otpauth_uri = serializers.CharField()
+
+
+class MFAConfirmSerializer(serializers.Serializer):
+    code = serializers.CharField()
+
+
+class MFARecoveryCodesSerializer(serializers.Serializer):
+    recovery_codes = serializers.ListField(
+        child=serializers.CharField(), help_text="Shown once. Store them somewhere safe."
+    )
+
+
+class MFAConfirmResponseSerializer(TokenPairSerializer, MFARecoveryCodesSerializer):
+    pass
+
+
+class MFADisableSerializer(serializers.Serializer):
+    password = serializers.CharField(style={"input_type": "password"}, trim_whitespace=False)
+    code = serializers.CharField(help_text="A current authenticator code, or a recovery code.")
+
+
+class MFARegenerateSerializer(serializers.Serializer):
+    code = serializers.CharField(help_text="A current authenticator code.")
 
 
 PASSWORD_FIELDS = {
@@ -171,15 +234,20 @@ def issue_tokens(user):
     }
 
 
-def revoke_refresh_tokens(user):
+def revoke_refresh_tokens(user, request=None):
     """Blacklist every refresh token the user holds, on every device.
 
     Access tokens need no list: CHECK_REVOKE_TOKEN ties each one to the
     password hash, so the password change that calls this has already
     ended them.
+
+    Records ``tokens_revoked`` here rather than at each call site (a
+    password change or reset, on the web page or the API), so every caller
+    gets the event for free and none can forget it.
     """
     for token in OutstandingToken.objects.filter(user=user):
         BlacklistedToken.objects.get_or_create(token=token)
+    audit.record("tokens_revoked", request=request, user=user)
 
 
 def user_from_uid(uid):
@@ -189,8 +257,26 @@ def user_from_uid(uid):
         return None
 
 
+def rate_limited(detail):
+    return Response(
+        {"detail": detail, "code": "rate_limited"}, status=status.HTTP_429_TOO_MANY_REQUESTS
+    )
+
+
 INVALID_LINK = Response(
     {"detail": "This link is invalid or has expired.", "code": "invalid_link"},
+    status=status.HTTP_400_BAD_REQUEST,
+)
+
+INVALID_TICKET = Response(
+    {"detail": "That sign-in has expired. Log in again.", "code": "invalid_ticket"},
+    status=status.HTTP_400_BAD_REQUEST,
+)
+
+WRONG_CODE = Response({"code": ["That code is wrong."]}, status=status.HTTP_400_BAD_REQUEST)
+
+GOOGLE_FAILED = Response(
+    {"detail": "Google sign-in failed.", "code": "google_failed"},
     status=status.HTTP_400_BAD_REQUEST,
 )
 
@@ -203,6 +289,18 @@ class PublicView(APIView):
 
 
 # --- Views ----------------------------------------------------------------
+#
+# @sensitive_variables() below, wherever a method holds a password or a
+# raw access/refresh token as a local variable (its own, or -- since the
+# decorator marks every frame called from within it -- one of a helper
+# it calls, such as issue_tokens()). Django's own auth forms already do
+# this for the web pages (django/contrib/auth/forms.py); these DRF views
+# have no such form underneath them, so nothing did it for them. Without
+# it, an unhandled exception here would show that value in full, in the
+# DEBUG=True error page and in the mail_admins traceback email alike
+# (config/settings.py's LOGGING) -- SafeExceptionReporterFilter only
+# blanks a local variable when a decorator says which ones are sensitive.
+# Security pass 5.
 
 
 class SignupView(PublicView):
@@ -212,9 +310,21 @@ class SignupView(PublicView):
         tags=AUTH_TAG,
         summary="Sign up",
         request=SignupSerializer,
-        responses={201: MessageSerializer, 400: ValidationErrorSerializer},
+        responses={
+            201: MessageSerializer,
+            400: ValidationErrorSerializer,
+            429: OpenApiResponse(MessageSerializer, description="Too many sign-ups."),
+        },
     )
+    @sensitive_variables()
     def post(self, request, *args, **kwargs):
+        # The web page's limit, under the same key, so the two share it.
+        if ratelimit.is_limited(
+            "signup", request, "", ratelimit.SIGNUP_LIMIT, ratelimit.SIGNUP_WINDOW
+        ):
+            return rate_limited("Too many sign-up attempts. Try again later.")
+        ratelimit.record_attempt("signup", request, "", ratelimit.SIGNUP_WINDOW)
+
         body = SignupSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         data = body.validated_data
@@ -236,6 +346,7 @@ class SignupView(PublicView):
         user = form.save()
         Participant.get_or_create_self(user)
         send_verification_email(user, request, to_frontend=True)
+        audit.record("signed_up", request=request, user=user)
 
         return Response(
             {
@@ -255,6 +366,7 @@ class VerifyEmailView(PublicView):
         request=LinkSerializer,
         responses={200: TokenPairSerializer, 400: MessageSerializer},
     )
+    @sensitive_variables()
     def post(self, request, *args, **kwargs):
         body = LinkSerializer(data=request.data)
         body.is_valid(raise_exception=True)
@@ -265,7 +377,10 @@ class VerifyEmailView(PublicView):
 
         if not user.is_active:
             user.is_active = True
-            user.save(update_fields=["is_active"])
+            user.email_verified_at = timezone.now()
+            user.save(update_fields=["is_active", "email_verified_at"])
+
+        audit.record("email_verified", request=request, user=user)
 
         return Response(issue_tokens(user))
 
@@ -283,7 +398,12 @@ class LoginView(PublicView):
         summary="Log in",
         request=LoginSerializer,
         responses={
-            200: TokenPairSerializer,
+            200: OpenApiResponse(
+                TokenPairSerializer,
+                description="Signed in -- or, for an account with two-step sign-in on, "
+                "`{mfa_required: true, mfa_ticket}` instead, with no tokens yet: send the "
+                "ticket and a code to `auth/mfa/verify/`.",
+            ),
             401: OpenApiResponse(MessageSerializer, description="Wrong username or password."),
             403: OpenApiResponse(
                 MessageSerializer, description="Right password, email not yet verified."
@@ -291,35 +411,40 @@ class LoginView(PublicView):
             429: OpenApiResponse(MessageSerializer, description="Too many attempts."),
         },
     )
+    @sensitive_variables()
     def post(self, request, *args, **kwargs):
         body = LoginSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         username = body.validated_data["username"]
         password = body.validated_data["password"]
 
-        if ratelimit.is_limited(
-            "login", request, username, ratelimit.LOGIN_LIMIT, ratelimit.LOGIN_WINDOW
-        ):
-            return Response(
-                {
-                    "detail": "Too many sign-in attempts. Wait a few minutes and try again.",
-                    "code": "rate_limited",
-                },
-                status=status.HTTP_429_TOO_MANY_REQUESTS,
-            )
+        if ratelimit.login_blocked(request, username):
+            audit.record("login_blocked", request=request, username=username)
+            return rate_limited("Too many sign-in attempts. Wait a few minutes and try again.")
 
+        # django_authenticate() sends Django's own user_login_failed signal
+        # on any rejected attempt, which accounts/signals.py turns into a
+        # login_failed event -- no explicit call needed here for that case.
         user = django_authenticate(request, username=username, password=password)
 
         if user is None:
-            ratelimit.record_attempt("login", request, username, ratelimit.LOGIN_WINDOW)
+            ratelimit.record_login_failure(request, username)
             logging.getLogger("django.security").warning(
                 "Failed API login for %r from %s", username[:150], ratelimit.client_ip(request)
             )
             # Said apart only when the password was right: someone who knows
             # it learns nothing new, and a real person learns why they are
             # stuck.
+            #
+            # One password hash on every failed path, whether or not an
+            # unverified account exists: hashing only when one does made the
+            # response measurably slower for exactly those usernames, which
+            # told a stranger which accounts were awaiting verification.
+            # Security pass 1.
             pending = User.objects.filter(username=username, is_active=False).first()
-            if pending is not None and pending.check_password(password):
+            if pending is None:
+                make_password(password)
+            elif pending.check_password(password):
                 return Response(
                     {
                         "detail": "Confirm your email address first: use the link we sent.",
@@ -332,8 +457,286 @@ class LoginView(PublicView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        ratelimit.clear("login", request, username)
+        ratelimit.clear_login(request, username)
+
+        if user_has_mfa(user):
+            # No tokens, no session -- docs/design/MFA.md. The password was
+            # right, so the failed-attempts count clears above as usual,
+            # but "signed in" is not recorded until the code is too.
+            return Response({"mfa_required": True, "mfa_ticket": mfa.make_ticket(user)})
+
+        # No django.contrib.auth.login() call here -- a JWT pair is handed
+        # back instead of a session -- so nothing else records this login.
+        audit.record("login_succeeded", request=request, user=user)
         return Response(issue_tokens(user))
+
+
+class GoogleLoginView(PublicView):
+    """Sign in (or sign up) with a Google ID token.
+
+    404 when ``GOOGLE_OAUTH_CLIENT_ID`` is unset -- Sign in with Google does
+    not exist as a feature at all until then (docs/design/GOOGLE_SIGNIN.md).
+    Rate-limited like the login's per-address cap (``login-ip``): there is
+    no username to key an attempt on before the token is verified, only an
+    address.
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        if not google_signin_enabled():
+            raise Http404
+        return super().dispatch(request, *args, **kwargs)
+
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Sign in with Google",
+        request=GoogleLoginSerializer,
+        responses={
+            200: OpenApiResponse(
+                TokenPairSerializer,
+                description="Signed in -- or, for an account with two-step sign-in on, "
+                "`{mfa_required: true, mfa_ticket}` instead, exactly as `auth/login/`.",
+            ),
+            400: OpenApiResponse(MessageSerializer, description="Google sign-in failed."),
+            404: OpenApiResponse(MessageSerializer, description="Not configured."),
+            429: OpenApiResponse(MessageSerializer, description="Too many attempts."),
+        },
+    )
+    @sensitive_variables()
+    def post(self, request, *args, **kwargs):
+        if ratelimit.google_login_blocked(request):
+            return rate_limited("Too many attempts. Wait a few minutes and try again.")
+
+        body = GoogleLoginSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+
+        try:
+            user, _created = sign_in_with_google(body.validated_data["credential"], request=request)
+        except GoogleSignInError:
+            ratelimit.record_google_login_failure(request)
+            return GOOGLE_FAILED
+
+        if user_has_mfa(user):
+            # Same second step as a password login (docs/design/MFA.md):
+            # no tokens yet, just a ticket.
+            return Response({"mfa_required": True, "mfa_ticket": mfa.make_ticket(user)})
+
+        audit.record("login_succeeded", request=request, user=user)
+        return Response(issue_tokens(user))
+
+
+class MFAVerifyView(PublicView):
+    """The second step: a ticket from `auth/login/` plus a code, tokens out."""
+
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Verify a two-step sign-in code",
+        request=MFAVerifySerializer,
+        responses={
+            200: TokenPairSerializer,
+            400: OpenApiResponse(
+                ValidationErrorSerializer, description="Wrong code, or an invalid/expired ticket."
+            ),
+            429: OpenApiResponse(MessageSerializer, description="Too many attempts."),
+        },
+    )
+    @sensitive_variables()
+    def post(self, request, *args, **kwargs):
+        body = MFAVerifySerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = body.validated_data
+
+        user = mfa.user_for_ticket(data["mfa_ticket"], User)
+        if user is None:
+            return INVALID_TICKET
+
+        result = mfa.verify_code(user, data["code"], request=request)
+        if result is None:
+            return rate_limited("Too many attempts. Wait a few minutes and try again.")
+        if not result:
+            return WRONG_CODE
+
+        audit.record("login_succeeded", request=request, user=user)
+        return Response(issue_tokens(user))
+
+
+class MFAStatusView(APIView):
+    """Whether two-step sign-in is on, and how many recovery codes are left."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(tags=AUTH_TAG, summary="Two-step sign-in status", responses=MFAStatusSerializer)
+    def get(self, request, *args, **kwargs):
+        enabled = user_has_mfa(request.user)
+        left = (
+            RecoveryCode.objects.filter(user=request.user, used_at__isnull=True).count()
+            if enabled
+            else 0
+        )
+        return Response({"enabled": enabled, "recovery_codes_left": left})
+
+
+class MFASetupView(APIView):
+    """Start (or restart) enrolment: a secret and a QR-code URI, unconfirmed."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Start two-step sign-in setup",
+        request=None,
+        responses={
+            200: MFASetupSerializer,
+            400: OpenApiResponse(MessageSerializer, description="Already on."),
+        },
+    )
+    @sensitive_variables()
+    def post(self, request, *args, **kwargs):
+        if user_has_mfa(request.user):
+            return Response(
+                {"detail": "Two-step sign-in is already on.", "code": "mfa_already_enabled"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        secret = totp.generate_secret()
+        # Replaces any earlier, still-unconfirmed attempt -- the
+        # OneToOneField means there is never more than one row.
+        TOTPDevice.objects.update_or_create(
+            user=request.user,
+            defaults={"secret": secret, "confirmed": False, "last_used_step": 0},
+        )
+        return Response(
+            {
+                "secret": secret,
+                "otpauth_uri": totp.otpauth_uri(secret, request.user.get_username()),
+            }
+        )
+
+
+class MFAConfirmView(APIView):
+    """Confirm the first code, turning two-step sign-in on."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Confirm two-step sign-in setup",
+        request=MFAConfirmSerializer,
+        responses={
+            200: MFAConfirmResponseSerializer,
+            400: OpenApiResponse(
+                ValidationErrorSerializer, description="Wrong code, or none pending."
+            ),
+        },
+    )
+    @sensitive_variables()
+    def post(self, request, *args, **kwargs):
+        body = MFAConfirmSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+
+        device = TOTPDevice.objects.filter(user=request.user, confirmed=False).first()
+        if device is None:
+            return Response(
+                {"detail": "Start setup first.", "code": "mfa_setup_not_started"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not device.verify(body.validated_data["code"]):
+            return WRONG_CODE
+
+        device.confirmed = True
+        device.confirmed_at = timezone.now()
+        device.save(update_fields=["confirmed", "confirmed_at"])
+        codes = RecoveryCode.generate_set(request.user)
+
+        # A device just took over as the second factor for every future
+        # sign-in, so any refresh token issued before it existed should not
+        # outlive it -- the same reasoning as a password change.
+        revoke_refresh_tokens(request.user, request=request)
+        audit.record("mfa_enabled", request=request, user=request.user)
+
+        return Response({**issue_tokens(request.user), "recovery_codes": codes})
+
+
+class MFADisableView(APIView):
+    """Turn two-step sign-in off. Needs the password and a current code."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Turn off two-step sign-in",
+        request=MFADisableSerializer,
+        responses={
+            200: TokenPairSerializer,
+            400: OpenApiResponse(ValidationErrorSerializer, description="Wrong password or code."),
+            429: OpenApiResponse(MessageSerializer, description="Too many wrong attempts."),
+        },
+    )
+    @sensitive_variables()
+    def post(self, request, *args, **kwargs):
+        body = MFADisableSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = body.validated_data
+
+        if not user_has_mfa(request.user):
+            return Response(
+                {"detail": "Two-step sign-in is not on.", "code": "mfa_not_enabled"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        refused = mfa.check_for_change(
+            request.user, data["code"], request=request, password=data["password"]
+        )
+        if refused == "blocked":
+            return rate_limited("Too many attempts. Wait a few minutes and try again.")
+        if refused == "password":
+            return Response({"password": ["Wrong password."]}, status=status.HTTP_400_BAD_REQUEST)
+        if refused == "code":
+            return WRONG_CODE
+
+        TOTPDevice.objects.filter(user=request.user).delete()
+        RecoveryCode.objects.filter(user=request.user).delete()
+        revoke_refresh_tokens(request.user, request=request)
+        audit.record("mfa_disabled", request=request, user=request.user)
+
+        return Response(issue_tokens(request.user))
+
+
+class MFARegenerateView(APIView):
+    """A fresh set of ten recovery codes, replacing the old set."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Regenerate recovery codes",
+        request=MFARegenerateSerializer,
+        responses={
+            200: MFARecoveryCodesSerializer,
+            400: OpenApiResponse(ValidationErrorSerializer, description="Wrong code, or MFA off."),
+            429: OpenApiResponse(MessageSerializer, description="Too many wrong attempts."),
+        },
+    )
+    @sensitive_variables()
+    def post(self, request, *args, **kwargs):
+        body = MFARegenerateSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+
+        device = TOTPDevice.objects.filter(user=request.user, confirmed=True).first()
+        if device is None:
+            return Response(
+                {"detail": "Two-step sign-in is not on.", "code": "mfa_not_enabled"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        refused = mfa.check_for_change(
+            request.user, body.validated_data["code"], request=request, recovery_allowed=False
+        )
+        if refused == "blocked":
+            return rate_limited("Too many attempts. Wait a few minutes and try again.")
+        if refused == "code":
+            return WRONG_CODE
+
+        codes = RecoveryCode.generate_set(request.user)
+        audit.record("recovery_codes_regenerated", request=request, user=request.user)
+        return Response({"recovery_codes": codes})
 
 
 class RefreshView(TokenRefreshView):
@@ -342,6 +745,7 @@ class RefreshView(TokenRefreshView):
     authentication_classes = []
 
     @extend_schema(tags=AUTH_TAG, summary="Refresh tokens")
+    @sensitive_variables()
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
 
@@ -355,17 +759,25 @@ class LogoutView(PublicView):
         request=RefreshSerializer,
         responses={204: None, 400: MessageSerializer},
     )
+    @sensitive_variables()
     def post(self, request, *args, **kwargs):
         body = RefreshSerializer(data=request.data)
         body.is_valid(raise_exception=True)
 
         try:
-            RefreshToken(body.validated_data["refresh"]).blacklist()
+            token = RefreshToken(body.validated_data["refresh"])
+            # The claim, not request.user: this endpoint takes no
+            # authentication (PublicView), only the refresh token itself,
+            # so the token's own subject is the only reliable "who".
+            user = User.objects.filter(pk=token.payload.get("user_id")).first()
+            token.blacklist()
         except TokenError:
             return Response(
                 {"detail": "That token is invalid or already revoked.", "code": "token_invalid"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        audit.record("logged_out", request=request, user=user)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -379,9 +791,18 @@ class PasswordChangeView(APIView):
         tags=AUTH_TAG,
         summary="Change password",
         request=PasswordChangeSerializer,
-        responses={200: TokenPairSerializer, 400: ValidationErrorSerializer},
+        responses={
+            200: TokenPairSerializer,
+            400: ValidationErrorSerializer,
+            429: OpenApiResponse(MessageSerializer, description="Too many wrong passwords."),
+        },
     )
+    @sensitive_variables()
     def post(self, request, *args, **kwargs):
+        # Wrong current passwords per account, shared with the web page.
+        if ratelimit.password_change_blocked(request.user):
+            return rate_limited("Too many attempts. Wait a few minutes and try again.")
+
         body = PasswordChangeSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         data = body.validated_data
@@ -395,12 +816,16 @@ class PasswordChangeView(APIView):
             },
         )
         if not form.is_valid():
+            if "old_password" in form.errors:
+                ratelimit.record_password_change_failure(request.user)
             raise_form_errors(
                 form, password_errors(data["new_password"], data["new_password_confirm"])
             )
 
+        ratelimit.clear_password_change(request.user)
         user = form.save()
-        revoke_refresh_tokens(user)
+        revoke_refresh_tokens(user, request=request)
+        audit.record("password_changed", request=request, user=user)
         if request.auth is None:
             # Signed in by session: keep that session, as the web page does.
             update_session_auth_hash(request, user)
@@ -427,16 +852,15 @@ class PasswordResetView(PublicView):
         if ratelimit.is_limited(
             "reset", request, email, ratelimit.RESET_LIMIT, ratelimit.RESET_WINDOW
         ):
-            return Response(
-                {
-                    "detail": "Too many reset requests. Wait an hour and try again.",
-                    "code": "rate_limited",
-                },
-                status=status.HTTP_429_TOO_MANY_REQUESTS,
-            )
+            return rate_limited("Too many reset requests. Wait an hour and try again.")
         ratelimit.record_attempt("reset", request, email, ratelimit.RESET_WINDOW)
 
-        form = PasswordResetForm(data={"email": email})
+        # Recorded whether or not the address matches an account -- like
+        # the response itself, which never says either way.
+        matched_user = User.objects.filter(email__iexact=email).first()
+        audit.record("password_reset_requested", request=request, user=matched_user, email=email)
+
+        form = AnyActiveAccountPasswordResetForm(data={"email": email})
         if form.is_valid():
             options = {
                 "request": request,
@@ -466,6 +890,7 @@ class PasswordResetConfirmView(PublicView):
         request=PasswordResetConfirmSerializer,
         responses={200: MessageSerializer, 400: ValidationErrorSerializer},
     )
+    @sensitive_variables()
     def post(self, request, *args, **kwargs):
         body = PasswordResetConfirmSerializer(data=request.data)
         body.is_valid(raise_exception=True)
@@ -488,7 +913,8 @@ class PasswordResetConfirmView(PublicView):
             )
 
         form.save()
-        revoke_refresh_tokens(user)
+        revoke_refresh_tokens(user, request=request)
+        audit.record("password_reset_completed", request=request, user=user)
         return Response(
             {"detail": "Your password has been set. You can log in now.", "code": "password_set"}
         )
@@ -538,7 +964,7 @@ class MeView(APIView):
         username = user.get_username()
         if request.auth is None:
             logout(request)
-        counts = delete_account(user)
+        counts = delete_account(user, request=request)
         logger.info("Account %s deleted through the API: %s", username, counts)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -547,6 +973,17 @@ urlpatterns = [
     path("auth/signup/", SignupView.as_view(), name="auth-signup"),
     path("auth/verify-email/", VerifyEmailView.as_view(), name="auth-verify-email"),
     path("auth/login/", LoginView.as_view(), name="auth-login"),
+    path("auth/google/", GoogleLoginView.as_view(), name="auth-google"),
+    path("auth/mfa/verify/", MFAVerifyView.as_view(), name="auth-mfa-verify"),
+    path("auth/mfa/", MFAStatusView.as_view(), name="auth-mfa-status"),
+    path("auth/mfa/setup/", MFASetupView.as_view(), name="auth-mfa-setup"),
+    path("auth/mfa/confirm/", MFAConfirmView.as_view(), name="auth-mfa-confirm"),
+    path("auth/mfa/disable/", MFADisableView.as_view(), name="auth-mfa-disable"),
+    path(
+        "auth/mfa/recovery-codes/",
+        MFARegenerateView.as_view(),
+        name="auth-mfa-recovery-codes",
+    ),
     path("auth/refresh/", RefreshView.as_view(), name="auth-refresh"),
     path("auth/logout/", LogoutView.as_view(), name="auth-logout"),
     path("auth/password/change/", PasswordChangeView.as_view(), name="auth-password-change"),

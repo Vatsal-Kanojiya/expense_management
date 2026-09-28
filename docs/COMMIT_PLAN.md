@@ -621,6 +621,24 @@ The documents a frontend developer builds the React UI from (D47–D49), in `doc
 responses, rather than against the code, found three things worth fixing in the API itself. They are
 listed there.
 
+### Phase 22 — Security passes 🔜 *(session 29, branch `security-hardening`)*
+
+Themed passes, each confirmed, fixed, recorded and then paused for the owner's approval.
+
+| Pass | Theme | Commit | Status |
+|---|---|---|---|
+| 1 | Rate limits the caller could step around | `ea732e4`, `8208179`; tests `df0492e`, `16fb6f7`, `21107f4`; docs `82f9bc1` | ✅ Done: 14 tests |
+| 2 | Files in and out: photo type, upload size, scan/export limits, CSV cells | `e113a2c`–`edc0fb3`; review fix `dcd3325` | ✅ Done |
+| 3 | Each account sees and changes only its own records | `a686754`–`662c872` | ✅ Done: no gaps, 20 tests |
+| 4 | Tokens, sessions, headers, CSP, dependency audit | `64a1267`–`ed90e3e` | ✅ Done |
+| 5 | Errors, logs, admin site, account deletion | `75a5786`–`c2a6de1`; review fix `10a3d44` | ✅ Done |
+| 6 | Input and output: amounts, escaping, redirects, scanner output | `58969e8`–`061d8d1` | ✅ Done |
+| — | Whole-branch review | `d81ace5`, `cb78939` | ✅ Done: 2 gaps fixed, 1 decision open |
+| R-A | Roadmap: unverified accounts, breached passwords, security events | `5d3c9d1`–`684acae`; review `0e2dc44` | ✅ Done |
+| R-B | Roadmap: multi-factor sign-in (TOTP) | `00af710`–`3c8b8e9`; review `3b661d7`, `004287c` | ✅ Done |
+| R-C | Roadmap: Sign in with Google | `3475ed3`–`abda994`; review `183d782`, `cd63adf` | ✅ Done |
+| R-D | Roadmap: ASVS Level 1 walkthrough | `2d9ce0c`, `30b1482`; review `353cb0c`; Postgres run `eabb81a` | ✅ 54 met, 14 N/A, 2 gaps (policy) |
+
 ---
 
 ## 3. Practice branches — re-implementing a phase by hand

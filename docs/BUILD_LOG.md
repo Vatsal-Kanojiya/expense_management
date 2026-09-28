@@ -21,6 +21,9 @@
 
 > ## ▶ Resume here
 >
+> **Working without an assistant? Start at [HANDOVER.md](HANDOVER.md)** (session 29): branches and
+> merge order, daily commands, and the remaining tasks in order.
+>
 > **The expense tracker is frozen as of session 22.** It covers the concepts it was built for. From
 > here, only bugs that lose data or break a working flow get fixed. Polish goes on the backlog and
 > stays there. See DECISIONS D27.
@@ -539,6 +542,130 @@ cursor bug fails `TransactionTestCase` only.
 `ContentFile` · `queryset.iterator()` and cursor lifetime · `TestCase` vs `TransactionTestCase` ·
 `BaseCommand`, `add_arguments`, `CommandError`, `self.style` · `call_command` in tests ·
 `IntegrityError` as a concurrency primitive · `FileResponse` · `MEDIA_ROOT`.
+
+---
+
+### Session 32 — The security roadmap: towards ASVS Level 2
+
+The owner asked for the whole roadmap (`docs/SECURITY_ROADMAP.md`) to be built, with work given to
+the right model: designs and reviews in the main session (Opus), implementation by Sonnet
+subagents, one stage at a time because every stage touches the login code.
+
+**Stage A** (`5d3c9d1`–`684acae`): unverified accounts no longer squat an address (sign-up replaces
+them; a daily purge removes them after 7 days; `email_verified_at` tells them apart from
+deactivated accounts); a Have I Been Pwned range check refuses breached passwords, failing open; a
+`SecurityEvent` trail records sign-ins, failures, password and verification events, token
+revocation and deletion. **Review** `0e2dc44`: the "email taken" check read only the first of
+several case-variant rows; an audit write failing inside a transaction would abort it on Postgres
+(now a savepoint).
+
+**Stage B, multi-factor sign-in** (`00af710`–`3c8b8e9`, design `docs/design/MFA.md`): TOTP with
+recovery codes, a signed five-minute ticket between the password and the code, no step replay, a
+per-account attempt limit; the admin login now goes through the site login. **Review**
+`3b661d7`: disabling MFA and minting recovery codes checked the password and code with no limit, so
+a stolen session could guess its way to turning MFA off; `004287c`: a web MFA login was recorded
+twice.
+
+**Stage C, Sign in with Google** (`3475ed3`–`abda994`, design `docs/design/GOOGLE_SIGNIN.md`).
+**Review** found a flaw in the design itself: linking to an unverified account activated it,
+keeping a password anyone could have set — now replaced instead (`183d782`). Google-only accounts
+could never set a password, as Django's reset form skips them (`cd63adf`).
+
+**Stage D, ASVS Level 1** (`docs/ASVS_L1.md`, ASVS 5.0.0 fetched from OWASP's repository): 70
+requirements, 54 met, 14 not applicable, 2 gaps. `__Host-` cookie names in production
+(`2d9ce0c`). **Review** `353cb0c`: the Google button's script read the CSRF cookie by its old
+name, which would have broken web Google sign-in in production.
+
+**Before merging, the suite ran on Postgres** (it had only run on SQLite, as CI does). One real
+bug: an event with no client address failed to save on Postgres's IP column (`eabb81a`).
+
+**Left for the owner:** HSTS max-age (1 hour by D5; ASVS asks for a year), a written time frame for
+fixing vulnerable dependencies, and the per-account login cap. CI still tests on SQLite only.
+**Suite:** 895 tests, passing on SQLite and Postgres.
+
+---
+
+### Session 31 — Security passes 2 to 5, run by subagents
+
+The owner asked for the passes to be run by cheaper subagents, with the main session reviewing
+each one. Each pass: the checklist goes into `docs/HANDOVER.md` first, a Sonnet subagent works
+through it (one commit per item, with tests), then the main session reads the diff, re-runs the
+checks, and fixes what the review finds.
+
+**Pass 2, files in and out** (`e113a2c`–`edc0fb3`). Bill photos are checked by their leading bytes
+and saved under the verified extension; oversized bodies are refused from `Content-Length` by
+`MaxUploadSizeMiddleware`, with Django's own limits sized from `MAX_UPLOAD_SIZE`; 30 scans and 20
+exports per account per hour, shared by the page and the API; CSV cells starting with `=`, `+`,
+`-`, `@`, tab or CR open as text. **Review fix** `dcd3325`: the job limits checked, worked, then
+counted, so simultaneous requests all passed; now one atomic take, refunded if the form fails.
+
+**Pass 3, each account sees only its own records** (`a686754`–`662c872`). No gaps: the owner-scoped
+mixins, viewsets and `ScopedPrimaryKeyRelatedField` already covered reading, linking, changing and
+the admin. 20 tests pin it.
+
+**Pass 4, tokens, sessions and headers** (`64a1267`–`ed90e3e`). Password change and reset on the
+web pages now revoke refresh tokens, as the API already did. `ContentSecurityPolicyMiddleware`
+adds a CSP (no inline script; the Swagger page gets its own wider policy), checked in Chromium on
+the main pages and the admin. DRF 3.16.1 → 3.17.2 for two published advisories; `pip-audit` clean.
+
+**Pass 5, errors, logs, admin, deletion** (`75a5786`–`c2a6de1`). The 404 and 500 pages show a
+request id and nothing else; the API auth views mark their secrets sensitive; `ADMINS` and a
+`mail_admins` handler now exist (off until `ADMINS` is set); account deletion removes bill photos
+and refresh-token rows. **Review fix** `10a3d44`: files were removed inside the transaction, so a
+failed deletion lost them anyway; now removed on commit. `ADMINS` accepts plain addresses.
+
+**Pass 6, input and output** (`58969e8`–`061d8d1`). The API accepted an item-share weight of 0
+or past the smallint column, which reached the database as a 500; now 1–32767. Bill-scan output
+is untrusted all the way through: `NaN`/`Infinity` amounts, wrong-shaped JSON and overlong text
+are dropped or capped in `normalize.py`, and `prefill.py` refuses non-finite stored amounts, which
+had crashed the review page with a 500. Escaping and redirects were already correct; tests pin
+them. The review found nothing further.
+
+**Whole-branch review** (Opus, `d81ace5`, `cb78939`). Two gaps between passes, both fixed with
+tests that fail on the old code. The rate limits count in the default cache, which outside Docker
+is per-process, so every limit multiplied by the worker count; `check --deploy` now warns
+(`accounts.W001`). Wrong current passwords were counted per address and account, so a session
+could reset its count by changing network; now per account. Left open, for the owner: the login
+limit is per address and username, so guesses at one account spread over many addresses meet only
+the per-address cap. A per-account cap would close that but lets a stranger lock the owner out.
+Minor, not fixed: an oversized upload's 413 is sent before CORS headers are added; the Swagger UI
+loads `swagger-ui-dist@latest` from a CDN, unpinned.
+
+**Suite:** 708 tests. Next: merge the three branches (HANDOVER task 4), then
+`docs/SECURITY_ROADMAP.md`: ASVS L1 formally, then the L2 gaps. Found while writing it: an
+unverified sign-up is never purged and blocks its email and username, so an address's real owner
+can be locked out of registering.
+
+---
+
+### Session 30 — Security pass 1 completed
+
+The subscription carried on, so work resumed from `docs/HANDOVER.md`. Task 1: 14 tests in
+`accounts/tests/test_security_pass1.py` now check each protection pass 1 added. The client
+address ignores X-Forwarded-For without a proxy and reads it from the right behind one or two,
+and DRF's throttle follows the same rule. Sign-up and wrong current passwords share one budget
+between the page and the API. The admin login is guarded, one address is capped across
+usernames, a success clears only its own username, and failed logins do equal work. Task 2: the
+frontend pack's rate-limit table and BRD rules match. **Suite:** 573 tests, coverage 96%.
+
+---
+
+### Session 29 — Security pass 1, and the handover (phase 22)
+
+The owner asked for a security review in passes, one theme at a time, each fixed and then stopped
+for approval. Branch `security-hardening`, on top of `frontend-api`.
+
+**Pass 1, rate limits the caller could step around.** It was confirmed against the running stack
+before any change, and fixed in `ea732e4`. The commit message lists each change: one trusted
+client address for every limit (`TRUSTED_PROXY_COUNT`, which also sets DRF's `NUM_PROXIES`), one
+login guard shared by the web, API and admin logins, limits on sign-up and on wrong current
+passwords, equal work on failed API logins, and a configurable `ADMIN_URL`. `8208179` passes the
+proxy settings through compose, which they had never reached. The existing 559 tests pass. The
+pass's own tests are HANDOVER task 1.
+
+**Handover.** The owner is pausing for about two weeks without an assistant. `docs/HANDOVER.md`
+(`9e179cf`) sets out the branches and merge order, daily commands, the pre-commit checklist, the
+remaining tasks in order, and a hosting checklist.
 
 ---
 

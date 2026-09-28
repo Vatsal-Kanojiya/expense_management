@@ -21,6 +21,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from accounts import ratelimit
 from expenses.extraction.prefill import initial_from_scan
 from expenses.filters import DateRangeForm
 from expenses.forms import BillScanForm
@@ -44,6 +45,17 @@ class OwnerJobViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
 
 def not_ready(detail, code="not_ready", **extra):
     return Response({"detail": detail, "code": code, **extra}, status=status.HTTP_409_CONFLICT)
+
+
+def rate_limited(detail):
+    # Same shape as accounts/api.py's own rate_limited: {detail, code}, so a
+    # client branches on one field no matter which limit it hit.
+    return Response(
+        {"detail": detail, "code": "rate_limited"}, status=status.HTTP_429_TOO_MANY_REQUESTS
+    )
+
+
+RATE_LIMIT_RESPONSE = OpenApiResponse(MessageSerializer, description="Too many, too recently.")
 
 
 # --- Exports --------------------------------------------------------------
@@ -99,11 +111,23 @@ class ExportViewSet(OwnerJobViewSet):
             "`download_url`."
         ),
         request=ExportRequestSerializer,
-        responses={202: ExportJobSerializer, 400: OpenApiResponse(description="Invalid dates.")},
+        responses={
+            202: ExportJobSerializer,
+            400: OpenApiResponse(description="Invalid dates."),
+            429: RATE_LIMIT_RESPONSE,
+        },
     )
     def create(self, request, *args, **kwargs):
+        # Shared with the web page's ExportCreateView, and keyed on the
+        # account (accounts/ratelimit.py) -- an export ties up a worker for
+        # as long as it takes to build, same reasoning as the scan limit
+        # below.
+        if not ratelimit.take_export(request.user):
+            return rate_limited("Too many exports requested recently. Try again later.")
+
         form = DateRangeForm(request.data)
         if not form.is_valid():
+            ratelimit.refund_export(request.user)
             raise_form_errors(form)
         start, end = form.range_or_default()
 
@@ -219,12 +243,21 @@ class BillScanViewSet(OwnerJobViewSet):
         responses={
             202: BillScanSerializer,
             400: OpenApiResponse(description="Not a usable photo."),
+            429: RATE_LIMIT_RESPONSE,
         },
     )
     def create(self, request, *args, **kwargs):
+        # Shared with the web page's BillScanCreateView, and keyed on the
+        # account (accounts/ratelimit.py): a scan ties up a worker and, with
+        # a real BILL_SCAN_PROVIDER, spends money, so the budget is the
+        # account's no matter which client or address it uploads from.
+        if not ratelimit.take_scan(request.user):
+            return rate_limited("Too many bills scanned recently. Try again later.")
+
         # The page's own form: the accepted types and the 5 MB limit.
         form = BillScanForm(request.data, request.FILES)
         if not form.is_valid():
+            ratelimit.refund_scan(request.user)
             raise_form_errors(form)
 
         scan = BillScan.objects.create(user=request.user, image=form.cleaned_data["image"])
@@ -240,8 +273,15 @@ class BillScanViewSet(OwnerJobViewSet):
     @action(detail=True, methods=["get"])
     def image(self, request, *args, **kwargs):
         scan = self.get_object()
+        # The extension is trustworthy: BillScanForm.clean_image verified the
+        # bytes against their signature at upload and named the file from
+        # that, not from whatever the browser claimed. nosniff stops a
+        # browser guessing a different type from the bytes themselves, which
+        # is exactly the trick that made sniffing at upload necessary.
         content_type, _ = mimetypes.guess_type(scan.image.name)
-        return FileResponse(scan.image.open("rb"), content_type=content_type)
+        response = FileResponse(scan.image.open("rb"), content_type=content_type)
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
 
     @extend_schema(
         tags=SCANS_TAG,
