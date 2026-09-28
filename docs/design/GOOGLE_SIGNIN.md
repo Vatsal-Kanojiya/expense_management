@@ -17,8 +17,9 @@ the web button is not shown.
 ### Finding or creating the user (one function, used by the API and the web page)
 - Match an existing account by email, case-insensitively.
   - Active account: sign in as it.
-  - Unverified account (`is_active=False`, `email_verified_at` null): Google has just proved the
-    address, so activate it and set `email_verified_at`.
+  - Unverified account (`is_active=False`, `email_verified_at` null): **replace it** with a fresh
+    account (corrected in review — the first version activated it, but its password was chosen by
+    whoever created it, which could be anyone; activating it would let that password in).
   - Deactivated, verified account (`is_active=False`, `email_verified_at` set): refuse, as a
     password login would.
 - No match: create the user through the **same path as sign-up** (whatever sign-up does after
@@ -70,7 +71,7 @@ the web button is not shown.
 ### Tests (`accounts/tests/test_google_login.py`, never calling Google: mock `verify_oauth2_token`)
 - Off when unconfigured (404, no button).
 - New user created active, unusable password, same side effects as sign-up.
-- Existing active user by email (case-insensitive); unverified account activated; deactivated
+- Existing active user by email (case-insensitive); unverified account replaced, never activated; deactivated
   verified account refused; `email_verified` false refused; bad `iss` refused; verifier raising →
   refused, token not logged.
 - MFA user gets the ticket, not tokens (API) / the code page (web).
