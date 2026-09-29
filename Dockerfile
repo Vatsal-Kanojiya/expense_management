@@ -14,7 +14,7 @@
 # runtime is LAST, so `docker build .` with no --target still produces the
 # production image. compose.yaml asks for it by name anyway.
 
-FROM python:3.10-slim AS builder
+FROM python:3.14-slim AS builder
 
 # Never write .pyc into the layer, never buffer logs (a crashed container
 # would otherwise lose whatever was still in the buffer).
@@ -40,7 +40,7 @@ RUN /opt/venv/bin/pip install -r requirements-dev.txt
 
 # What dev and runtime share: the interpreter settings, the app user and the
 # directories that user must be able to write.
-FROM python:3.10-slim AS base
+FROM python:3.14-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
