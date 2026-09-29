@@ -21,6 +21,11 @@ is the part worth understanding, and it is the part a library hides.
   account, which is the shape of credential stuffing, without letting
   either dimension be weaponised alone.
 
+A later, much higher cap on the username alone (``LOGIN_ACCOUNT_LIMIT``)
+covers guesses spread over many addresses; it is deliberately high so that
+the denial of service above is possible but costly. See
+docs/design/SESSION_LIMITS.md.
+
 None of them stop a distributed attack. That needs a reputation service,
 and the honest statement is that this raises the cost rather than closing
 the door.
@@ -44,6 +49,16 @@ RESET_WINDOW = 60 * 60
 # does. High enough for an office behind one NAT, low enough to matter.
 LOGIN_IP_LIMIT = 50
 LOGIN_IP_WINDOW = 15 * 60
+
+# Wrong passwords for one account, from *anywhere* (docs/design/SESSION_LIMITS.md
+# §1). The two caps above are per address, so guesses at one account spread
+# over many addresses never meet either. This one is keyed on the username
+# alone. The accepted trade-off: a stranger can lock an account's password
+# sign-in for up to LOGIN_ACCOUNT_WINDOW by failing this many times. Google
+# sign-in (no password) and an already signed-in device are unaffected, and
+# the lock clears itself.
+LOGIN_ACCOUNT_LIMIT = 20
+LOGIN_ACCOUNT_WINDOW = 15 * 60
 
 # Sign-ups from one address. Each one sends an email to an address the
 # caller chose, so this protects third parties as much as the database.
@@ -164,21 +179,34 @@ def clear(scope, request, identifier):
 # budgets, and a door added later cannot forget half the rules.
 
 
+def _account_key(username):
+    # The same normalisation as _key(), minus the address.
+    identifier = (username or "").strip().lower()[:150]
+    return f"ratelimit:login-account:{identifier}"
+
+
 def login_blocked(request, username):
     """Whether this attempt must be refused before the password is checked."""
-    return is_limited("login", request, username, LOGIN_LIMIT, LOGIN_WINDOW) or is_limited(
-        "login-ip", request, "", LOGIN_IP_LIMIT, LOGIN_IP_WINDOW
+    return (
+        is_limited("login", request, username, LOGIN_LIMIT, LOGIN_WINDOW)
+        or is_limited("login-ip", request, "", LOGIN_IP_LIMIT, LOGIN_IP_WINDOW)
+        or (cache.get(_account_key(username)) or 0) >= LOGIN_ACCOUNT_LIMIT
     )
 
 
 def record_login_failure(request, username):
     record_attempt("login", request, username, LOGIN_WINDOW)
     record_attempt("login-ip", request, "", LOGIN_IP_WINDOW)
+    _increment(_account_key(username), LOGIN_ACCOUNT_WINDOW)
 
 
 def clear_login(request, username):
-    """Forget this username's failures. The per-address count stays."""
+    """Forget this username's failures, per address and per account.
+
+    The per-address count across usernames stays.
+    """
     clear("login", request, username)
+    cache.delete(_account_key(username))
 
 
 # --- Sign in with Google (docs/design/GOOGLE_SIGNIN.md) ------------------
