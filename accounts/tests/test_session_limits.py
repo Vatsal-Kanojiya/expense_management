@@ -834,3 +834,266 @@ class NoSessionTests(DeviceTestCase):
 
         self.assertIsNone(devices.register_web(request, self.alice))
         self.assertEqual(self.devices_of(), [])
+
+
+class DevicesEndpointTests(DeviceTestCase):
+    def bearer(self, pair):
+        return {"HTTP_AUTHORIZATION": f"Bearer {pair['access']}"}
+
+    def listing(self, pair):
+        return self.client.get("/api/v1/auth/devices/", **self.bearer(pair))
+
+    def sign_out(self, pair, pk):
+        return self.client.post(f"/api/v1/auth/devices/{pk}/sign-out/", **self.bearer(pair))
+
+    def test_it_needs_a_signed_in_user(self):
+        self.assertEqual(self.client.get("/api/v1/auth/devices/").status_code, 401)
+        self.assertEqual(self.client.post("/api/v1/auth/devices/1/sign-out/").status_code, 401)
+
+    def test_it_lists_the_devices_with_the_documented_fields_only(self):
+        self.web_device(ua="A Browser")
+        pair = self.api_device(ua="An App")
+
+        body = self.listing(pair).json()
+
+        self.assertEqual(len(body), 2)
+        for row in body:
+            self.assertEqual(
+                set(row), {"id", "kind", "label", "created_at", "last_seen_at", "current"}
+            )
+        self.assertEqual(
+            sorted((row["kind"], row["label"]) for row in body),
+            [("api", "An App"), ("web", "A Browser")],
+        )
+
+    def test_the_most_recently_seen_comes_first(self):
+        first = self.api_device()
+        self.api_device()
+        (older, newer) = self.devices_of()
+        self.age(older, 5)
+        self.age(newer, 60)
+
+        rows = self.listing(first).json()
+
+        self.assertEqual([row["id"] for row in rows], [older.pk, newer.pk])
+
+    def test_an_api_request_is_never_current(self):
+        self.web_device()
+        pair = self.api_device()
+
+        self.assertEqual([row["current"] for row in self.listing(pair).json()], [False, False])
+
+    def test_a_web_session_sees_itself_as_current(self):
+        other = self.web_device()
+        mine = self.web_device()
+
+        rows = mine.get("/api/v1/auth/devices/").json()
+
+        current = [row for row in rows if row["current"]]
+        self.assertEqual(len(current), 1)
+        self.assertEqual(
+            SignedInDevice.objects.get(pk=current[0]["id"]).session_key, mine.session.session_key
+        )
+        self.assertNotEqual(current[0]["id"], other.session.session_key)
+
+    def test_a_bearer_request_that_also_sends_a_session_cookie_is_not_that_session(self):
+        browser = self.web_device()
+        pair = self.api_device()
+
+        rows = browser.get("/api/v1/auth/devices/", **self.bearer(pair)).json()
+
+        self.assertEqual([row["current"] for row in rows], [False, False])
+
+    def test_it_never_shows_a_session_key_or_token_id(self):
+        client = self.web_device()
+        pair = self.api_device()
+
+        text = self.listing(pair).content.decode()
+
+        self.assertNotIn(client.session.session_key, text)
+        self.assertNotIn(str(RefreshToken(pair["refresh"])["jti"]), text)
+
+    def test_it_lists_only_your_own_devices(self):
+        self.web_device("bob")
+        pair = self.api_device("alice")
+
+        self.assertEqual(len(self.listing(pair).json()), 1)
+
+    def test_dead_devices_are_not_listed(self):
+        gone = self.web_device()
+        Session.objects.filter(session_key=gone.session.session_key).delete()
+        pair = self.api_device()
+
+        self.assertEqual([row["kind"] for row in self.listing(pair).json()], ["api"])
+
+    def test_signing_out_a_web_device_ends_its_session(self):
+        browser = self.web_device()
+        pair = self.api_device()
+        (web,) = [d for d in self.devices_of() if d.kind == "web"]
+
+        response = self.sign_out(pair, web.pk)
+
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(self.signed_in(browser))
+        self.assertEqual([d.kind for d in self.devices_of()], ["api"])
+
+    def test_signing_out_an_api_device_revokes_its_refresh_token(self):
+        pair = self.api_device()
+        other = self.api_device()
+        (first, _second) = self.devices_of()
+
+        response = self.sign_out(other, first.pk)
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(self.refresh(pair).status_code, 401)
+        self.assertEqual(self.refresh(other).status_code, 200)
+        self.assertEqual(len(self.devices_of()), 1)
+
+    def test_signing_out_is_recorded_as_the_users_own_doing(self):
+        pair = self.api_device(ua="Old App")
+        self.web_device()
+        (api,) = [d for d in self.devices_of() if d.kind == "api"]
+
+        self.sign_out(pair, api.pk)
+
+        event = SecurityEvent.objects.get(event="device_signed_out")
+        self.assertEqual(event.detail, {"kind": "api", "label": "Old App", "reason": "user"})
+
+    def test_a_signed_out_device_leaves_room_for_another_sign_in(self):
+        first = self.web_device()
+        pair = self.api_device()
+        (web,) = [d for d in self.devices_of() if d.kind == "web"]
+        self.sign_out(pair, web.pk)
+
+        third = self.web_device()
+
+        self.assertFalse(self.signed_in(first))
+        self.assertEqual(self.refresh(pair).status_code, 200)
+        self.assertTrue(self.signed_in(third))
+        self.assertEqual(SecurityEvent.objects.filter(detail__reason="limit").count(), 0)
+
+    def test_one_user_cannot_sign_out_another_users_device(self):
+        theirs = self.web_device("bob")
+        (bobs,) = self.devices_of("bob")
+        pair = self.api_device("alice")
+
+        response = self.sign_out(pair, bobs.pk)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(self.signed_in_as(theirs))
+        self.assertEqual(len(self.devices_of("bob")), 1)
+        self.assertEqual(SecurityEvent.objects.filter(event="device_signed_out").count(), 0)
+
+    def test_an_unknown_id_is_404(self):
+        pair = self.api_device()
+
+        self.assertEqual(self.sign_out(pair, 999999).status_code, 404)
+
+    def test_the_sign_out_endpoint_wants_post(self):
+        pair = self.api_device()
+        (device,) = self.devices_of()
+
+        response = self.client.get(
+            f"/api/v1/auth/devices/{device.pk}/sign-out/", **self.bearer(pair)
+        )
+
+        self.assertEqual(response.status_code, 405)
+
+    def signed_in_as(self, client):
+        return client.get(reverse("accounts:mfa")).status_code == 200
+
+
+class DevicesPageTests(DeviceTestCase):
+    def test_the_page_lists_the_devices_and_marks_this_one(self):
+        self.api_device(ua="Pixel App")
+        mine = self.web_device(ua="Firefox on Linux")
+
+        response = mine.get(reverse("accounts:mfa"))
+
+        self.assertContains(response, "Signed-in devices")
+        self.assertContains(response, "Pixel App")
+        self.assertContains(response, "Firefox on Linux")
+        self.assertContains(response, "(this device)", count=1)
+        self.assertContains(response, "You can be signed in on 2 devices at a time")
+        self.assertContains(response, "Sign out", count=2)  # one button per device
+
+    def test_a_label_is_escaped(self):
+        mine = self.web_device(ua="<script>alert(1)</script>")
+
+        response = mine.get(reverse("accounts:mfa"))
+
+        self.assertNotContains(response, "<script>alert(1)</script>")
+        self.assertContains(response, "&lt;script&gt;alert(1)&lt;/script&gt;")
+
+    def test_a_device_with_no_label_says_so(self):
+        mine = self.client_class()
+        mine.post("/accounts/login/", {"username": "alice", "password": PASSWORD})
+
+        self.assertContains(mine.get(reverse("accounts:mfa")), "Unknown device")
+
+    def test_the_page_needs_a_signed_in_user(self):
+        response = self.client.get(reverse("accounts:mfa"))
+
+        self.assertEqual(response.status_code, 302)
+
+    def test_a_button_signs_another_device_out(self):
+        other = self.web_device()
+        mine = self.web_device()
+        (theirs,) = [d for d in self.devices_of() if d.session_key == other.session.session_key]
+
+        response = mine.post(reverse("accounts:device_sign_out", args=[theirs.pk]))
+
+        self.assertRedirects(response, reverse("accounts:mfa"), fetch_redirect_response=False)
+        self.assertFalse(self.signed_in(other))
+        self.assertTrue(self.signed_in(mine))
+        self.assertEqual(len(self.devices_of()), 1)
+
+    def test_a_button_signs_an_api_device_out(self):
+        pair = self.api_device()
+        mine = self.web_device()
+        (api,) = [d for d in self.devices_of() if d.kind == "api"]
+
+        mine.post(reverse("accounts:device_sign_out", args=[api.pk]))
+
+        self.assertEqual(self.refresh(pair).status_code, 401)
+
+    def test_signing_this_device_out_ends_the_session(self):
+        mine = self.web_device()
+        (device,) = self.devices_of()
+
+        response = mine.post(reverse("accounts:device_sign_out", args=[device.pk]))
+
+        self.assertRedirects(response, reverse("accounts:login"), fetch_redirect_response=False)
+        self.assertFalse(self.signed_in(mine))
+        self.assertEqual(self.devices_of(), [])
+
+    def test_another_users_device_is_404(self):
+        theirs = self.web_device("bob")
+        (bobs,) = self.devices_of("bob")
+        mine = self.web_device("alice")
+
+        response = mine.post(reverse("accounts:device_sign_out", args=[bobs.pk]))
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(self.signed_in_as_bob(theirs))
+
+    def signed_in_as_bob(self, client):
+        return client.get(reverse("accounts:mfa")).status_code == 200
+
+    def test_signing_out_wants_post(self):
+        mine = self.web_device()
+        (device,) = self.devices_of()
+
+        response = mine.get(reverse("accounts:device_sign_out", args=[device.pk]))
+
+        self.assertEqual(response.status_code, 405)
+        self.assertEqual(len(self.devices_of()), 1)
+
+    def test_signing_out_needs_a_signed_in_user(self):
+        mine = self.web_device()
+        (device,) = self.devices_of()
+
+        response = self.client.post(reverse("accounts:device_sign_out", args=[device.pk]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(self.signed_in(mine))

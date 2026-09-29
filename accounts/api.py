@@ -27,6 +27,7 @@ from django.utils.http import urlsafe_base64_decode
 from django.views.decorators.debug import sensitive_variables
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_field
 from rest_framework import serializers, status
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -42,7 +43,7 @@ from . import audit, devices, mfa, ratelimit, totp
 from .deletion import delete_account
 from .forms import AnyActiveAccountPasswordResetForm, SignUpForm
 from .google import GoogleSignInError, google_signin_enabled, sign_in_with_google
-from .models import RecoveryCode, TOTPDevice
+from .models import RecoveryCode, SignedInDevice, TOTPDevice
 from .models import mfa_enabled as user_has_mfa
 from .verification import send_verification_email, verify
 
@@ -159,6 +160,25 @@ class MFARequiredSerializer(serializers.Serializer):
 class MFAVerifySerializer(serializers.Serializer):
     mfa_ticket = serializers.CharField()
     code = serializers.CharField(help_text="A 6-digit authenticator code, or a recovery code.")
+
+
+class DeviceSerializer(serializers.ModelSerializer):
+    """A signed-in device, as the list shows it. Never the session key or token id."""
+
+    current = serializers.SerializerMethodField(
+        help_text="True for the web session making this request. An API device cannot tell "
+        "which one it is (an access token does not name its refresh token), so it is always "
+        "false for a request made with a bearer token."
+    )
+
+    class Meta:
+        model = SignedInDevice
+        fields = ["id", "kind", "label", "created_at", "last_seen_at", "current"]
+        read_only_fields = fields
+
+    @extend_schema_field(serializers.BooleanField)
+    def get_current(self, device):
+        return devices.is_current(device, self.context["request"])
 
 
 class MFAStatusSerializer(serializers.Serializer):
@@ -823,6 +843,50 @@ class LogoutView(PublicView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class DeviceListView(APIView):
+    """The devices this account is signed in on: web sessions and API refresh tokens."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Signed-in devices",
+        description="At most `MAX_SIGNED_IN_DEVICES` (default 2): a further sign-in signs "
+        "the oldest device out. Most recently seen first. A device that has gone away "
+        "(expired session or token) is not listed.",
+        responses=DeviceSerializer(many=True),
+    )
+    def get(self, request, *args, **kwargs):
+        found = devices.live_devices(request.user, request=request)
+        found.sort(key=lambda device: (device.last_seen_at, device.pk), reverse=True)
+        return Response(DeviceSerializer(found, many=True, context={"request": request}).data)
+
+
+class DeviceSignOutView(APIView):
+    """Sign one device out: end its web session, or revoke its refresh token."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Sign a device out",
+        description="Ends that device: a web session is deleted; an API device's refresh "
+        "token is revoked, so it gets 401 on its next refresh (its current access token "
+        "keeps working until it expires, up to `JWT_ACCESS_MINUTES`, default 30). Another "
+        "account's device id is 404.",
+        request=None,
+        responses={204: None, 404: OpenApiResponse(MessageSerializer, description="Not yours.")},
+    )
+    def post(self, request, pk, *args, **kwargs):
+        # Scoped to the caller, so someone else's id is a 404, never a 403
+        # that says it exists.
+        device = SignedInDevice.objects.filter(pk=pk, user=request.user).first()
+        if device is None:
+            raise NotFound("No such device.")
+        devices.end(device, request=request, reason="user")
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class PasswordChangeView(APIView):
     """Change the password, sign out every other device, keep this one."""
 
@@ -1027,6 +1091,12 @@ urlpatterns = [
         "auth/mfa/recovery-codes/",
         MFARegenerateView.as_view(),
         name="auth-mfa-recovery-codes",
+    ),
+    path("auth/devices/", DeviceListView.as_view(), name="auth-devices"),
+    path(
+        "auth/devices/<int:pk>/sign-out/",
+        DeviceSignOutView.as_view(),
+        name="auth-device-sign-out",
     ),
     path("auth/refresh/", RefreshView.as_view(), name="auth-refresh"),
     path("auth/logout/", LogoutView.as_view(), name="auth-logout"),
