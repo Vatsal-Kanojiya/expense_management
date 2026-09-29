@@ -238,6 +238,7 @@ On the server, in `.env` (see `.env.example` for each key):
 | `USE_X_FORWARDED_PROTO` | `True` behind a proxy that terminates HTTPS |
 | `TRUSTED_PROXY_COUNT` | The number of proxies in front: usually `1` |
 | `ADMIN_URL` | A path other than `admin/` |
+| `SECURE_HSTS_SECONDS` | Leave at the default (1 hour) for the first weeks; once HTTPS has been stable, set `31536000` (a year). ASVS L1 V3.4.1 needs the year; DECISIONS D5 explains the wait |
 | `CACHE_URL` | A shared cache, e.g. Redis. compose.yaml sets it; outside Docker the default is per-process, and every rate limit then counts per worker (`check --deploy` warns: `accounts.W001`) |
 | `ADMINS` | Who gets mailed a production error: `Name:address` or plain addresses, comma-separated. Empty means no error mail |
 | `CORS_ALLOWED_ORIGINS` | The frontend's origin(s) |
