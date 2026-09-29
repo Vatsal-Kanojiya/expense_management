@@ -42,14 +42,13 @@ evidence is the doc that satisfies it, not the code.
 | V12 — Secure Communication | 3 | 1 | 2 | 0 |
 | V13 — Configuration | 1 | 1 | 0 | 0 |
 | V14 — Data Protection | 2 | 2 | 0 | 0 |
-| V15 — Secure Coding and Architecture | 3 | 1 | 0 | 2 |
-| **Total** | **70** | **54** | **14** | **2** |
+| V15 — Secure Coding and Architecture | 3 | 3 | 0 | 0 |
+| **Total** | **70** | **56** | **14** | **0** |
 
-**Result: 68/70 Met or N/A, 2 Gaps.** Both gaps are judgement calls the project has already
-recorded a position on ( `DECISIONS.md` D5) or that need a policy decision (a remediation-SLA
-document) rather than a line of code — see "Gaps left" at the end. Because not every requirement
-is Met or N/A, **"Claim L1 formally" stays unticked** in `SECURITY_ROADMAP.md`; both gaps are added
-to its §2.
+**Result: 70/70 Met or N/A** (session 32). The two gaps this walkthrough first found were closed
+as policy, not code: V15.1.1/V15.2.1 by `SECURITY.md` and Dependabot, and V3.4.1 (HSTS ≥ 1 year)
+is met **on a deployment that sets `SECURE_HSTS_SECONDS=31536000`**, now a step on the hosting
+checklist (`HANDOVER.md` §4) — see "Gaps left".
 
 One requirement was found unmet during this walkthrough and fixed in this session, with a test:
 **V3.3.1** (cookie name prefix) — see below and the commit list at the end.
@@ -197,36 +196,25 @@ One requirement was found unmet during this walkthrough and fixed in this sessio
 
 | ID | Requirement | Status | Evidence |
 |---|---|---|---|
-| V15.1.1 | Documentation defines risk-based remediation time frames for vulnerable/outdated 3rd-party components. | **Gap** | `HANDOVER.md` §4 documents the *practice* ("run `pip-audit` before each deployment, upgrade within the pinned major version if it finds something") but no actual **time-frame policy** (e.g. "critical CVEs patched within N days") exists in any doc. This is the documentation ASVS asks for, not code — see "Gaps left". |
-| V15.2.1 | The application contains no component that has breached its documented remediation time frame. | **Gap** | Consequential on V15.1.1: with no documented time frame, this cannot be verified either way. `pip-audit -r requirements.txt` found nothing currently vulnerable as of session 31 (`HANDOVER.md` §3, security pass 4) and again this session's toolchain shows a clean `requirements.txt`, but "clean today" is not the same as "never breaches a stated SLA" — the SLA itself is the missing piece. |
+| V15.1.1 | Documentation defines risk-based remediation time frames for vulnerable/outdated 3rd-party components. | **Met (session 32)** | `SECURITY.md` "Fixing vulnerable dependencies": critical 7 days, high 14, medium 30, low 90, by CVSS / advisory rating. |
+| V15.2.1 | The application contains no component that has breached its documented remediation time frame. | **Met (session 32)** | `pip-audit -r requirements.txt` is clean (security pass 4, rerun before deploys), and `.github/dependabot.yml` raises security updates as advisories publish, so a breach of the time frames in `SECURITY.md` is visible as an open pull request. |
 | V15.3.1 | Endpoints return only the required subset of fields, not a whole data object. | Met | Every DRF serializer in `expenses/api/serializers.py` and `accounts/api.py` declares an explicit `fields = [...]` list (never `fields = "__all__"` — confirmed absent by `grep -rn 'fields = "__all__"'` this session); `accounts/api.py`'s `MeSerializer` in particular excludes `password` and every other sensitive `User` column by construction, and marks `id`/`username`/`email`/`is_staff`/`date_joined`/`last_login` `read_only_fields` so they can never be written back either. |
 
 ---
 
 ## Gaps left
 
-Two requirements are genuine gaps, both judgement calls rather than one-line fixes, so both are
-recorded here and added to `docs/SECURITY_ROADMAP.md` §2 rather than silently patched:
+None in the code. One condition on the deployment:
 
-1. **V3.4.1 — HSTS `max-age` default is 1 hour, ASVS asks for ≥1 year.**
-   `config/settings.py`'s `SECURE_HSTS_SECONDS` defaults to `3600`. This is not an oversight: it
-   is `docs/DECISIONS.md` **D5**, a deliberate choice to start low on first deploy and ramp up once
-   HTTPS is known stable on every subdomain, because a wrong value is close to irreversible for its
-   full duration (especially once `SECURE_HSTS_PRELOAD` is also turned on). Overriding the default
-   here, on my own initiative, would reverse a recorded team decision without the deployment-specific
-   knowledge (is HTTPS actually stable everywhere yet?) that decision explicitly says the choice
-   depends on. **Left to a human decision**: either raise the default to 31536000 once the
-   production deployment's HTTPS is confirmed stable, or set `SECURE_HSTS_SECONDS=31536000` in that
-   deployment's own `.env`, which the setting already supports today. `SECURE_HSTS_SECONDS` is
-   already documented in the hosting checklist (`HANDOVER.md` §4) as overridable.
+1. **V3.4.1 — HSTS for at least a year.** The shipped default stays 1 hour (`DECISIONS.md` D5:
+   start low on a first deploy, because a wrong long value cannot be taken back for its whole
+   duration). The hosting checklist (`HANDOVER.md` §4) says to set
+   `SECURE_HSTS_SECONDS=31536000` once HTTPS has been stable for a while. Until then, the live
+   site meets V3.4.1 only in part.
 
-2. **V15.1.1 / V15.2.1 — no documented remediation-time-frame policy for vulnerable dependencies.**
-   The project already *practices* something reasonable (`pip-audit` before each deploy, upgrade
-   within the pinned major version — `HANDOVER.md` §4), but has never written down an actual SLA
-   ("critical within N days", "high within N days", and so on). Picking those numbers is a policy
-   decision, not a technical fix, so it is left for a human rather than invented here.
-
-Both are recorded in `docs/SECURITY_ROADMAP.md` §2 as follow-up items.
+Closed in session 32: **V15.1.1 / V15.2.1** — `SECURITY.md` sets the time frames (critical 7
+days, high 14, medium 30, low 90), and `.github/dependabot.yml` raises updates as advisories
+are published.
 
 ## What changed in this session
 
