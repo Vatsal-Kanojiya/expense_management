@@ -685,3 +685,9 @@ MFA_ISSUER = env("MFA_ISSUER", default="Expense Tracker")
 # get one. Not a secret: it identifies the app to Google, and reaches the
 # browser in a `data-` attribute on the login/sign-up pages.
 GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")
+
+# Signed-in devices per account (docs/design/SESSION_LIMITS.md). A web
+# session and an API refresh-token chain each count as one; a sign-in past
+# this number signs the oldest device out. At least 1 (accounts/devices.py
+# treats anything lower as 1).
+MAX_SIGNED_IN_DEVICES = env.int("MAX_SIGNED_IN_DEVICES", default=2)

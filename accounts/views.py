@@ -15,7 +15,7 @@ from django.views.generic import CreateView, TemplateView
 
 from expenses.models import Category, Expense, Participant
 
-from . import audit, mfa, qrcode, ratelimit, totp
+from . import audit, devices, mfa, qrcode, ratelimit, totp
 from .api import revoke_refresh_tokens
 from .deletion import delete_account
 from .forms import AnyActiveAccountPasswordResetForm, SignUpForm
@@ -74,7 +74,7 @@ class ThrottledLoginView(GoogleButtonContextMixin, auth_views.LoginView):
             # session id the same way login() would, without attaching a
             # user to it, which is what stops a fixation attack on this
             # still-anonymous session.
-            self.request.session.cycle_key()
+            devices.cycle_session_key(self.request)
             self.request.session["mfa_ticket"] = mfa.make_ticket(user)
             self.request.session["mfa_next"] = self.get_redirect_url()
             return redirect("accounts:login_mfa")
@@ -202,7 +202,7 @@ class GoogleLoginView(View):
 
         if user_has_mfa(user):
             # Same second step as a password login (docs/design/MFA.md).
-            request.session.cycle_key()
+            devices.cycle_session_key(request)
             request.session["mfa_ticket"] = mfa.make_ticket(user)
             request.session["mfa_next"] = next_url
             return redirect("accounts:login_mfa")
@@ -249,7 +249,11 @@ class ThrottledPasswordChangeView(auth_views.PasswordChangeView):
 
     def form_valid(self, form):
         ratelimit.clear_password_change(self.request.user)
+        old_key = self.request.session.session_key
         response = super().form_valid(form)
+        # update_session_auth_hash gave this session a new key; the current
+        # device's record follows it, or it would drop out of the count.
+        devices.rekey(self.request, old_key)
         # update_session_auth_hash (called above, inside super().form_valid)
         # only keeps *this* session signed in; it says nothing about a
         # refresh token some other device is holding. Revoke those too, or
