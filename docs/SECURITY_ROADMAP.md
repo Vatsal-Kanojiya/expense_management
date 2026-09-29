@@ -20,13 +20,14 @@ upload and input chapters. What stands between us and an honest L2 claim is belo
 ## The plan, in order
 
 ### 1. Claim L1 formally
-- [ ] Walk the ASVS Level 1 requirements one by one. For each: met (with the file, test or
+- [x] (Session 32: 70/70 Met or N/A, `docs/ASVS_L1.md`; V3.4.1 needs the one-year HSTS on the live
+      server, a hosting-checklist step.) Walk the ASVS Level 1 requirements one by one. For each: met (with the file, test or
       setting as evidence), not applicable (why), or a gap (added below). Keep the result in
       `docs/ASVS_L1.md`.
       Done, against ASVS 5.0.0 (`docs/ASVS_L1.md`): 54 Met, 14 N/A, 2 Gap out of 70 Level 1
       requirements. One requirement found unmet during the walk (V3.3.1, cookie name prefix) was
       fixed in the same session, with a test. The two remaining gaps (V3.4.1's HSTS default,
-      V15.1.1/V15.2.1's missing remediation-SLA doc) are below in §2 -- both are judgement calls,
+      V15.1.1/V15.2.1's missing remediation-SLA doc, since closed) are below in §2 -- both are judgement calls,
       not code fixes, so **this box stays unticked** until a human decision closes them.
 
 ### 2. Close what we already know about
@@ -53,11 +54,12 @@ upload and input chapters. What stands between us and an honest L2 claim is belo
       and simply document that a production `.env` must set `SECURE_HSTS_SECONDS=31536000`
       itself. Either way, record the decision in `DECISIONS.md`. See `docs/ASVS_L1.md`'s "Gaps
       left".
-- [ ] **ASVS V15.1.1 / V15.2.1 -- no documented remediation-time-frame policy for vulnerable
+- [x] **ASVS V15.1.1 / V15.2.1 -- no documented remediation-time-frame policy for vulnerable
       dependencies.** `pip-audit` is already run before each deploy (`HANDOVER.md` §4), but no doc
       states an actual SLA (e.g. "critical within N days, high within N days"). Pick the numbers
       and write them down -- `docs/DECISIONS.md` or a new short section of this file is the
-      natural place. See `docs/ASVS_L1.md`'s "Gaps left".
+      natural place. See `docs/ASVS_L1.md`'s "Gaps left". **Done in session 32:** `SECURITY.md`
+      (7/14/30/90 days by severity) and `.github/dependabot.yml`.
 
 ### 3. The L2 gaps
 - [x] **Multi-factor sign-in (TOTP).** An authenticator-app code after the password, with
