@@ -638,6 +638,8 @@ Themed passes, each confirmed, fixed, recorded and then paused for the owner's a
 | R-B | Roadmap: multi-factor sign-in (TOTP) | `00af710`–`3c8b8e9`; review `3b661d7`, `004287c` | ✅ Done |
 | R-C | Roadmap: Sign in with Google | `3475ed3`–`abda994`; review `183d782`, `cd63adf` | ✅ Done |
 | R-D | Roadmap: ASVS Level 1 walkthrough | `2d9ce0c`, `30b1482`; review `353cb0c`; Postgres run `eabb81a` | ✅ 54 met, 14 N/A, 2 gaps (policy) |
+| R-E | Dependency fix deadlines (`SECURITY.md`) and Dependabot | `8a5bdda` (merge) | ✅ Done: ASVS L1 70/70 |
+| R-F | Sign-in limits: 2 devices, 20 wrong passwords per account | `0a4bfcd`–`994f70e` | ✅ Done |
 
 ---
 

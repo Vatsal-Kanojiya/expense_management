@@ -80,6 +80,7 @@ class SecurityEvent(models.Model):
         RECOVERY_CODES_REGENERATED = "recovery_codes_regenerated", "Recovery codes regenerated"
         GOOGLE_LOGIN_SUCCEEDED = "google_login_succeeded", "Google sign-in succeeded"
         GOOGLE_LOGIN_FAILED = "google_login_failed", "Google sign-in failed"
+        DEVICE_SIGNED_OUT = "device_signed_out", "Device signed out"
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     event = models.CharField(max_length=32, choices=Event.choices)
@@ -219,3 +220,41 @@ class RecoveryCode(models.Model):
 def mfa_enabled(user):
     """Whether ``user`` has a confirmed authenticator device."""
     return TOTPDevice.objects.filter(user=user, confirmed=True).exists()
+
+
+class SignedInDevice(models.Model):
+    """One signed-in device: a web session, or an API refresh-token chain.
+
+    ``docs/design/SESSION_LIMITS.md``. At most ``MAX_SIGNED_IN_DEVICES`` of
+    these exist per account; a further sign-in ends the oldest. Written and
+    pruned only through ``accounts.devices``, which is also what keeps this
+    table in step with the ``Session`` and ``OutstandingToken`` rows it
+    stands for.
+
+    ``session_key`` (web) and ``refresh_jti`` (api) are how a record finds
+    the thing it can end. Neither is ever shown to a client -- only ``id``,
+    ``kind``, ``label`` and the two times are.
+    """
+
+    class Kind(models.TextChoices):
+        WEB = "web", "Web"
+        API = "api", "API"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="signed_in_devices"
+    )
+    kind = models.CharField(max_length=3, choices=Kind.choices)
+    session_key = models.CharField(max_length=40, blank=True, db_index=True)
+    refresh_jti = models.CharField(max_length=255, blank=True, db_index=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    last_seen_at = models.DateTimeField(default=timezone.now)
+    # The User-Agent, truncated: enough for a person to tell their phone from
+    # their laptop in the list. Untrusted text -- always escaped when shown.
+    label = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        # The foreign key's own index is the "index on user" the design asks for.
+        ordering = ["last_seen_at", "id"]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} device {self.pk} for user {self.user_id}"

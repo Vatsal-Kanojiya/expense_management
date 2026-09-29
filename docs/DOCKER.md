@@ -166,6 +166,7 @@ Docker reads are grouped at the bottom of `.env.example`.
 | `BILL_SCAN_PROVIDER` | `fake` | `fake`, `claude`, `gemini` or `openai`; see README, "Bill scanning" |
 | `BILL_SCAN_*_MODEL`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `OPENAI_API_KEY` | not set | Passed through only when set. Leave them commented out rather than empty |
 | `USE_X_FORWARDED_PROTO`, `TRUSTED_PROXY_COUNT`, `ADMIN_URL` | not set | Hosting behind a reverse proxy; see `.env.example` and HANDOVER.md §4. Passed through only when set |
+| `MAX_SIGNED_IN_DEVICES` | `2` | Devices one account may be signed in on at once (docs/design/SESSION_LIMITS.md). Passed through only when set |
 | `CORS_ALLOWED_ORIGINS`, `FRONTEND_URL`, `JWT_ACCESS_MINUTES`, `JWT_REFRESH_DAYS`, `API_USER_THROTTLE`, `API_ANON_THROTTLE`, `EMAIL_HOST` … `EMAIL_USE_TLS` | not set | The API for a separate frontend, and real email; each is explained in `.env.example`. Passed through only when set |
 
 **Fixed by the compose files, whatever `.env` says:** `DEBUG` (by mode), `DATABASE_URL`, the Celery

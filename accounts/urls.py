@@ -31,6 +31,12 @@ urlpatterns = [
     path("delete/", views.DeleteAccountView.as_view(), name="delete_account"),
     # Two-step sign-in (docs/design/MFA.md): the account page's own section.
     path("mfa/", views.MFAView.as_view(), name="mfa"),
+    # Signed-in devices (docs/design/SESSION_LIMITS.md), on the same page.
+    path(
+        "devices/<int:pk>/sign-out/",
+        views.DeviceSignOutView.as_view(),
+        name="device_sign_out",
+    ),
     path("mfa/setup/", views.MFASetupView.as_view(), name="mfa_setup"),
     path(
         "mfa/recovery-codes/",

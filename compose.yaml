@@ -77,6 +77,8 @@ x-django-env: &django-env
   USE_X_FORWARDED_PROTO:
   TRUSTED_PROXY_COUNT:
   ADMIN_URL:
+  # Signed-in devices per account (docs/design/SESSION_LIMITS.md); default 2.
+  MAX_SIGNED_IN_DEVICES:
 
 # One image for web, worker and beat, and only web builds it. Compose stamps
 # the building service's name into the image as a label, so giving all three

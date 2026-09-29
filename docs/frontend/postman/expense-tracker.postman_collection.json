@@ -57,6 +57,10 @@
       "value": ""
     },
     {
+      "key": "device_id",
+      "value": ""
+    },
+    {
       "key": "draft_expense",
       "value": ""
     },
@@ -298,7 +302,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 1,\n    \"username\": \"priya\",\n    \"email\": \"priya@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-29T00:16:46.706031+05:30\",\n    \"last_login\": \"2026-09-29T00:16:46.725486+05:30\",\n    \"self_participant\": {\n      \"id\": 1,\n      \"name\": \"priya (self)\"\n    },\n    \"has_password\": true\n  }\n}"
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 1,\n    \"username\": \"priya\",\n    \"email\": \"priya@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-30T01:17:44.886751+05:30\",\n    \"last_login\": \"2026-09-30T01:17:44.926407+05:30\",\n    \"self_participant\": {\n      \"id\": 1,\n      \"name\": \"priya (self)\"\n    },\n    \"has_password\": true\n  }\n}"
             },
             {
               "name": "Wrong password (401 Unauthorized)",
@@ -475,7 +479,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"journey.google\",\n    \"email\": \"journey.google@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-29T00:16:46.735978+05:30\",\n    \"last_login\": \"2026-09-29T00:16:46.738253+05:30\",\n    \"self_participant\": {\n      \"id\": 2,\n      \"name\": \"journey.google (self)\"\n    },\n    \"has_password\": false\n  }\n}"
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 3,\n    \"username\": \"journey.google\",\n    \"email\": \"journey.google@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-30T01:17:44.945012+05:30\",\n    \"last_login\": \"2026-09-30T01:17:44.952672+05:30\",\n    \"self_participant\": {\n      \"id\": 2,\n      \"name\": \"journey.google (self)\"\n    },\n    \"has_password\": false\n  }\n}"
             }
           ]
         },
@@ -535,7 +539,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"username\": \"priya\",\n  \"email\": \"priya@example.com\",\n  \"first_name\": \"\",\n  \"last_name\": \"\",\n  \"is_staff\": false,\n  \"date_joined\": \"2026-09-29T00:16:46.706031+05:30\",\n  \"last_login\": \"2026-09-29T00:16:46.725486+05:30\",\n  \"self_participant\": {\n    \"id\": 1,\n    \"name\": \"priya (self)\"\n  },\n  \"has_password\": true\n}"
+              "body": "{\n  \"id\": 1,\n  \"username\": \"priya\",\n  \"email\": \"priya@example.com\",\n  \"first_name\": \"\",\n  \"last_name\": \"\",\n  \"is_staff\": false,\n  \"date_joined\": \"2026-09-30T01:17:44.886751+05:30\",\n  \"last_login\": \"2026-09-30T01:17:44.926407+05:30\",\n  \"self_participant\": {\n    \"id\": 1,\n    \"name\": \"priya (self)\"\n  },\n  \"has_password\": true\n}"
             },
             {
               "name": "Not signed in (401 Unauthorized)",
@@ -650,7 +654,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"username\": \"priya\",\n  \"email\": \"priya@example.com\",\n  \"first_name\": \"Priya\",\n  \"last_name\": \"Sharma\",\n  \"is_staff\": false,\n  \"date_joined\": \"2026-09-29T00:16:46.706031+05:30\",\n  \"last_login\": \"2026-09-29T00:16:46.725486+05:30\",\n  \"self_participant\": {\n    \"id\": 1,\n    \"name\": \"priya (self)\"\n  },\n  \"has_password\": true\n}"
+              "body": "{\n  \"id\": 1,\n  \"username\": \"priya\",\n  \"email\": \"priya@example.com\",\n  \"first_name\": \"Priya\",\n  \"last_name\": \"Sharma\",\n  \"is_staff\": false,\n  \"date_joined\": \"2026-09-30T01:17:44.886751+05:30\",\n  \"last_login\": \"2026-09-30T01:17:44.926407+05:30\",\n  \"self_participant\": {\n    \"id\": 1,\n    \"name\": \"priya (self)\"\n  },\n  \"has_password\": true\n}"
             }
           ]
         }
@@ -746,7 +750,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"name\": \"Food\",\n  \"created_at\": \"2026-09-29T00:16:46.748522+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 1,\n  \"name\": \"Food\",\n  \"created_at\": \"2026-09-30T01:17:44.970770+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             },
             {
               "name": "Name already used (400 Bad Request)",
@@ -877,7 +881,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 2,\n  \"name\": \"Home\",\n  \"created_at\": \"2026-09-29T00:16:46.755197+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 2,\n  \"name\": \"Home\",\n  \"created_at\": \"2026-09-30T01:17:44.980707+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             }
           ]
         },
@@ -937,7 +941,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 2,\n      \"name\": \"Home\",\n      \"created_at\": \"2026-09-29T00:16:46.755197+05:30\",\n      \"expense_count\": 0,\n      \"total\": null,\n      \"last_spent_on\": null,\n      \"last_amount\": null\n    },\n    {\n      \"id\": 1,\n      \"name\": \"Food\",\n      \"created_at\": \"2026-09-29T00:16:46.748522+05:30\",\n      \"expense_count\": 0,\n      \"total\": null,\n      \"last_spent_on\": null,\n      \"last_amount\": null\n    }\n  ]\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 2,\n      \"name\": \"Home\",\n      \"created_at\": \"2026-09-30T01:17:44.980707+05:30\",\n      \"expense_count\": 0,\n      \"total\": null,\n      \"last_spent_on\": null,\n      \"last_amount\": null\n    },\n    {\n      \"id\": 1,\n      \"name\": \"Food\",\n      \"created_at\": \"2026-09-30T01:17:44.970770+05:30\",\n      \"expense_count\": 0,\n      \"total\": null,\n      \"last_spent_on\": null,\n      \"last_amount\": null\n    }\n  ]\n}"
             }
           ]
         },
@@ -999,7 +1003,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"name\": \"Food\",\n  \"created_at\": \"2026-09-29T00:16:46.748522+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 1,\n  \"name\": \"Food\",\n  \"created_at\": \"2026-09-30T01:17:44.970770+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             }
           ]
         },
@@ -1089,7 +1093,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 2,\n  \"name\": \"Household\",\n  \"created_at\": \"2026-09-29T00:16:46.755197+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 2,\n  \"name\": \"Household\",\n  \"created_at\": \"2026-09-30T01:17:44.980707+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             }
           ]
         },
@@ -1179,7 +1183,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 2,\n  \"name\": \"Home & utilities\",\n  \"created_at\": \"2026-09-29T00:16:46.755197+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 2,\n  \"name\": \"Home & utilities\",\n  \"created_at\": \"2026-09-30T01:17:44.980707+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             }
           ]
         },
@@ -1269,7 +1273,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"name\": \"Travel\",\n  \"created_at\": \"2026-09-29T00:16:46.773703+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
+              "body": "{\n  \"id\": 3,\n  \"name\": \"Travel\",\n  \"created_at\": \"2026-09-30T01:17:45.013610+05:30\",\n  \"expense_count\": 0,\n  \"total\": null,\n  \"last_spent_on\": null,\n  \"last_amount\": null\n}"
             }
           ]
         },
@@ -1450,7 +1454,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"name\": \"Rahul\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-29T00:16:46.786592+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 3,\n  \"name\": \"Rahul\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-30T01:17:45.035995+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             },
             {
               "name": "Name already used (400 Bad Request)",
@@ -1581,7 +1585,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 4,\n  \"name\": \"Aisha\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-29T00:16:46.793361+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 4,\n  \"name\": \"Aisha\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-30T01:17:45.044407+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             }
           ]
         },
@@ -1641,7 +1645,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 4,\n      \"name\": \"Aisha\",\n      \"is_self\": false,\n      \"created_at\": \"2026-09-29T00:16:46.793361+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Rahul\",\n      \"is_self\": false,\n      \"created_at\": \"2026-09-29T00:16:46.786592+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    },\n    {\n      \"id\": 1,\n      \"name\": \"priya (self)\",\n      \"is_self\": true,\n      \"created_at\": \"2026-09-29T00:16:46.727993+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    }\n  ]\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 4,\n      \"name\": \"Aisha\",\n      \"is_self\": false,\n      \"created_at\": \"2026-09-30T01:17:45.044407+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Rahul\",\n      \"is_self\": false,\n      \"created_at\": \"2026-09-30T01:17:45.035995+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    },\n    {\n      \"id\": 1,\n      \"name\": \"priya (self)\",\n      \"is_self\": true,\n      \"created_at\": \"2026-09-30T01:17:44.931541+05:30\",\n      \"shared_count\": 0,\n      \"item_count\": 0\n    }\n  ]\n}"
             }
           ]
         },
@@ -1703,7 +1707,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"name\": \"Rahul\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-29T00:16:46.786592+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 3,\n  \"name\": \"Rahul\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-30T01:17:45.035995+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             }
           ]
         },
@@ -1793,7 +1797,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 4,\n  \"name\": \"Aisha Khan\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-29T00:16:46.793361+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 4,\n  \"name\": \"Aisha Khan\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-30T01:17:45.044407+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             },
             {
               "name": "Renaming yourself (403 Forbidden)",
@@ -1925,7 +1929,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 4,\n  \"name\": \"Aisha K.\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-29T00:16:46.793361+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 4,\n  \"name\": \"Aisha K.\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-30T01:17:45.044407+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             }
           ]
         },
@@ -2015,7 +2019,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 5,\n  \"name\": \"Old colleague\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-29T00:16:46.811992+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
+              "body": "{\n  \"id\": 5,\n  \"name\": \"Old colleague\",\n  \"is_self\": false,\n  \"created_at\": \"2026-09-30T01:17:45.075469+05:30\",\n  \"shared_count\": 0,\n  \"item_count\": 0\n}"
             }
           ]
         },
@@ -2224,7 +2228,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"category\": 2,\n  \"category_name\": \"Home & utilities\",\n  \"amount\": \"1450.00\",\n  \"spent_on\": \"2026-09-05\",\n  \"note\": \"Electricity bill\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-29T00:16:46.832575+05:30\"\n}"
+              "body": "{\n  \"id\": 3,\n  \"category\": 2,\n  \"category_name\": \"Home & utilities\",\n  \"amount\": \"1450.00\",\n  \"spent_on\": \"2026-09-05\",\n  \"note\": \"Electricity bill\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-30T01:17:45.104378+05:30\"\n}"
             },
             {
               "name": "Invalid values (400 Bad Request)",
@@ -2355,7 +2359,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 4,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"900.00\",\n  \"spent_on\": \"2026-09-12\",\n  \"note\": \"Dinner with Rahul\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    3,\n    1\n  ],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-29T00:16:46.841395+05:30\"\n}"
+              "body": "{\n  \"id\": 4,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"900.00\",\n  \"spent_on\": \"2026-09-12\",\n  \"note\": \"Dinner with Rahul\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    3,\n    1\n  ],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-30T01:17:45.116408+05:30\"\n}"
             }
           ]
         },
@@ -2445,7 +2449,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 5,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"1200.00\",\n  \"spent_on\": \"2026-09-18\",\n  \"note\": \"Team lunch\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    4,\n    3,\n    1\n  ],\n  \"misc_amount\": \"120.00\",\n  \"misc_note\": \"GST and tip\",\n  \"items\": [\n    {\n      \"id\": 2,\n      \"name\": \"Pizza\",\n      \"amount\": \"600.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 4,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Drinks\",\n      \"amount\": \"300.00\",\n      \"shares\": [\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 4,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 4,\n      \"name\": \"Dessert\",\n      \"amount\": \"180.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        }\n      ]\n    }\n  ],\n  \"items_total\": \"1080.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-29T00:16:46.850221+05:30\"\n}"
+              "body": "{\n  \"id\": 5,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"1200.00\",\n  \"spent_on\": \"2026-09-18\",\n  \"note\": \"Team lunch\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    4,\n    3,\n    1\n  ],\n  \"misc_amount\": \"120.00\",\n  \"misc_note\": \"GST and tip\",\n  \"items\": [\n    {\n      \"id\": 2,\n      \"name\": \"Pizza\",\n      \"amount\": \"600.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 4,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Drinks\",\n      \"amount\": \"300.00\",\n      \"shares\": [\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 4,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 4,\n      \"name\": \"Dessert\",\n      \"amount\": \"180.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        }\n      ]\n    }\n  ],\n  \"items_total\": \"1080.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-30T01:17:45.127005+05:30\"\n}"
             },
             {
               "name": "Tax/tip without a description (400 Bad Request)",
@@ -2587,7 +2591,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 5,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"1200.00\",\n      \"spent_on\": \"2026-09-18\",\n      \"note\": \"Team lunch\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        4,\n        3,\n        1\n      ],\n      \"misc_amount\": \"120.00\",\n      \"misc_note\": \"GST and tip\",\n      \"items\": [\n        {\n          \"id\": 2,\n          \"name\": \"Pizza\",\n          \"amount\": \"600.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 4,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 3,\n          \"name\": \"Drinks\",\n          \"amount\": \"300.00\",\n          \"shares\": [\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 4,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 4,\n          \"name\": \"Dessert\",\n          \"amount\": \"180.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            }\n          ]\n        }\n      ],\n      \"items_total\": \"1080.00\",\n      \"unaccounted_amount\": \"0.00\",\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-29T00:16:46.850221+05:30\"\n    },\n    {\n      \"id\": 4,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"900.00\",\n      \"spent_on\": \"2026-09-12\",\n      \"note\": \"Dinner with Rahul\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        3,\n        1\n      ],\n      \"misc_amount\": null,\n      \"misc_note\": \"\",\n      \"items\": [],\n      \"items_total\": null,\n      \"unaccounted_amount\": null,\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-29T00:16:46.841395+05:30\"\n    },\n    {\n      \"id\": 3,\n      \"category\": 2,\n      \"category_name\": \"Home & utilities\",\n      \"amount\": \"1450.00\",\n      \"spent_on\": \"2026-09-05\",\n      \"note\": \"Electricity bill\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [],\n      \"misc_amount\": null,\n      \"misc_note\": \"\",\n      \"items\": [],\n      \"items_total\": null,\n      \"unaccounted_amount\": null,\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-29T00:16:46.832575+05:30\"\n    }\n  ],\n  \"count\": 3,\n  \"total_amount\": \"3550.00\"\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 5,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"1200.00\",\n      \"spent_on\": \"2026-09-18\",\n      \"note\": \"Team lunch\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        4,\n        3,\n        1\n      ],\n      \"misc_amount\": \"120.00\",\n      \"misc_note\": \"GST and tip\",\n      \"items\": [\n        {\n          \"id\": 2,\n          \"name\": \"Pizza\",\n          \"amount\": \"600.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 4,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 3,\n          \"name\": \"Drinks\",\n          \"amount\": \"300.00\",\n          \"shares\": [\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 4,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 4,\n          \"name\": \"Dessert\",\n          \"amount\": \"180.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            }\n          ]\n        }\n      ],\n      \"items_total\": \"1080.00\",\n      \"unaccounted_amount\": \"0.00\",\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-30T01:17:45.127005+05:30\"\n    },\n    {\n      \"id\": 4,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"900.00\",\n      \"spent_on\": \"2026-09-12\",\n      \"note\": \"Dinner with Rahul\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        3,\n        1\n      ],\n      \"misc_amount\": null,\n      \"misc_note\": \"\",\n      \"items\": [],\n      \"items_total\": null,\n      \"unaccounted_amount\": null,\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-30T01:17:45.116408+05:30\"\n    },\n    {\n      \"id\": 3,\n      \"category\": 2,\n      \"category_name\": \"Home & utilities\",\n      \"amount\": \"1450.00\",\n      \"spent_on\": \"2026-09-05\",\n      \"note\": \"Electricity bill\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [],\n      \"misc_amount\": null,\n      \"misc_note\": \"\",\n      \"items\": [],\n      \"items_total\": null,\n      \"unaccounted_amount\": null,\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-30T01:17:45.104378+05:30\"\n    }\n  ],\n  \"count\": 3,\n  \"total_amount\": \"3550.00\"\n}"
             }
           ]
         },
@@ -2683,7 +2687,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 5,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"1200.00\",\n      \"spent_on\": \"2026-09-18\",\n      \"note\": \"Team lunch\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        4,\n        3,\n        1\n      ],\n      \"misc_amount\": \"120.00\",\n      \"misc_note\": \"GST and tip\",\n      \"items\": [\n        {\n          \"id\": 2,\n          \"name\": \"Pizza\",\n          \"amount\": \"600.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 4,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 3,\n          \"name\": \"Drinks\",\n          \"amount\": \"300.00\",\n          \"shares\": [\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 4,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 4,\n          \"name\": \"Dessert\",\n          \"amount\": \"180.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            }\n          ]\n        }\n      ],\n      \"items_total\": \"1080.00\",\n      \"unaccounted_amount\": \"0.00\",\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-29T00:16:46.850221+05:30\"\n    }\n  ],\n  \"count\": 1,\n  \"total_amount\": \"1200.00\"\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 5,\n      \"category\": 1,\n      \"category_name\": \"Food\",\n      \"amount\": \"1200.00\",\n      \"spent_on\": \"2026-09-18\",\n      \"note\": \"Team lunch\",\n      \"paid_by\": 1,\n      \"paid_by_name\": \"priya (self)\",\n      \"participants\": [\n        4,\n        3,\n        1\n      ],\n      \"misc_amount\": \"120.00\",\n      \"misc_note\": \"GST and tip\",\n      \"items\": [\n        {\n          \"id\": 2,\n          \"name\": \"Pizza\",\n          \"amount\": \"600.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 4,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 3,\n          \"name\": \"Drinks\",\n          \"amount\": \"300.00\",\n          \"shares\": [\n            {\n              \"participant\": 3,\n              \"weight\": 1\n            },\n            {\n              \"participant\": 4,\n              \"weight\": 1\n            }\n          ]\n        },\n        {\n          \"id\": 4,\n          \"name\": \"Dessert\",\n          \"amount\": \"180.00\",\n          \"shares\": [\n            {\n              \"participant\": 1,\n              \"weight\": 1\n            }\n          ]\n        }\n      ],\n      \"items_total\": \"1080.00\",\n      \"unaccounted_amount\": \"0.00\",\n      \"is_balanced\": true,\n      \"created_at\": \"2026-09-30T01:17:45.127005+05:30\"\n    }\n  ],\n  \"count\": 1,\n  \"total_amount\": \"1200.00\"\n}"
             },
             {
               "name": "Invalid filter (400 Bad Request)",
@@ -2778,7 +2782,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 5,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"1200.00\",\n  \"spent_on\": \"2026-09-18\",\n  \"note\": \"Team lunch\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    4,\n    3,\n    1\n  ],\n  \"misc_amount\": \"120.00\",\n  \"misc_note\": \"GST and tip\",\n  \"items\": [\n    {\n      \"id\": 2,\n      \"name\": \"Pizza\",\n      \"amount\": \"600.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 4,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Drinks\",\n      \"amount\": \"300.00\",\n      \"shares\": [\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 4,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 4,\n      \"name\": \"Dessert\",\n      \"amount\": \"180.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        }\n      ]\n    }\n  ],\n  \"items_total\": \"1080.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-29T00:16:46.850221+05:30\"\n}"
+              "body": "{\n  \"id\": 5,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"1200.00\",\n  \"spent_on\": \"2026-09-18\",\n  \"note\": \"Team lunch\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    4,\n    3,\n    1\n  ],\n  \"misc_amount\": \"120.00\",\n  \"misc_note\": \"GST and tip\",\n  \"items\": [\n    {\n      \"id\": 2,\n      \"name\": \"Pizza\",\n      \"amount\": \"600.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 4,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 3,\n      \"name\": \"Drinks\",\n      \"amount\": \"300.00\",\n      \"shares\": [\n        {\n          \"participant\": 3,\n          \"weight\": 1\n        },\n        {\n          \"participant\": 4,\n          \"weight\": 1\n        }\n      ]\n    },\n    {\n      \"id\": 4,\n      \"name\": \"Dessert\",\n      \"amount\": \"180.00\",\n      \"shares\": [\n        {\n          \"participant\": 1,\n          \"weight\": 1\n        }\n      ]\n    }\n  ],\n  \"items_total\": \"1080.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-30T01:17:45.127005+05:30\"\n}"
             }
           ]
         },
@@ -2868,7 +2872,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 4,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"900.00\",\n  \"spent_on\": \"2026-09-12\",\n  \"note\": \"Dinner with Rahul at Toit\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    3,\n    1\n  ],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-29T00:16:46.841395+05:30\"\n}"
+              "body": "{\n  \"id\": 4,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"900.00\",\n  \"spent_on\": \"2026-09-12\",\n  \"note\": \"Dinner with Rahul at Toit\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [\n    3,\n    1\n  ],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-30T01:17:45.116408+05:30\"\n}"
             }
           ]
         },
@@ -2958,7 +2962,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 3,\n  \"category\": 2,\n  \"category_name\": \"Home & utilities\",\n  \"amount\": \"1520.00\",\n  \"spent_on\": \"2026-09-05\",\n  \"note\": \"Electricity bill (August)\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-29T00:16:46.832575+05:30\"\n}"
+              "body": "{\n  \"id\": 3,\n  \"category\": 2,\n  \"category_name\": \"Home & utilities\",\n  \"amount\": \"1520.00\",\n  \"spent_on\": \"2026-09-05\",\n  \"note\": \"Electricity bill (August)\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": null,\n  \"misc_note\": \"\",\n  \"items\": [],\n  \"items_total\": null,\n  \"unaccounted_amount\": null,\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-30T01:17:45.104378+05:30\"\n}"
             }
           ]
         },
@@ -3325,7 +3329,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"detail\": \"Recorded 838.89 back from Rahul.\",\n  \"code\": \"settled\",\n  \"settlement\": {\n    \"id\": 1,\n    \"participant\": 3,\n    \"participant_name\": \"Rahul\",\n    \"amount\": \"838.89\",\n    \"note\": \"Paid by UPI\",\n    \"settled_at\": \"2026-09-29T00:16:46.944528+05:30\"\n  }\n}"
+              "body": "{\n  \"detail\": \"Recorded 838.89 back from Rahul.\",\n  \"code\": \"settled\",\n  \"settlement\": {\n    \"id\": 1,\n    \"participant\": 3,\n    \"participant_name\": \"Rahul\",\n    \"amount\": \"838.89\",\n    \"note\": \"Paid by UPI\",\n    \"settled_at\": \"2026-09-30T01:17:45.224629+05:30\"\n  }\n}"
             },
             {
               "name": "Nothing outstanding (200 OK)",
@@ -3428,7 +3432,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"participant\": 3,\n      \"participant_name\": \"Rahul\",\n      \"amount\": \"838.89\",\n      \"note\": \"Paid by UPI\",\n      \"settled_at\": \"2026-09-29T00:16:46.944528+05:30\"\n    }\n  ]\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"participant\": 3,\n      \"participant_name\": \"Rahul\",\n      \"amount\": \"838.89\",\n      \"note\": \"Paid by UPI\",\n      \"settled_at\": \"2026-09-30T01:17:45.224629+05:30\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -3490,7 +3494,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"participant\": 3,\n  \"participant_name\": \"Rahul\",\n  \"amount\": \"838.89\",\n  \"note\": \"Paid by UPI\",\n  \"settled_at\": \"2026-09-29T00:16:46.944528+05:30\"\n}"
+              "body": "{\n  \"id\": 1,\n  \"participant\": 3,\n  \"participant_name\": \"Rahul\",\n  \"amount\": \"838.89\",\n  \"note\": \"Paid by UPI\",\n  \"settled_at\": \"2026-09-30T01:17:45.224629+05:30\"\n}"
             }
           ]
         }
@@ -3586,7 +3590,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"status\": \"pending\",\n  \"start\": \"2026-09-01\",\n  \"end\": \"2026-09-30\",\n  \"row_count\": 0,\n  \"error\": \"\",\n  \"requested_at\": \"2026-09-29T00:16:46.960090+05:30\",\n  \"completed_at\": null,\n  \"download_url\": null\n}"
+              "body": "{\n  \"id\": 1,\n  \"status\": \"pending\",\n  \"start\": \"2026-09-01\",\n  \"end\": \"2026-09-30\",\n  \"row_count\": 0,\n  \"error\": \"\",\n  \"requested_at\": \"2026-09-30T01:17:45.238626+05:30\",\n  \"completed_at\": null,\n  \"download_url\": null\n}"
             }
           ]
         },
@@ -3661,7 +3665,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"status\": \"complete\",\n  \"start\": \"2026-09-01\",\n  \"end\": \"2026-09-30\",\n  \"row_count\": 2,\n  \"error\": \"\",\n  \"requested_at\": \"2026-09-29T00:16:46.960090+05:30\",\n  \"completed_at\": \"2026-09-29T00:16:47.014977+05:30\",\n  \"download_url\": \"http://127.0.0.1:8765/api/v1/exports/1/download/\"\n}"
+              "body": "{\n  \"id\": 1,\n  \"status\": \"complete\",\n  \"start\": \"2026-09-01\",\n  \"end\": \"2026-09-30\",\n  \"row_count\": 2,\n  \"error\": \"\",\n  \"requested_at\": \"2026-09-30T01:17:45.238626+05:30\",\n  \"completed_at\": \"2026-09-30T01:17:45.353157+05:30\",\n  \"download_url\": \"http://127.0.0.1:8765/api/v1/exports/1/download/\"\n}"
             }
           ]
         },
@@ -3721,7 +3725,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"status\": \"complete\",\n      \"start\": \"2026-09-01\",\n      \"end\": \"2026-09-30\",\n      \"row_count\": 2,\n      \"error\": \"\",\n      \"requested_at\": \"2026-09-29T00:16:46.960090+05:30\",\n      \"completed_at\": \"2026-09-29T00:16:47.014977+05:30\",\n      \"download_url\": \"http://127.0.0.1:8765/api/v1/exports/1/download/\"\n    }\n  ]\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"status\": \"complete\",\n      \"start\": \"2026-09-01\",\n      \"end\": \"2026-09-30\",\n      \"row_count\": 2,\n      \"error\": \"\",\n      \"requested_at\": \"2026-09-30T01:17:45.238626+05:30\",\n      \"completed_at\": \"2026-09-30T01:17:45.353157+05:30\",\n      \"download_url\": \"http://127.0.0.1:8765/api/v1/exports/1/download/\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -3902,7 +3906,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"status\": \"pending\",\n  \"provider\": \"\",\n  \"error\": \"\",\n  \"result\": {},\n  \"expense\": null,\n  \"created_at\": \"2026-09-29T00:16:47.042335+05:30\",\n  \"completed_at\": null,\n  \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n}"
+              "body": "{\n  \"id\": 1,\n  \"status\": \"pending\",\n  \"provider\": \"\",\n  \"error\": \"\",\n  \"result\": {},\n  \"expense\": null,\n  \"created_at\": \"2026-09-30T01:17:45.377447+05:30\",\n  \"completed_at\": null,\n  \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n}"
             },
             {
               "name": "Not a photo (400 Bad Request)",
@@ -4014,7 +4018,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 1,\n  \"status\": \"done\",\n  \"provider\": \"fake\",\n  \"error\": \"\",\n  \"result\": {\n    \"merchant\": \"Test Cafe\",\n    \"bill_date\": null,\n    \"total\": \"450.00\",\n    \"lines\": [\n      {\n        \"name\": \"Coffee\",\n        \"amount\": \"150.00\"\n      },\n      {\n        \"name\": \"Sandwich\",\n        \"amount\": \"250.00\"\n      }\n    ],\n    \"tax\": \"50.00\",\n    \"category_hint\": \"food\",\n    \"confidence\": 0.9,\n    \"provider\": \"fake\"\n  },\n  \"expense\": null,\n  \"created_at\": \"2026-09-29T00:16:47.042335+05:30\",\n  \"completed_at\": \"2026-09-29T00:16:47.047218+05:30\",\n  \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n}"
+              "body": "{\n  \"id\": 1,\n  \"status\": \"done\",\n  \"provider\": \"fake\",\n  \"error\": \"\",\n  \"result\": {\n    \"merchant\": \"Test Cafe\",\n    \"bill_date\": null,\n    \"total\": \"450.00\",\n    \"lines\": [\n      {\n        \"name\": \"Coffee\",\n        \"amount\": \"150.00\"\n      },\n      {\n        \"name\": \"Sandwich\",\n        \"amount\": \"250.00\"\n      }\n    ],\n    \"tax\": \"50.00\",\n    \"category_hint\": \"food\",\n    \"confidence\": 0.9,\n    \"provider\": \"fake\"\n  },\n  \"expense\": null,\n  \"created_at\": \"2026-09-30T01:17:45.377447+05:30\",\n  \"completed_at\": \"2026-09-30T01:17:45.381550+05:30\",\n  \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n}"
             }
           ]
         },
@@ -4074,7 +4078,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"status\": \"done\",\n      \"provider\": \"fake\",\n      \"error\": \"\",\n      \"result\": {\n        \"merchant\": \"Test Cafe\",\n        \"bill_date\": null,\n        \"total\": \"450.00\",\n        \"lines\": [\n          {\n            \"name\": \"Coffee\",\n            \"amount\": \"150.00\"\n          },\n          {\n            \"name\": \"Sandwich\",\n            \"amount\": \"250.00\"\n          }\n        ],\n        \"tax\": \"50.00\",\n        \"category_hint\": \"food\",\n        \"confidence\": 0.9,\n        \"provider\": \"fake\"\n      },\n      \"expense\": null,\n      \"created_at\": \"2026-09-29T00:16:47.042335+05:30\",\n      \"completed_at\": \"2026-09-29T00:16:47.047218+05:30\",\n      \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n    }\n  ]\n}"
+              "body": "{\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"status\": \"done\",\n      \"provider\": \"fake\",\n      \"error\": \"\",\n      \"result\": {\n        \"merchant\": \"Test Cafe\",\n        \"bill_date\": null,\n        \"total\": \"450.00\",\n        \"lines\": [\n          {\n            \"name\": \"Coffee\",\n            \"amount\": \"150.00\"\n          },\n          {\n            \"name\": \"Sandwich\",\n            \"amount\": \"250.00\"\n          }\n        ],\n        \"tax\": \"50.00\",\n        \"category_hint\": \"food\",\n        \"confidence\": 0.9,\n        \"provider\": \"fake\"\n      },\n      \"expense\": null,\n      \"created_at\": \"2026-09-30T01:17:45.377447+05:30\",\n      \"completed_at\": \"2026-09-30T01:17:45.381550+05:30\",\n      \"image_url\": \"http://127.0.0.1:8765/api/v1/bill-scans/1/image/\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -4204,7 +4208,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"bill_scan\": 1,\n  \"category\": 1,\n  \"amount\": \"450.00\",\n  \"spent_on\": \"2026-09-29\",\n  \"note\": \"Test Cafe\",\n  \"misc_amount\": \"50.00\",\n  \"misc_note\": \"Tax / tip (scanned)\",\n  \"items\": [\n    {\n      \"name\": \"Coffee\",\n      \"amount\": \"150.00\"\n    },\n    {\n      \"name\": \"Sandwich\",\n      \"amount\": \"250.00\"\n    }\n  ]\n}"
+              "body": "{\n  \"bill_scan\": 1,\n  \"category\": 1,\n  \"amount\": \"450.00\",\n  \"spent_on\": \"2026-09-30\",\n  \"note\": \"Test Cafe\",\n  \"misc_amount\": \"50.00\",\n  \"misc_note\": \"Tax / tip (scanned)\",\n  \"items\": [\n    {\n      \"name\": \"Coffee\",\n      \"amount\": \"150.00\"\n    },\n    {\n      \"name\": \"Sandwich\",\n      \"amount\": \"250.00\"\n    }\n  ]\n}"
             },
             {
               "name": "Still scanning (409 Conflict)",
@@ -4304,7 +4308,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"bill_scan\": 1,\n  \"category\": 1,\n  \"amount\": \"450.00\",\n  \"spent_on\": \"2026-09-29\",\n  \"note\": \"Test Cafe\",\n  \"misc_amount\": \"50.00\",\n  \"misc_note\": \"Tax / tip (scanned)\",\n  \"items\": [\n    {\n      \"name\": \"Coffee\",\n      \"amount\": \"150.00\"\n    },\n    {\n      \"name\": \"Sandwich\",\n      \"amount\": \"250.00\"\n    }\n  ]\n}",
+                  "raw": "{\n  \"bill_scan\": 1,\n  \"category\": 1,\n  \"amount\": \"450.00\",\n  \"spent_on\": \"2026-09-30\",\n  \"note\": \"Test Cafe\",\n  \"misc_amount\": \"50.00\",\n  \"misc_note\": \"Tax / tip (scanned)\",\n  \"items\": [\n    {\n      \"name\": \"Coffee\",\n      \"amount\": \"150.00\"\n    },\n    {\n      \"name\": \"Sandwich\",\n      \"amount\": \"250.00\"\n    }\n  ]\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -4321,7 +4325,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"id\": 6,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"450.00\",\n  \"spent_on\": \"2026-09-29\",\n  \"note\": \"Test Cafe\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": \"50.00\",\n  \"misc_note\": \"Tax / tip (scanned)\",\n  \"items\": [\n    {\n      \"id\": 5,\n      \"name\": \"Coffee\",\n      \"amount\": \"150.00\",\n      \"shares\": []\n    },\n    {\n      \"id\": 6,\n      \"name\": \"Sandwich\",\n      \"amount\": \"250.00\",\n      \"shares\": []\n    }\n  ],\n  \"items_total\": \"400.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-29T00:16:47.072556+05:30\"\n}"
+              "body": "{\n  \"id\": 6,\n  \"category\": 1,\n  \"category_name\": \"Food\",\n  \"amount\": \"450.00\",\n  \"spent_on\": \"2026-09-30\",\n  \"note\": \"Test Cafe\",\n  \"paid_by\": 1,\n  \"paid_by_name\": \"priya (self)\",\n  \"participants\": [],\n  \"misc_amount\": \"50.00\",\n  \"misc_note\": \"Tax / tip (scanned)\",\n  \"items\": [\n    {\n      \"id\": 5,\n      \"name\": \"Coffee\",\n      \"amount\": \"150.00\",\n      \"shares\": []\n    },\n    {\n      \"id\": 6,\n      \"name\": \"Sandwich\",\n      \"amount\": \"250.00\",\n      \"shares\": []\n    }\n  ],\n  \"items_total\": \"400.00\",\n  \"unaccounted_amount\": \"0.00\",\n  \"is_balanced\": true,\n  \"created_at\": \"2026-09-30T01:17:45.404997+05:30\"\n}"
             },
             {
               "name": "Already saved (400 Bad Request)",
@@ -4345,7 +4349,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"bill_scan\": 1,\n  \"category\": 1,\n  \"amount\": \"450.00\",\n  \"spent_on\": \"2026-09-29\",\n  \"note\": \"Test Cafe\",\n  \"misc_amount\": \"50.00\",\n  \"misc_note\": \"Tax / tip (scanned)\",\n  \"items\": [\n    {\n      \"name\": \"Coffee\",\n      \"amount\": \"150.00\"\n    },\n    {\n      \"name\": \"Sandwich\",\n      \"amount\": \"250.00\"\n    }\n  ]\n}",
+                  "raw": "{\n  \"bill_scan\": 1,\n  \"category\": 1,\n  \"amount\": \"450.00\",\n  \"spent_on\": \"2026-09-30\",\n  \"note\": \"Test Cafe\",\n  \"misc_amount\": \"50.00\",\n  \"misc_note\": \"Tax / tip (scanned)\",\n  \"items\": [\n    {\n      \"name\": \"Coffee\",\n      \"amount\": \"150.00\"\n    },\n    {\n      \"name\": \"Sandwich\",\n      \"amount\": \"250.00\"\n    }\n  ]\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -4856,7 +4860,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"uid\": \"NA\",\n  \"token\": \"dfn4rz-62ec9505ff1dc648e3c4f90485a4a859\"\n}",
+                  "raw": "{\n  \"uid\": \"NA\",\n  \"token\": \"dfp29l-7f917520a99d194cdb08fa0e87891eb1\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -4873,7 +4877,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 4,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-29T00:16:47.117485+05:30\",\n    \"last_login\": \"2026-09-29T00:16:47.137440+05:30\",\n    \"self_participant\": {\n      \"id\": 6,\n      \"name\": \"new.user (self)\"\n    },\n    \"has_password\": true\n  }\n}"
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 4,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-30T01:17:45.450614+05:30\",\n    \"last_login\": \"2026-09-30T01:17:45.470989+05:30\",\n    \"self_participant\": {\n      \"id\": 6,\n      \"name\": \"new.user (self)\"\n    },\n    \"has_password\": true\n  }\n}"
             },
             {
               "name": "Link already used or expired (400 Bad Request)",
@@ -4898,7 +4902,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"uid\": \"NA\",\n  \"token\": \"dfn4rz-62ec9505ff1dc648e3c4f90485a4a859\"\n}",
+                  "raw": "{\n  \"uid\": \"NA\",\n  \"token\": \"dfp29l-7f917520a99d194cdb08fa0e87891eb1\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -5010,7 +5014,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 4,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-29T00:16:47.117485+05:30\",\n    \"last_login\": \"2026-09-29T00:16:47.146139+05:30\",\n    \"self_participant\": {\n      \"id\": 6,\n      \"name\": \"new.user (self)\"\n    },\n    \"has_password\": true\n  }\n}"
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 4,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-30T01:17:45.450614+05:30\",\n    \"last_login\": \"2026-09-30T01:17:45.481649+05:30\",\n    \"self_participant\": {\n      \"id\": 6,\n      \"name\": \"new.user (self)\"\n    },\n    \"has_password\": true\n  }\n}"
             },
             {
               "name": "Wrong current password (400 Bad Request)",
@@ -5228,7 +5232,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"uid\": \"NA\",\n  \"token\": \"dfn4rz-be13028120d365876fdccc19da56afe9\",\n  \"new_password\": \"Third-Pass-2026\",\n  \"new_password_confirm\": \"Third-Pass-2026\"\n}",
+                  "raw": "{\n  \"uid\": \"NA\",\n  \"token\": \"dfp29l-c5e6251ffd7104b6f4776eadec3e16f3\",\n  \"new_password\": \"Third-Pass-2026\",\n  \"new_password_confirm\": \"Third-Pass-2026\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -5272,7 +5276,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"uid\": \"NA\",\n  \"token\": \"dfn4rz-be13028120d365876fdccc19da56afe9\",\n  \"new_password\": \"Third-Pass-2026\",\n  \"new_password_confirm\": \"Third-Pass-2026\"\n}",
+                  "raw": "{\n  \"uid\": \"NA\",\n  \"token\": \"dfp29l-c5e6251ffd7104b6f4776eadec3e16f3\",\n  \"new_password\": \"Third-Pass-2026\",\n  \"new_password_confirm\": \"Third-Pass-2026\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -5385,7 +5389,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 4,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-29T00:16:47.117485+05:30\",\n    \"last_login\": \"2026-09-29T00:16:47.165919+05:30\",\n    \"self_participant\": {\n      \"id\": 6,\n      \"name\": \"new.user (self)\"\n    },\n    \"has_password\": true\n  }\n}"
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 4,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-30T01:17:45.450614+05:30\",\n    \"last_login\": \"2026-09-30T01:17:45.502716+05:30\",\n    \"self_participant\": {\n      \"id\": 6,\n      \"name\": \"new.user (self)\"\n    },\n    \"has_password\": true\n  }\n}"
             }
           ]
         },
@@ -5511,7 +5515,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"secret\": \"UYFO2ULLBJB76EUHDW2O7I5NFWE5U3DE\",\n  \"otpauth_uri\": \"otpauth://totp/Expense%20Tracker%3Anew.user?secret=UYFO2ULLBJB76EUHDW2O7I5NFWE5U3DE&issuer=Expense%20Tracker\"\n}"
+              "body": "{\n  \"secret\": \"GSAQ7H2EKPWGC2ISGFTSVSV27U7RKVVD\",\n  \"otpauth_uri\": \"otpauth://totp/Expense%20Tracker%3Anew.user?secret=GSAQ7H2EKPWGC2ISGFTSVSV27U7RKVVD&issuer=Expense%20Tracker\"\n}"
             }
           ]
         },
@@ -5589,7 +5593,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"code\": \"553472\"\n}",
+                  "raw": "{\n  \"code\": \"393828\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -5606,7 +5610,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 4,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-29T00:16:47.117485+05:30\",\n    \"last_login\": \"2026-09-29T00:16:47.184522+05:30\",\n    \"self_participant\": {\n      \"id\": 6,\n      \"name\": \"new.user (self)\"\n    },\n    \"has_password\": true\n  },\n  \"recovery_codes\": [\n    \"5X3XK7RC5M\",\n    \"TH5QUJA8ZQ\",\n    \"WUTWMJ7PRU\",\n    \"CP3ZZW625H\",\n    \"WBB7RGF2QS\",\n    \"9TTN2BGGCD\",\n    \"9KBTBR6A2N\",\n    \"JEX9NA7E8H\",\n    \"3QJUTYWDUN\",\n    \"Z36K9RHWUD\"\n  ]\n}"
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 4,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-30T01:17:45.450614+05:30\",\n    \"last_login\": \"2026-09-30T01:17:45.522119+05:30\",\n    \"self_participant\": {\n      \"id\": 6,\n      \"name\": \"new.user (self)\"\n    },\n    \"has_password\": true\n  },\n  \"recovery_codes\": [\n    \"QNEM7EG2X8\",\n    \"MHAHBFRHVP\",\n    \"ZWNAGEAG3A\",\n    \"XA4HQYH6HJ\",\n    \"F2NU4V3FXK\",\n    \"88GCHSKC44\",\n    \"48PXWM5UY3\",\n    \"4H7UTFP8MB\",\n    \"75BBW7JW93\",\n    \"4S96VUR5DT\"\n  ]\n}"
             },
             {
               "name": "Wrong code (400 Bad Request)",
@@ -5744,7 +5748,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"mfa_required\": true,\n  \"mfa_ticket\": \"eyJ1c2VyX2lkIjo0LCJwd2ZwIjoiMTM1ZjVmMDQwNjUwNTQ4ZjQ0MWZhZDZkZGU2N2Y1NGZlMGQzNDI2ZTgxYTNiMTNiMjI3MzZhYTg2N2MzYjcwOCJ9:1xBGND:AMVHeBJtfN7Waw-6CfTCMXX3RE5RGuRLwBlZcQqS05E\"\n}"
+              "body": "{\n  \"mfa_required\": true,\n  \"mfa_ticket\": \"eyJ1c2VyX2lkIjo0LCJwd2ZwIjoiYTEwNjg2Y2E2YmNkMTYzMjQ5MTQ2YjM2NjAyZmMxMmZkNjM0ZGYxOTY1YTM0ZDllZDRmNTgwNjFkOGZkYzQ3ZiJ9:1xBdnl:7hRAlVPseK5eU2pmzziMjsZer94GhbI4BsgyD2dNsCA\"\n}"
             }
           ]
         },
@@ -5825,7 +5829,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"mfa_ticket\": \"eyJ1c2VyX2lkIjo0LCJwd2ZwIjoiMTM1ZjVmMDQwNjUwNTQ4ZjQ0MWZhZDZkZGU2N2Y1NGZlMGQzNDI2ZTgxYTNiMTNiMjI3MzZhYTg2N2MzYjcwOCJ9:1xBGND:AMVHeBJtfN7Waw-6CfTCMXX3RE5RGuRLwBlZcQqS05E\",\n  \"code\": \"553472\"\n}",
+                  "raw": "{\n  \"mfa_ticket\": \"eyJ1c2VyX2lkIjo0LCJwd2ZwIjoiYTEwNjg2Y2E2YmNkMTYzMjQ5MTQ2YjM2NjAyZmMxMmZkNjM0ZGYxOTY1YTM0ZDllZDRmNTgwNjFkOGZkYzQ3ZiJ9:1xBdnl:7hRAlVPseK5eU2pmzziMjsZer94GhbI4BsgyD2dNsCA\",\n  \"code\": \"393828\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -5842,7 +5846,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 4,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-29T00:16:47.117485+05:30\",\n    \"last_login\": \"2026-09-29T00:16:47.259806+05:30\",\n    \"self_participant\": {\n      \"id\": 6,\n      \"name\": \"new.user (self)\"\n    },\n    \"has_password\": true\n  }\n}"
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 4,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-30T01:17:45.450614+05:30\",\n    \"last_login\": \"2026-09-30T01:17:45.533628+05:30\",\n    \"self_participant\": {\n      \"id\": 6,\n      \"name\": \"new.user (self)\"\n    },\n    \"has_password\": true\n  }\n}"
             },
             {
               "name": "Wrong code (400 Bad Request)",
@@ -5868,7 +5872,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"mfa_ticket\": \"eyJ1c2VyX2lkIjo0LCJwd2ZwIjoiMTM1ZjVmMDQwNjUwNTQ4ZjQ0MWZhZDZkZGU2N2Y1NGZlMGQzNDI2ZTgxYTNiMTNiMjI3MzZhYTg2N2MzYjcwOCJ9:1xBGND:AMVHeBJtfN7Waw-6CfTCMXX3RE5RGuRLwBlZcQqS05E\",\n  \"code\": \"000000\"\n}",
+                  "raw": "{\n  \"mfa_ticket\": \"eyJ1c2VyX2lkIjo0LCJwd2ZwIjoiYTEwNjg2Y2E2YmNkMTYzMjQ5MTQ2YjM2NjAyZmMxMmZkNjM0ZGYxOTY1YTM0ZDllZDRmNTgwNjFkOGZkYzQ3ZiJ9:1xBdnl:7hRAlVPseK5eU2pmzziMjsZer94GhbI4BsgyD2dNsCA\",\n  \"code\": \"000000\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -5929,6 +5933,161 @@
                 }
               ],
               "body": "{\n  \"detail\": \"That sign-in has expired. Log in again.\",\n  \"code\": \"invalid_ticket\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "List signed-in devices",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"device_id\", body[1].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/devices/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "devices",
+                ""
+              ]
+            },
+            "description": "The devices this account is signed in on -- a web session, or an app holding a refresh token -- most recently seen first. An account may be signed in on two at a time (`MAX_SIGNED_IN_DEVICES`): a third sign-in signs the oldest one out, and its next `auth/refresh/` gets 401. `label` is the device's User-Agent. `current` is true only for the web session making the request; an API device cannot tell which one it is. The next request signs the other one out."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/devices/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "devices",
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "[\n  {\n    \"id\": 7,\n    \"kind\": \"api\",\n    \"label\": \"\",\n    \"created_at\": \"2026-09-30T01:17:45.530765+05:30\",\n    \"last_seen_at\": \"2026-09-30T01:17:45.530769+05:30\",\n    \"current\": false\n  },\n  {\n    \"id\": 6,\n    \"kind\": \"api\",\n    \"label\": \"\",\n    \"created_at\": \"2026-09-30T01:17:45.520013+05:30\",\n    \"last_seen_at\": \"2026-09-30T01:17:45.520015+05:30\",\n    \"current\": false\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Sign a device out",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"204 No Content\", function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/devices/{{device_id}}/sign-out/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "devices",
+                "{{device_id}}",
+                "sign-out",
+                ""
+              ]
+            },
+            "description": "Ends that device: a web session is deleted; an API device's refresh token is revoked, so it gets 401 on its next refresh. Its current access token keeps working until it expires (up to 30 minutes). Another account's device id is 404."
+          },
+          "response": [
+            {
+              "name": "204 No Content",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/devices/6/sign-out/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "devices",
+                    "6",
+                    "sign-out",
+                    ""
+                  ]
+                }
+              },
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "text",
+              "header": [],
+              "body": ""
+            },
+            {
+              "name": "Not one of your devices (404 Not Found)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/devices/999999/sign-out/",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "devices",
+                    "999999",
+                    "sign-out",
+                    ""
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"detail\": \"No such device.\"\n}"
             }
           ]
         },
@@ -6003,7 +6162,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"code\": \"553472\"\n}",
+                  "raw": "{\n  \"code\": \"393828\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -6020,7 +6179,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"recovery_codes\": [\n    \"2CGYPRAR63\",\n    \"ZGPNTJBKVC\",\n    \"SYKFY5MUA3\",\n    \"TKFZWMMTVN\",\n    \"SAB5ZNQJR4\",\n    \"3FRTGUF99T\",\n    \"Y4FTZKXER7\",\n    \"PQYTEJGR3Z\",\n    \"Z7BTS7T73H\",\n    \"DTUV684V4U\"\n  ]\n}"
+              "body": "{\n  \"recovery_codes\": [\n    \"6H2F6WTNU8\",\n    \"Z8XQCSBRJ8\",\n    \"SSW27SP45X\",\n    \"A3YSNWWPN7\",\n    \"H4ZHB4RD5R\",\n    \"734JF2DY44\",\n    \"3JFZAT2MS5\",\n    \"PDF9WSJDUC\",\n    \"FV3YU62V7Z\",\n    \"NNNVBVVYUC\"\n  ]\n}"
             }
           ]
         },
@@ -6098,7 +6257,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"password\": \"Third-Pass-2026\",\n  \"code\": \"553472\"\n}",
+                  "raw": "{\n  \"password\": \"Third-Pass-2026\",\n  \"code\": \"393828\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -6115,7 +6274,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 4,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-29T00:16:47.117485+05:30\",\n    \"last_login\": \"2026-09-29T00:16:47.277499+05:30\",\n    \"self_participant\": {\n      \"id\": 6,\n      \"name\": \"new.user (self)\"\n    },\n    \"has_password\": true\n  }\n}"
+              "body": "{\n  \"access\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<access token, valid 30 minutes>\",\n  \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.<refresh token, valid 14 days>\",\n  \"user\": {\n    \"id\": 4,\n    \"username\": \"new.user\",\n    \"email\": \"new.user@example.com\",\n    \"first_name\": \"\",\n    \"last_name\": \"\",\n    \"is_staff\": false,\n    \"date_joined\": \"2026-09-30T01:17:45.450614+05:30\",\n    \"last_login\": \"2026-09-30T01:17:45.577598+05:30\",\n    \"self_participant\": {\n      \"id\": 6,\n      \"name\": \"new.user (self)\"\n    },\n    \"has_password\": true\n  }\n}"
             },
             {
               "name": "Wrong password (400 Bad Request)",

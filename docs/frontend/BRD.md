@@ -352,7 +352,13 @@ counts as available: a fresh sign-up replaces it. At most 10 sign-up attempts pe
 per hour (429 `rate_limited`).
 
 **BR-25 · Signing in** is limited to 10 failed attempts per username from one network address in
-15 minutes, and 50 failed attempts from one address across all usernames (429 `rate_limited`).
+15 minutes, 50 failed attempts from one address across all usernames, and 20 failed attempts per
+username from *any* address in 15 minutes (429 `rate_limited`). The last one stops guesses spread
+over many addresses; it applies to the API, the web page and the admin alike, and a successful
+sign-in clears it. Once it is reached, signing in with a password is refused for that account until
+the window ends, **even with the right password** — so anyone can lock an account's password
+sign-in for up to 15 minutes by failing 20 times (an accepted trade-off). Sign in with Google
+(BR-32) and devices already signed in keep working, and the lock clears itself.
 An account that has not been verified gets 403 `email_not_verified`, but only when the password
 was right.
 
@@ -399,6 +405,17 @@ account with it on stops at the same code step, with the same ticket, whichever 
 check was passed. At most 50 failed attempts per network address in 15 minutes — the same budget
 signing in with a password shares (BR-25), since there is no username to count one against before
 the token is verified.
+
+**BR-33 · Signed-in devices.** An account can be signed in on **at most two devices at a time**
+(configurable by the operator, default 2): a browser session on the server's own pages and an app
+holding a refresh token each count as one, and both count towards the same limit. A third
+sign-in **signs the oldest device out** (by last use); it never refuses the new one. The signed-out
+app's next refresh answers 401, and it must send the user back to the login screen; its current
+access token works until it expires, at most 30 minutes. A device that has gone away — expired
+session or token — does not count. The user can see their devices (kind, what it calls itself,
+when it signed in and was last used) and sign any of them out, from the account page on the web
+and from `auth/devices/` in the API. Signing a device out, whether by the limit or by the user, is
+recorded in the security trail.
 
 ---
 
@@ -518,7 +535,8 @@ and acceptance criteria. States common to every screen are in [7.12](#712-common
 ### 7.2 Account — FR-ACC
 
 **API:** `me/` (GET, PATCH, DELETE), `auth/password/change/`, `auth/mfa/`, `auth/mfa/setup/`,
-`auth/mfa/confirm/`, `auth/mfa/disable/`, `auth/mfa/recovery-codes/`.
+`auth/mfa/confirm/`, `auth/mfa/disable/`, `auth/mfa/recovery-codes/`, `auth/devices/`,
+`auth/devices/<id>/sign-out/`.
 
 | ID | Requirement |
 |---|---|
@@ -526,6 +544,7 @@ and acceptance criteria. States common to every screen are in [7.12](#712-common
 | FR-ACC-02 | **Change password** with the current password and the new one twice. On success, store the new tokens from the response and confirm "Password changed. Other devices have been signed out." Show "current password is incorrect" on 400 `old_password`. When the profile's `has_password` (BR-32) is `false` -- a Google-only account -- show "Set a password" instead of this form, pointing to the forgot-password screen (FR-AUTH-07), which works for them since they are active with a real email. |
 | FR-ACC-03 | **Delete account** in a separate, clearly dangerous section. Explain that it permanently deletes all expenses, categories, people and history. Require the username to be typed exactly before the button is enabled, then call `DELETE me/` with `confirm`. On 204, clear everything locally and show `/login` with "Your account has been deleted." |
 | FR-ACC-04 | **Two-step sign-in (BR-31).** A "Two-step sign-in" section shows on/off (`GET auth/mfa/`) and, when on, how many recovery codes are left. **Turn on:** call `auth/mfa/setup/`, show the `otpauth_uri` as a QR code plus `secret` for manual entry, and a code box; on `auth/mfa/confirm/` succeeding, show the ten `recovery_codes` **once**, with a clear "save these now, they won't be shown again" and a way to copy or download them, then store the new tokens. **Turn off:** ask for the password and a code together (`auth/mfa/disable/`); show "Wrong password" or "That code is wrong" as the response says. **New recovery codes:** ask for a current authenticator code (`auth/mfa/recovery-codes/`) and show the new ten once, the same as turning on. |
+| FR-ACC-05 | **Signed-in devices (BR-33).** A "Signed-in devices" section lists `GET auth/devices/` — what each device calls itself (`label`, shown as plain text), whether it is a browser or an app (`kind`), when it signed in and when it was last used — with a **Sign out** button on each (`POST auth/devices/<id>/sign-out/`, then refresh the list). Say how many devices the account can be signed in on at once and that signing in on another signs the oldest out. Signing out the device in use is allowed: discard the tokens and go to `/login`. |
 
 ### 7.3 Overview (dashboard) — FR-DASH
 
@@ -851,6 +870,7 @@ Run on a fresh account, in this order. The expected numbers are the API's real a
 | 1.2 | Oct 2026 | BR-30: the scan and export limits added by security pass 2 |
 | 1.3 | Oct 2026 | BR-31, FR-AUTH-11, FR-ACC-04: multi-factor sign-in (roadmap L2) |
 | 1.4 | Oct 2026 | BR-32, FR-AUTH-12, FR-ACC-02: Sign in with Google |
+| 1.5 | Oct 2026 | BR-25, BR-33, FR-ACC-05: the per-account wrong-password cap, and at most two signed-in devices |
 
 ---
 
@@ -865,7 +885,7 @@ Run on a fresh account, in this order. The expected numbers are the API's real a
 | Sign up | — | `POST auth/signup/`, `POST auth/google/` |
 | Verify email | — | `POST auth/verify-email/` |
 | Forgot / reset password | — | `POST auth/password/reset/`, `POST auth/password/reset/confirm/` |
-| Account | `GET me/`, `GET auth/mfa/` | `PATCH me/`, `POST auth/password/change/`, `DELETE me/`, `POST auth/mfa/setup/`, `POST auth/mfa/confirm/`, `POST auth/mfa/disable/`, `POST auth/mfa/recovery-codes/` |
+| Account | `GET me/`, `GET auth/mfa/`, `GET auth/devices/` | `PATCH me/`, `POST auth/password/change/`, `DELETE me/`, `POST auth/mfa/setup/`, `POST auth/mfa/confirm/`, `POST auth/mfa/disable/`, `POST auth/mfa/recovery-codes/`, `POST auth/devices/<id>/sign-out/` |
 | Overview | `GET summary/` | — |
 | Expenses | `GET expenses/`, `GET categories/` | — |
 | Expense form | `GET expenses/{id}/`, `GET categories/`, `GET participants/`, `GET me/` | `POST expenses/`, `PUT expenses/{id}/`, `DELETE expenses/{id}/`, `POST categories/` |

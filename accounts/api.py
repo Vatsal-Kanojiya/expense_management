@@ -27,6 +27,7 @@ from django.utils.http import urlsafe_base64_decode
 from django.views.decorators.debug import sensitive_variables
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_field
 from rest_framework import serializers, status
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -38,11 +39,11 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from expenses.api.common import MessageSerializer, ValidationErrorSerializer, raise_form_errors
 from expenses.models import Participant
 
-from . import audit, mfa, ratelimit, totp
+from . import audit, devices, mfa, ratelimit, totp
 from .deletion import delete_account
 from .forms import AnyActiveAccountPasswordResetForm, SignUpForm
 from .google import GoogleSignInError, google_signin_enabled, sign_in_with_google
-from .models import RecoveryCode, TOTPDevice
+from .models import RecoveryCode, SignedInDevice, TOTPDevice
 from .models import mfa_enabled as user_has_mfa
 from .verification import send_verification_email, verify
 
@@ -161,6 +162,25 @@ class MFAVerifySerializer(serializers.Serializer):
     code = serializers.CharField(help_text="A 6-digit authenticator code, or a recovery code.")
 
 
+class DeviceSerializer(serializers.ModelSerializer):
+    """A signed-in device, as the list shows it. Never the session key or token id."""
+
+    current = serializers.SerializerMethodField(
+        help_text="True for the web session making this request. An API device cannot tell "
+        "which one it is (an access token does not name its refresh token), so it is always "
+        "false for a request made with a bearer token."
+    )
+
+    class Meta:
+        model = SignedInDevice
+        fields = ["id", "kind", "label", "created_at", "last_seen_at", "current"]
+        read_only_fields = fields
+
+    @extend_schema_field(serializers.BooleanField)
+    def get_current(self, device):
+        return devices.is_current(device, self.context["request"])
+
+
 class MFAStatusSerializer(serializers.Serializer):
     enabled = serializers.BooleanField()
     recovery_codes_left = serializers.IntegerField()
@@ -223,9 +243,16 @@ def password_errors(password, confirm):
 # --- Helpers --------------------------------------------------------------
 
 
-def issue_tokens(user):
-    """A fresh access/refresh pair, plus the profile a client needs at once."""
+def issue_tokens(user, request=None):
+    """A fresh access/refresh pair, plus the profile a client needs at once.
+
+    Every API path that signs a device in ends here, so this is where the
+    new refresh-token chain is registered as a signed-in device -- and where
+    the oldest device is signed out if that makes one too many
+    (docs/design/SESSION_LIMITS.md).
+    """
     refresh = RefreshToken.for_user(user)
+    devices.register_api(user, str(refresh["jti"]), request)
     update_last_login(None, user)
     return {
         "access": str(refresh.access_token),
@@ -247,6 +274,7 @@ def revoke_refresh_tokens(user, request=None):
     """
     for token in OutstandingToken.objects.filter(user=user):
         BlacklistedToken.objects.get_or_create(token=token)
+    devices.forget_all_api(user)
     audit.record("tokens_revoked", request=request, user=user)
 
 
@@ -382,7 +410,7 @@ class VerifyEmailView(PublicView):
 
         audit.record("email_verified", request=request, user=user)
 
-        return Response(issue_tokens(user))
+        return Response(issue_tokens(user, request))
 
 
 class LoginView(PublicView):
@@ -468,7 +496,7 @@ class LoginView(PublicView):
         # No django.contrib.auth.login() call here -- a JWT pair is handed
         # back instead of a session -- so nothing else records this login.
         audit.record("login_succeeded", request=request, user=user)
-        return Response(issue_tokens(user))
+        return Response(issue_tokens(user, request))
 
 
 class GoogleLoginView(PublicView):
@@ -521,7 +549,7 @@ class GoogleLoginView(PublicView):
             return Response({"mfa_required": True, "mfa_ticket": mfa.make_ticket(user)})
 
         audit.record("login_succeeded", request=request, user=user)
-        return Response(issue_tokens(user))
+        return Response(issue_tokens(user, request))
 
 
 class MFAVerifyView(PublicView):
@@ -556,7 +584,7 @@ class MFAVerifyView(PublicView):
             return WRONG_CODE
 
         audit.record("login_succeeded", request=request, user=user)
-        return Response(issue_tokens(user))
+        return Response(issue_tokens(user, request))
 
 
 class MFAStatusView(APIView):
@@ -653,7 +681,7 @@ class MFAConfirmView(APIView):
         revoke_refresh_tokens(request.user, request=request)
         audit.record("mfa_enabled", request=request, user=request.user)
 
-        return Response({**issue_tokens(request.user), "recovery_codes": codes})
+        return Response({**issue_tokens(request.user, request), "recovery_codes": codes})
 
 
 class MFADisableView(APIView):
@@ -697,7 +725,7 @@ class MFADisableView(APIView):
         revoke_refresh_tokens(request.user, request=request)
         audit.record("mfa_disabled", request=request, user=request.user)
 
-        return Response(issue_tokens(request.user))
+        return Response(issue_tokens(request.user, request))
 
 
 class MFARegenerateView(APIView):
@@ -739,15 +767,47 @@ class MFARegenerateView(APIView):
         return Response({"recovery_codes": codes})
 
 
+def _refresh_claims(raw):
+    """``{"jti", "user_id"}`` of a valid refresh token, else ``None``.
+
+    Read-only: parsing checks the signature, the expiry and the blacklist
+    but changes nothing, so this can run before the token is rotated.
+    """
+    if not isinstance(raw, str):
+        return None
+    try:
+        token = RefreshToken(raw)
+    except TokenError:
+        return None
+    return {"jti": str(token["jti"]), "user_id": token.payload.get("user_id")}
+
+
 class RefreshView(TokenRefreshView):
     """Exchange a refresh token for a new pair. The old refresh token dies."""
 
     authentication_classes = []
 
-    @extend_schema(tags=AUTH_TAG, summary="Refresh tokens")
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Refresh tokens",
+        description="Exchange a refresh token for a new pair. The old refresh token dies. "
+        "A device that a further sign-in has signed out (an account may be signed in on "
+        "`MAX_SIGNED_IN_DEVICES` devices at once, default 2) gets 401 here: sign in again.",
+    )
     @sensitive_variables()
     def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
+        raw = request.data.get("refresh") if isinstance(request.data, dict) else None
+        old = _refresh_claims(raw)
+        response = super().post(request, *args, **kwargs)
+
+        # The refresh token rotated: the device keeps one record for its
+        # whole chain, moved to the new token (accounts/devices.py).
+        new = _refresh_claims(response.data.get("refresh")) if response.status_code == 200 else None
+        if old is not None and new is not None:
+            user = User.objects.filter(pk=new["user_id"]).first()
+            if user is not None:
+                devices.rotate_api(old["jti"], new["jti"], user, request)
+        return response
 
 
 class LogoutView(PublicView):
@@ -771,6 +831,7 @@ class LogoutView(PublicView):
             # so the token's own subject is the only reliable "who".
             user = User.objects.filter(pk=token.payload.get("user_id")).first()
             token.blacklist()
+            devices.forget_api(str(token["jti"]))
         except TokenError:
             return Response(
                 {"detail": "That token is invalid or already revoked.", "code": "token_invalid"},
@@ -779,6 +840,50 @@ class LogoutView(PublicView):
 
         audit.record("logged_out", request=request, user=user)
 
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class DeviceListView(APIView):
+    """The devices this account is signed in on: web sessions and API refresh tokens."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Signed-in devices",
+        description="At most `MAX_SIGNED_IN_DEVICES` (default 2): a further sign-in signs "
+        "the oldest device out. Most recently seen first. A device that has gone away "
+        "(expired session or token) is not listed.",
+        responses=DeviceSerializer(many=True),
+    )
+    def get(self, request, *args, **kwargs):
+        found = devices.live_devices(request.user, request=request)
+        found.sort(key=lambda device: (device.last_seen_at, device.pk), reverse=True)
+        return Response(DeviceSerializer(found, many=True, context={"request": request}).data)
+
+
+class DeviceSignOutView(APIView):
+    """Sign one device out: end its web session, or revoke its refresh token."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=AUTH_TAG,
+        summary="Sign a device out",
+        description="Ends that device: a web session is deleted; an API device's refresh "
+        "token is revoked, so it gets 401 on its next refresh (its current access token "
+        "keeps working until it expires, up to `JWT_ACCESS_MINUTES`, default 30). Another "
+        "account's device id is 404.",
+        request=None,
+        responses={204: None, 404: OpenApiResponse(MessageSerializer, description="Not yours.")},
+    )
+    def post(self, request, pk, *args, **kwargs):
+        # Scoped to the caller, so someone else's id is a 404, never a 403
+        # that says it exists.
+        device = SignedInDevice.objects.filter(pk=pk, user=request.user).first()
+        if device is None:
+            raise NotFound("No such device.")
+        devices.end(device, request=request, reason="user")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -828,11 +933,14 @@ class PasswordChangeView(APIView):
         audit.record("password_changed", request=request, user=user)
         if request.auth is None:
             # Signed in by session: keep that session, as the web page does.
+            # It gets a new key, which its device record must follow.
+            old_key = request.session.session_key
             update_session_auth_hash(request, user)
+            devices.rekey(request, old_key)
 
         # The caller's own tokens died with the old password, so it gets new
         # ones and stays signed in; every other device must log in again.
-        return Response(issue_tokens(user))
+        return Response(issue_tokens(user, request))
 
 
 class PasswordResetView(PublicView):
@@ -983,6 +1091,12 @@ urlpatterns = [
         "auth/mfa/recovery-codes/",
         MFARegenerateView.as_view(),
         name="auth-mfa-recovery-codes",
+    ),
+    path("auth/devices/", DeviceListView.as_view(), name="auth-devices"),
+    path(
+        "auth/devices/<int:pk>/sign-out/",
+        DeviceSignOutView.as_view(),
+        name="auth-device-sign-out",
     ),
     path("auth/refresh/", RefreshView.as_view(), name="auth-refresh"),
     path("auth/logout/", LogoutView.as_view(), name="auth-logout"),

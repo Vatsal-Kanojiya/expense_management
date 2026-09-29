@@ -216,6 +216,10 @@ Never put a token in a URL, a query string, a log line or an error report.
 | `POST auth/password/change/` | Every token of the user stops working, on every device. The response carries a fresh pair for the calling device — store it. |
 | Password reset (`auth/password/reset/confirm/`) | Every token stops working. The user signs in again. |
 | A password changed on the server's own pages | Every access token stops working (`401 password_changed`), and refreshing fails. |
+| A further sign-in past the device limit (§3.9) | The account's **oldest** device is signed out: its refresh token is revoked, so its next `auth/refresh/` answers 401. Its access token still works until it expires (at most 30 minutes). |
+| `POST auth/devices/<id>/sign-out/` (§3.9) | Same, for the device you choose. |
+| A further sign-in past the device limit (§3.9) | The account's **oldest** device is signed out: its refresh token is revoked, so its next `auth/refresh/` answers 401. Its access token still works until it expires (at most 30 minutes). |
+| `POST auth/devices/<id>/sign-out/` (§3.9) | The same, for the device you choose. |
 | `DELETE me/` | The account is gone; every token answers 401 `user_not_found`. |
 
 ### 3.6 Signing up and verifying
@@ -302,6 +306,38 @@ Building the button: load `https://accounts.google.com/gsi/client`, initialise i
 client id in **callback mode** (`ux_mode: "popup"` or the default, never `"redirect"`), and send
 whatever `credential` its callback receives straight to `auth/google/` — nothing else about the
 token needs inspecting on the client.
+
+### 3.9 Signed-in devices
+
+An account can be signed in on **at most two devices at a time** (the server's
+`MAX_SIGNED_IN_DEVICES` setting, default 2). A device is a browser session on the server's own
+pages, or one app holding a refresh token — the token rotates on every `auth/refresh/`, but it is
+still the same device. Both count towards the one limit.
+
+**A third sign-in signs the oldest device out** — the one used least recently (a refresh counts as
+use). The new sign-in always succeeds; the limit never refuses a login, it only ends an older one.
+What the signed-out app sees:
+
+* Its **refresh token is revoked**: the next `POST auth/refresh/` answers `401 token_not_valid`.
+  Treat that as "signed out": drop the tokens and show the login screen, ideally saying why ("You
+  were signed out because your account was signed in on another device"). Nothing else tells it —
+  there is no push message.
+* Its **current access token keeps working until it expires** (at most 30 minutes,
+  `JWT_ACCESS_MINUTES`). This is a known limitation of stateless access tokens; the device cannot
+  refresh, so it is over by then.
+
+A device that simply went away — an expired session, an expired or revoked refresh token — does
+not count, so it never pushes out one in use. A password change or reset signs every other device
+out anyway (§3.5).
+
+**Seeing and ending them** (`Bearer` auth):
+
+| Request | Does |
+|---|---|
+| `GET auth/devices/` | The account's devices, most recently seen first: `[{id, kind, label, created_at, last_seen_at, current}]`. `kind` is `web` or `api`; `label` is the device's User-Agent (up to 200 characters; **untrusted text**, escape it). `current` is true only for a browser session making the request itself — a client using a bearer token cannot tell which device it is, so it always sees `false`. |
+| `POST auth/devices/<id>/sign-out/` | Ends that device, the same way the limit does: `204`. Someone else's id, or an unknown one, is `404`. Signing out the device you are using is allowed; discard your tokens afterwards. |
+
+Suggested screen: a "Signed-in devices" list under Account, with a **Sign out** button on each row.
 
 ---
 
@@ -417,7 +453,7 @@ A robust client handles all three: show `detail` as a message, map field keys on
 | `mfa_already_enabled` | 400 | `auth/mfa/setup/` | Two-step sign-in is already on | Send to the manage screen instead |
 | `mfa_setup_not_started` | 400 | `auth/mfa/confirm/` | No pending enrolment to confirm | Send back to `auth/mfa/setup/` |
 | `mfa_not_enabled` | 400 | `auth/mfa/disable/`, `auth/mfa/recovery-codes/` | Two-step sign-in is not on | Send to the setup screen |
-| `token_not_valid` | 401 | any | Access token expired or malformed; or refresh token revoked or expired | Refresh once; if it fails, sign out |
+| `token_not_valid` | 401 | any | Access token expired or malformed; or refresh token revoked or expired — including a device signed out by a newer sign-in (§3.9) | Refresh once; if it fails, sign out |
 | `password_changed` | 401 | any | The password changed after this token was issued | Sign out; ask them to sign in again |
 | `user_not_found` | 401 | any | The account no longer exists | Sign out |
 | `token_invalid` | 400 | `auth/logout/` | That refresh token is already revoked | Treat as signed out |
@@ -637,6 +673,7 @@ When the draft endpoint answers 409 `already_saved`, open that expense instead.
 | 60 requests per hour | Per address, for requests without a token (login, sign-up, refresh, reset) | 429 with `Retry-After` |
 | 10 failed logins per 15 minutes | Per username per address | 429 `rate_limited` |
 | 50 failed logins per 15 minutes | Per address, across all usernames | 429 `rate_limited` |
+| 20 failed logins per 15 minutes | Per username, from **any** address (the web page, the API and the admin share it). Once reached, password sign-in for that account is refused for the rest of the window even with the right password; a successful sign-in clears it. `auth/google/` and devices already signed in are not affected | 429 `rate_limited` |
 | (shares the limit above) | `auth/google/` attempts, per address -- there is no username to key one on before the token is verified | 429 `rate_limited` |
 | 10 sign-up attempts per hour | Per address (the web page and the API share it) | 429 `rate_limited` |
 | 5 wrong current passwords per 15 minutes | Per account, on password change (page and API share it) | 429 `rate_limited` |

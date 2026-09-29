@@ -40,4 +40,27 @@
 
     <p style="margin-top:1.5rem"><a href="{% url 'accounts:password_change' %}">Change password</a></p>
   </div>
+
+  <h2>Signed-in devices</h2>
+  <div class="card" style="max-width:34rem">
+    <p class="muted">You can be signed in on {{ max_devices }} device{{ max_devices|pluralize }} at a time.
+      Signing in on another one signs the oldest out.</p>
+    {% for device in devices %}
+      <div style="margin:1rem 0">
+        <strong>{% if device.kind == "web" %}Web browser{% else %}App{% endif %}</strong>
+        {% if device.is_current %}<span class="muted">(this device)</span>{% endif %}
+        <br>
+        <span class="muted">{{ device.label|default:"Unknown device" }}</span>
+        <br>
+        <span class="muted">Signed in {{ device.created_at|date:"j M Y, H:i" }} ·
+          last seen {{ device.last_seen_at|date:"j M Y, H:i" }}</span>
+        <form method="post" action="{% url 'accounts:device_sign_out' device.pk %}" style="margin-top:.5rem">
+          {% csrf_token %}
+          <button class="btn" type="submit">Sign out{% if device.is_current %} of this device{% endif %}</button>
+        </form>
+      </div>
+    {% empty %}
+      <p class="muted">No devices are signed in.</p>
+    {% endfor %}
+  </div>
 {% endblock %}

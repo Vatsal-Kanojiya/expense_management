@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -15,12 +15,12 @@ from django.views.generic import CreateView, TemplateView
 
 from expenses.models import Category, Expense, Participant
 
-from . import audit, mfa, qrcode, ratelimit, totp
+from . import audit, devices, mfa, qrcode, ratelimit, totp
 from .api import revoke_refresh_tokens
 from .deletion import delete_account
 from .forms import AnyActiveAccountPasswordResetForm, SignUpForm
 from .google import GoogleSignInError, google_signin_enabled, sign_in_with_google
-from .models import RecoveryCode, TOTPDevice
+from .models import RecoveryCode, SignedInDevice, TOTPDevice
 from .models import mfa_enabled as user_has_mfa
 from .verification import send_verification_email, verify
 
@@ -74,7 +74,7 @@ class ThrottledLoginView(GoogleButtonContextMixin, auth_views.LoginView):
             # session id the same way login() would, without attaching a
             # user to it, which is what stops a fixation attack on this
             # still-anonymous session.
-            self.request.session.cycle_key()
+            devices.cycle_session_key(self.request)
             self.request.session["mfa_ticket"] = mfa.make_ticket(user)
             self.request.session["mfa_next"] = self.get_redirect_url()
             return redirect("accounts:login_mfa")
@@ -202,7 +202,7 @@ class GoogleLoginView(View):
 
         if user_has_mfa(user):
             # Same second step as a password login (docs/design/MFA.md).
-            request.session.cycle_key()
+            devices.cycle_session_key(request)
             request.session["mfa_ticket"] = mfa.make_ticket(user)
             request.session["mfa_next"] = next_url
             return redirect("accounts:login_mfa")
@@ -249,7 +249,11 @@ class ThrottledPasswordChangeView(auth_views.PasswordChangeView):
 
     def form_valid(self, form):
         ratelimit.clear_password_change(self.request.user)
+        old_key = self.request.session.session_key
         response = super().form_valid(form)
+        # update_session_auth_hash gave this session a new key; the current
+        # device's record follows it, or it would drop out of the count.
+        devices.rekey(self.request, old_key)
         # update_session_auth_hash (called above, inside super().form_valid)
         # only keeps *this* session signed in; it says nothing about a
         # refresh token some other device is holding. Revoke those too, or
@@ -467,8 +471,41 @@ class MFAView(LoginRequiredMixin, View):
             "recovery_codes_left": RecoveryCode.objects.filter(
                 user=request.user, used_at__isnull=True
             ).count(),
+            "devices": self._devices(request),
+            "max_devices": devices.limit(),
             **extra,
         }
+
+    @staticmethod
+    def _devices(request):
+        """The "Signed-in devices" section: most recently seen first, this one marked."""
+        found = devices.live_devices(request.user, request=request)
+        found.sort(key=lambda device: (device.last_seen_at, device.pk), reverse=True)
+        for device in found:
+            device.is_current = devices.is_current(device, request)
+        return found
+
+
+class DeviceSignOutView(LoginRequiredMixin, View):
+    """Sign one of the account's devices out, from the "Signed-in devices" section.
+
+    POST only. Someone else's device is a 404, not a refusal that admits it
+    exists. Signing out the device making the request also ends this session,
+    so it goes to the login page.
+    """
+
+    def post(self, request, pk, *args, **kwargs):
+        device = get_object_or_404(SignedInDevice, pk=pk, user=request.user)
+        current = devices.is_current(device, request)
+
+        devices.end(device, request=request, reason="user")
+
+        if current:
+            logout(request)
+            messages.success(request, "You are signed out on this device.")
+            return redirect("accounts:login")
+        messages.success(request, "That device is signed out.")
+        return redirect("accounts:mfa")
 
 
 class MFASetupView(LoginRequiredMixin, View):

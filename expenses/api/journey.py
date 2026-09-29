@@ -1128,6 +1128,31 @@ STEPS = [
     ),
     Step(
         ACCOUNT,
+        "List signed-in devices",
+        "GET",
+        "/auth/devices/",
+        200,
+        "The devices this account is signed in on -- a web session, or an app holding a refresh "
+        "token -- most recently seen first. An account may be signed in on two at a time "
+        "(`MAX_SIGNED_IN_DEVICES`): a third sign-in signs the oldest one out, and its next "
+        "`auth/refresh/` gets 401. `label` is the device's User-Agent. `current` is true only "
+        "for the web session making the request; an API device cannot tell which one it is. The "
+        "next request signs the other one out.",
+        capture={"device_id": "1.id"},
+    ),
+    Step(
+        ACCOUNT,
+        "Sign a device out",
+        "POST",
+        "/auth/devices/{{device_id}}/sign-out/",
+        204,
+        "Ends that device: a web session is deleted; an API device's refresh token is revoked, "
+        "so it gets 401 on its next refresh. Its current access token keeps working until it "
+        "expires (up to 30 minutes). Another account's device id is 404.",
+        examples=[Example("Not one of your devices", 404, path="/auth/devices/999999/sign-out/")],
+    ),
+    Step(
+        ACCOUNT,
         "Get new recovery codes",
         "POST",
         "/auth/mfa/recovery-codes/",
@@ -1194,11 +1219,18 @@ def _resolve(value, variables):
     return value
 
 
+def _js_path(path):
+    """`1.id` -> `body[1].id`: a number in a capture path indexes into a list."""
+    return "body" + "".join(
+        f"[{part}]" if part.isdigit() else f".{part}" for part in path.split(".")
+    )
+
+
 def _dig(data, path):
     if path == WHOLE_BODY:
         return data
     for part in path.split("."):
-        data = data[part]
+        data = data[int(part)] if isinstance(data, list) else data[part]
     return data
 
 
@@ -1414,7 +1446,7 @@ def _test_script(step):
     if step.capture:
         lines.append("const body = pm.response.json();")
         for variable, path in step.capture.items():
-            value = "JSON.stringify(body)" if path == WHOLE_BODY else "body." + path
+            value = "JSON.stringify(body)" if path == WHOLE_BODY else _js_path(path)
             lines.append(f'pm.collectionVariables.set("{variable}", {value});')
     return lines
 
