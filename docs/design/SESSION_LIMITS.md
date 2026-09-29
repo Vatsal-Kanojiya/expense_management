@@ -82,3 +82,39 @@ env, default 2).
   and updates `last_seen_at`; dead records don't push out live ones; the current web device
   survives a password change; logout removes the record; the devices list and sign-out endpoint,
   including that one user cannot sign out another's device (404); events recorded.
+
+## 3. As built — where the implementation chose, or differs
+
+The text above is the spec and is unchanged. Where it was silent or needed tightening:
+
+- **Dead web sessions include ones the password change ended.** The spec drops a web record whose
+  `Session` row is gone or expired. Changing the password leaves every other session's row in
+  place while Django refuses to load them (the stored auth hash no longer matches), so those
+  would have kept holding a slot and could push out the live device. `accounts/devices.prune`
+  also drops a web record whose session no longer belongs to the user or whose auth hash no
+  longer matches (honouring `SECRET_KEY_FALLBACKS`). The session of the request itself, and the
+  device being registered, are never judged: their data is not saved until the response.
+- **`last_seen_at` for a web device is its sign-in time.** Nothing touches it per request (that
+  would mean a write, or a middleware, on every page). A web device is therefore "oldest" by when
+  it signed in; an API device by its last refresh, as specified.
+- **A refresh token issued before this feature** has no record. It is registered the first time
+  it is refreshed, and the limit applies from then on. Web sessions that predate it are not
+  backfilled; they expire with `SESSION_COOKIE_AGE`.
+- **`MAX_SIGNED_IN_DEVICES` below 1 is treated as 1.**
+- **The explicit index on user** is the foreign key's own; `session_key` and `refresh_jti` are
+  indexed as well, since logout and refresh look devices up by them.
+- **Session-key rotation** goes through one helper, `devices.cycle_session_key`, for the two
+  `cycle_key()` calls in the MFA/Google web flow; `update_session_auth_hash()` in the web and API
+  password change is followed by `devices.rekey`.
+- **`GET auth/devices/`** returns a plain list (at most `MAX_SIGNED_IN_DEVICES`, apart from a
+  transient excess), most recently seen first, not the cursor-paginated envelope. `current` is
+  true only for a web session (an API device cannot know which refresh token it holds, and a
+  request with a bearer token is never "the session" even if it also sends the cookie).
+- **`POST auth/devices/<id>/sign-out/`** answers 204, and 404 (`No such device.`) for another
+  account's id. Both it and the web button record `device_signed_out` like the limit does, with
+  `reason: "user"` (the limit records `reason: "limit"`) besides the kind and label.
+- **Web sign-out of the current device** ends the session and goes to the login page; the web
+  route is `accounts/devices/<id>/sign-out/` (POST only, login required, 404 for others').
+- **A session-authenticated API password change** (the browsable API) keeps the session as one
+  device *and* issues tokens, which register a second, API device for the same caller. Left as is.
+- `compose.yaml` passes `MAX_SIGNED_IN_DEVICES` through when set.
