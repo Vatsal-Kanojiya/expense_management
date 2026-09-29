@@ -16,7 +16,7 @@ celery==5.5.3
 # DATA_UPLOAD_MAX_MEMORY_SIZE) and GHSA-g47c-3xmw-q6m2 (AdminRenderer can
 # leak a GET-only representation while rendering a failed write). Both
 # fixed in 3.17.2, still 3.x.
-djangorestframework==3.17.2
+djangorestframework==3.18.1
 whitenoise==6.11.0
 gunicorn==23.0.0
 psycopg[binary]==3.2.10
