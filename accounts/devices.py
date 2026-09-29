@@ -232,7 +232,8 @@ def enforce(user, keep, request=None):
     with transaction.atomic():
         User.objects.select_for_update().filter(pk=user.pk).first()
         prune(user, keep=keep, request=request)
-        devices = list(SignedInDevice.objects.filter(user=user))
+        # Oldest first, explicitly: the order decides which devices are ended.
+        devices = list(SignedInDevice.objects.filter(user=user).order_by("last_seen_at", "id"))
         excess = len(devices) - limit()
         for device in [d for d in devices if d.pk != keep.pk][: max(excess, 0)]:
             end(device, request=request)

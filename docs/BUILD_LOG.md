@@ -583,6 +583,16 @@ bug: an event with no client address failed to save on Postgres's IP column (`ea
 fixing vulnerable dependencies, and the per-account login cap. CI still tests on SQLite only.
 **Suite:** 895 tests, passing on SQLite and Postgres.
 
+**Later in session 32.** The Docker stack was rebuilt from `master` and checked end to end (all
+services healthy, migrations, the three cleanup jobs, a full two-step API login). `SECURITY.md`
+sets time frames for fixing vulnerable dependencies (7/14/30/90 days) and Dependabot watches the
+packages, images and actions: ASVS L1 is 70/70 met or N/A, HSTS-for-a-year being a hosting step.
+The owner decided both sign-in limits (design `docs/design/SESSION_LIMITS.md`, built by Sonnet in
+`0a4bfcd`–`994f70e`): at most 20 wrong passwords per account per 15 minutes from any address, and
+at most two signed-in devices per account, a third sign-in ending the least recently used, with a
+devices list to sign any of them out. Review: ordering made explicit; ran on Postgres too.
+**Suite:** 984 tests.
+
 ---
 
 ### Session 31 — Security passes 2 to 5, run by subagents
