@@ -20,7 +20,7 @@ djangorestframework==3.17.2
 whitenoise==6.11.0
 gunicorn==23.0.0
 psycopg[binary]==3.2.10
-redis==5.2.1
+redis==8.1.0
 
 # Bill scanning (expenses/extraction/providers/claude.py). Only needed
 # when BILL_SCAN_PROVIDER=claude -- the registry resolves providers lazily
