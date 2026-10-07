@@ -157,7 +157,9 @@ class ExpenseViewTests(TestCase):
             "user": self.alice,
             "category": self.category,
             "amount": Decimal("10.00"),
-            "spent_on": date(2026, 9, 1),
+            # Today, not a fixed date: the list opens on the current month,
+            # so a fixed date drops out of it once that month is over.
+            "spent_on": date.today(),
         }
         return Expense.objects.create(**{**defaults, **overrides})
 

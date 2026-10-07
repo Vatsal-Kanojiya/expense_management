@@ -59,14 +59,15 @@ class TwoAccountsTestCase(TestCase):
             user=cls.alice,
             category=cls.alice_category,
             amount=Decimal("50.00"),
-            spent_on=date(2026, 9, 1),
+            # Today: the expense list opens on the current month.
+            spent_on=date.today(),
             note="Alice lunch",
         )
         cls.bob_expense = Expense.objects.create(
             user=cls.bob,
             category=cls.bob_category,
             amount=Decimal("900.00"),
-            spent_on=date(2026, 9, 1),
+            spent_on=date.today(),
             note="Bob rent",
         )
         cls.alice_item = ExpenseItem.objects.create(

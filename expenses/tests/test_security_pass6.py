@@ -356,7 +356,8 @@ class TextEscapingTests(TestCase):
             user=self.alice,
             category=category,
             amount=Decimal("10.00"),
-            spent_on=date(2026, 9, 1),
+            # Today: the expense list opens on the current month.
+            spent_on=date.today(),
             note=PAYLOAD,
         )
 
