@@ -10,7 +10,7 @@ django-environ==0.12.0
 # environment from this file alone -- there was no remote, so CI never
 # ran. Its first run failed on `No module named 'celery'`, which is
 # precisely the class of bug known issue 24 predicted.
-celery==5.5.3
+celery==5.6.3
 # 3.16.1 had two known vulnerabilities (pip-audit, session 31, HANDOVER.md
 # section 3): GHSA-2m8g-3cmr-wg3w (request.data bypasses
 # DATA_UPLOAD_MAX_MEMORY_SIZE) and GHSA-g47c-3xmw-q6m2 (AdminRenderer can
