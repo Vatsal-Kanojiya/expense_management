@@ -3,7 +3,7 @@
 # At team scale the usual answer is pip-tools: requirements.in -> compiled requirements.txt.
 
 Django==5.2.17
-django-environ==0.12.0
+django-environ==0.14.0
 
 # Missing from this file for ten sessions. Everything worked locally
 # because the venv had it installed directly, and nothing ever built the
