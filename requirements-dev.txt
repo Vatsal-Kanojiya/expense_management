@@ -5,7 +5,7 @@
 # linters and test tooling.
 
 # Linter + formatter, replaces black/flake8/isort.
-ruff==0.14.2
+ruff==0.16.10
 
 # The [toml] extra is required for coverage to read pyproject.toml on
 # Python < 3.11, which has no tomllib in the standard library.
